@@ -7,6 +7,9 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Support\Facades\Password;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
@@ -82,5 +85,115 @@ class AuthTest extends TestCase
         $this->app['auth']->forgetGuards();
 
         $this->withToken($token)->getJson('/api/v1/auth/me')->assertUnauthorized();
+    }
+
+    // ─── Login logs ──────────────────────────────────────────────────────
+
+    public function test_successful_login_creates_log_entry(): void
+    {
+        User::factory()->create([
+            'email' => 'log@test.com',
+            'password' => Hash::make('pass'),
+        ]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'email' => 'log@test.com',
+            'password' => 'pass',
+        ])->assertOk();
+
+        $this->assertDatabaseHas('login_logs', [
+            'email' => 'log@test.com',
+            'success' => true,
+        ]);
+    }
+
+    public function test_failed_login_creates_log_entry(): void
+    {
+        User::factory()->create([
+            'email' => 'fail@test.com',
+            'password' => Hash::make('good'),
+        ]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'email' => 'fail@test.com',
+            'password' => 'bad',
+        ])->assertUnprocessable();
+
+        $this->assertDatabaseHas('login_logs', [
+            'email' => 'fail@test.com',
+            'success' => false,
+        ]);
+    }
+
+    public function test_admin_can_view_login_logs(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        User::factory()->create([
+            'email' => 'x@t.com',
+            'password' => Hash::make('p'),
+        ]);
+        $this->postJson('/api/v1/auth/login', ['email' => 'x@t.com', 'password' => 'p']);
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/login-logs')
+            ->assertOk()
+            ->assertJsonStructure(['data']);
+    }
+
+    // ─── Forgot / Reset password ─────────────────────────────────────────
+
+    public function test_forgot_password_sends_reset_link(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create(['email' => 'reset@test.com']);
+
+        $this->postJson('/api/v1/auth/forgot-password', [
+            'email' => 'reset@test.com',
+        ])->assertOk()
+            ->assertJsonPath('message', 'Lien de réinitialisation envoyé.');
+
+        Notification::assertSentTo($user, ResetPassword::class);
+    }
+
+    public function test_forgot_password_rejects_unknown_email(): void
+    {
+        $this->postJson('/api/v1/auth/forgot-password', [
+            'email' => 'ghost@nobody.test',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['email']);
+    }
+
+    public function test_reset_password_with_valid_token(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'tok@test.com',
+            'password' => Hash::make('old'),
+        ]);
+
+        $token = Password::createToken($user);
+
+        $this->postJson('/api/v1/auth/reset-password', [
+            'token' => $token,
+            'email' => 'tok@test.com',
+            'password' => 'newpass123',
+            'password_confirmation' => 'newpass123',
+        ])->assertOk()
+            ->assertJsonPath('message', 'Mot de passe réinitialisé avec succès.');
+
+        $this->assertTrue(Hash::check('newpass123', $user->fresh()->password));
+    }
+
+    public function test_reset_password_rejects_invalid_token(): void
+    {
+        User::factory()->create(['email' => 'bad@test.com']);
+
+        $this->postJson('/api/v1/auth/reset-password', [
+            'token' => 'invalid-token',
+            'email' => 'bad@test.com',
+            'password' => 'newpass123',
+            'password_confirmation' => 'newpass123',
+        ])->assertUnprocessable();
     }
 }

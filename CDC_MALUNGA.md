@@ -262,6 +262,31 @@ Chaque composant est conteneurisé via **Docker**, déployé sur infrastructure 
 - **Stockage de fichiers :** S3-compatible (AWS S3, MinIO en auto-hébergé)
 - **Export PDF :** Bibliothèque côté serveur (wkhtmltopdf, Puppeteer, DomPDF)
 
+### 6.4 Documentation de l'API (Swagger / OpenAPI)
+
+L'API REST v1 est documentée automatiquement au format **OpenAPI 3.1**. La spec est générée à partir du code (FormRequest, Resources, signatures de controllers) via le package [`dedoc/scramble`](https://scramble.dedoc.co/) — aucune annotation manuelle n'est requise.
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/documentation` | **UI Swagger officielle** (Swagger UI 5.x) — interface principale |
+| `GET /docs/api.json` | Spec OpenAPI 3.1 brute (consommable par Postman, Insomnia, codegen, CI…) |
+| `GET /docs/api` | UI Stoplight Elements (alternative incluse par Scramble) |
+
+**Authentification dans Swagger UI :**
+1. Appeler `POST /api/v1/auth/login` avec `{email, password}` depuis l'UI.
+2. Copier le token Sanctum retourné.
+3. Cliquer sur **Authorize** (cadenas en haut à droite) → coller le token dans le champ `bearerAuth`.
+4. Toutes les routes protégées (badge cadenas) deviennent testables directement depuis l'UI.
+
+> **Sécurité en production :** activer le middleware `Dedoc\Scramble\Http\Middleware\RestrictedDocsAccess` dans `config/scramble.php` pour réserver l'accès à la doc aux administrateurs authentifiés.
+
+**Régénération / export hors-ligne :**
+
+```bash
+php artisan scramble:export   # génère api.json à la racine du backend
+php artisan scramble:analyze  # diagnostique les éventuels problèmes de génération
+```
+
 ---
 
 ## 7. Modèle de données
@@ -432,3 +457,57 @@ date_generation     lu (bool)
 ---
 
 *Document rédigé dans le cadre du projet EduConnect — Complexe scolaire · Version 1.1 · Avril 2026*
+2. Besoins du système
+2.1 Besoins fonctionnels
+Gestion des utilisateurs et rôles : authentification sécurisée (inscription, login, réinitialisation de mot de passe), gestion des profils (Administrateur, Enseignant, Parent, Élève) et des permissions associées.
+Gestion des élèves : enregistrement des élèves, affectation à une classe et à un enseignant référent. Chaque élève dispose d’un dossier numérique unique (identité, classe, antécédents)
+.
+Gestion des enseignants : création de comptes enseignants, association des enseignants à des matières et classes. Les enseignants peuvent être contactés via l’application.
+Gestion des matières et classes : définition des matières enseignées et des classes (niveau, section). Possibilité d’affecter plusieurs enseignants à une même matière.
+Inscriptions aux cours : inscription des élèves aux cours/activités, enregistrement des détails de l’enseignement (salle, horaire, etc.).
+Suivi de l’assiduité : saisie des présences et absences des élèves par cours/jour. Gestion des justifications. Le système doit alerter automatiquement les parents au-delà de certains seuils d’absentéisme
+.
+Gestion des notes et bulletins : saisie des notes de chaque élève par matière et période (trimestre), calcul des moyennes et génération automatique des bulletins scolaires.
+Rapports et analyses : génération de rapports et tableaux de bord (par classe, par matière, taux d’absentéisme, résultats par groupe) pour le suivi pédagogique
+. Ces indicateurs aident la direction à prendre des décisions (orientation des élèves, remédiation).
+Communication scolaire : module de messagerie interne et/ou notifications (email, SMS) entre les enseignants, les parents et l’administration. Par exemple, envoi de messages ciblés aux familles (circulaires, convocations, alertes). Un SIS efficace inclut cette communication intégrée pour simplifier les échanges
+.
+Gestion de comptes administratifs : pour l’administrateur du système (ATICE), fonctions de configuration (semestres, années scolaires, coefficients, etc.), gestion des droits d’accès, et maintenance (sauvegardes, archivage).
+Note : Ces besoins fonctionnels sont inspirés des « fonctions clés » d’un SIS moderne : dossier scolaire centralisé, gestion de l’assiduité, communication structurée et reporting
+.
+
+2.2 Besoins non fonctionnels
+Sécurité et confidentialité : le système doit garantir la protection des données personnelles (chiffrement des mots de passe, protocole HTTPS, chiffrement de la base de données). La conformité au RGPD est exigée (traçabilité des accès, consentements, gestion des droits à l’oubli)
+. L’authentification multi-facteurs ou la journalisation des accès critiques sont à prévoir.
+Performance : l’application doit être rapide et réactive. Les temps de réponse (navigation, consultation de bulletins) doivent rester courts même en cas de charge élevée (plusieurs centaines d’utilisateurs simultanés). Des exigences de performance (par exemple, temps de chargement < 2s) doivent être définies pour garantir une expérience fluide
+.
+Disponibilité et fiabilité : le service doit être disponible 24h/24 (avec maintenance programmée) et tolérer les pannes matérielles (redondance, sauvegardes automatiques). Les NFR assurent une stabilité robuste du système
+ (pour éviter les interruptions en période scolaire critique).
+Ergonomie et accessibilité : l’interface utilisateur doit être simple, intuitive et conviviale, afin de minimiser l’effort des utilisateurs (enseignants comme parents)
+. L’application sera responsive (compatible PC, tablette, mobile) et multi-navigateurs (Chrome, Firefox, Edge, Safari)
+ pour permettre une consultation flexible (y compris via smartphone)
+.
+Scalabilité : la plateforme doit pouvoir s’adapter à l’augmentation du nombre d’utilisateurs (élèves, utilisateurs) ou de volumes de données sans dégrader les performances. L’architecture envisagée (monolithe modulable ou microservices) doit faciliter la montée en charge (scaling horizontal/vertical)
+.
+Maintenabilité : le code et la documentation doivent être structurés (ex. architecture MVC, commentaires) pour permettre des évolutions futures. L’utilisation de frameworks standards facilite la maintenance et la réutilisation
+.
+Interopérabilité : si nécessaire, prévoir la capacité d’intégration avec d’autres systèmes (export/import CSV/Excel, API tierces, facturation).
+Contexte NFR : Comme le souligne Visure Solutions, les exigences non fonctionnelles dictent la qualité du système (performance, sécurité, convivialité, évolutivité) et influencent directement l’architecture choisie
+. Elles garantissent que l’application ne se contente pas de fonctionner, mais excelle dans des conditions réelles.
+
+
+
+ Fonctionnalités détaillées et cas d’usage
+Authentification & sécurité : Inscription et connexion sécurisées (emails vérifiés, mots de passe hachés). Les mots de passe sont stockés en haché (bcrypt, Argon2). Implémentation d’une gestion de sessions ou tokens JWT. Exemples : connexion d’un enseignant via email/mot de passe, redirection sur son tableau de bord.
+Tableau de bord selon rôle :
+Administrateur : aperçu global (effectifs, absences du jour, alertes), accès à tous les modules (gestion utilisateurs, classes, etc.).
+Enseignant : liste de ses classes, statistiques par classe (moyennes, présences), formulaires de saisie de notes/absences.
+Parent : suivi de son(ses) enfant(s) (bulletins, absences, messages reçus), planning et événements, possibilité de contacter un enseignant via la messagerie.
+Gestion des élèves et classes : L’administrateur crée les classes (ex. 6ème A, Terminale S) et inscrit des élèves via un formulaire de saisie (ou import CSV). Les enseignants peuvent consulter la liste des élèves par classe. Cas d’usage : l’ATICE ajoute un nouvel élève et l’affecte à la classe 3ème B.
+Saisie des notes : L’enseignant choisit une classe et une matière, puis saisit les notes des élèves pour un devoir/examen. Un contrôle vérifie que la note est dans l’intervalle valide. Les moyennes sont recalculées automatiquement. Cas d’usage : un professeur d’histoire saisit les notes du dernier DS pour 2de C ; les moyennes trimestrielles sont mises à jour.
+Gestion des absences : Pour chaque cours, l’enseignant coche les élèves absents. Les absences peuvent être justifiées ultérieurement par le parent via l’interface ou le secrétariat. Cas d’usage : le professeur principal enregistre les absences du premier cours du jour et fait une relance automatique aux parents des élèves absents injustifiés.
+Bulletin et rapports : À la fin de chaque période, l’application génère un bulletin regroupant les moyennes par matière et la moyenne générale. L’enseignant principal peut ajouter des appréciations. Les bulletins peuvent être exportés en PDF et distribués (impression ou envoi électronique). Cas d’usage : le système compile les notes du 1er trimestre et envoie les bulletins aux parents par email.
+Communication et notifications : Les utilisateurs peuvent s’envoyer des messages internes (ex. enseignant → parent), ou le système envoie automatiquement des notifications (SMS/email) pour les événements critiques : absences fréquentes, rendez-vous parents, retards aux paiements de scolarité, etc. Cas d’usage : la plateforme envoie automatiquement un email à un parent si l’enfant a plus de 3 absences non justifiées en une semaine.
+Import/Export et intégrations : Pour faciliter le déploiement, possibilité d’importer des données initiales (élèves, enseignants, classes) via CSV ou fichier Excel. Export des données sous divers formats (PDF, CSV) pour archivage ou statistiques externes. Éventuellement, une API pour interagir avec d’autres systèmes (comptabilité, bibliothèque).
+Paramétrage : L’administrateur définit des paramètres globaux : périodes scolaires, coefficients de matières, taux de présence minimale, etc. Cas d’usage : mise à jour de la grille des coefficients suite à une réforme.
+Ces fonctionnalités illustrent tous les cas d’usage majeurs du système. Chaque fonctionnalité implique des cas d’usage précis (ajout d’un élève, saisie d’une note, génération de rapport, etc.) qui seront décrits en détail dans les spécifications fonctionnelles.

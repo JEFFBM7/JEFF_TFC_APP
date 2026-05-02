@@ -23,6 +23,8 @@ class TermResource extends JsonResource
             'position' => $this->position,
             'starts_on' => $this->starts_on?->toDateString(),
             'ends_on' => $this->ends_on?->toDateString(),
+            'closed_at' => $this->closed_at,
+            'is_closed' => $this->isClosed(),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

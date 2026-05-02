@@ -68,8 +68,8 @@ class TermTest extends TestCase
 
     public function test_filter_by_school_year(): void
     {
-        $year1 = SchoolYear::factory()->create();
-        $year2 = SchoolYear::factory()->create();
+        $year1 = SchoolYear::factory()->create(['name' => '2020-2021']);
+        $year2 = SchoolYear::factory()->create(['name' => '2021-2022']);
 
         Term::factory()->create(['school_year_id' => $year1->id, 'position' => 1, 'name' => 'A']);
         Term::factory()->create(['school_year_id' => $year2->id, 'position' => 1, 'name' => 'B']);

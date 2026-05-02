@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['school_year_id', 'name', 'position', 'starts_on', 'ends_on'])]
+#[Fillable(['school_year_id', 'name', 'position', 'starts_on', 'ends_on', 'closed_at'])]
 class Term extends Model
 {
     use HasFactory;
@@ -21,7 +21,13 @@ class Term extends Model
             'starts_on' => 'date',
             'ends_on' => 'date',
             'position' => 'integer',
+            'closed_at' => 'datetime',
         ];
+    }
+
+    public function isClosed(): bool
+    {
+        return $this->closed_at !== null;
     }
 
     /**

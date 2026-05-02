@@ -1,10 +1,27 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink, RouterView, useRouter } from 'vue-router'
+import { api } from '../api/client'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
 const router = useRouter()
+const unreadCount = ref(0)
+
+async function refreshUnread(): Promise<void> {
+  if (!auth.isAuthenticated) return
+  try {
+    const res = await api<{ unread: number }>('/api/v1/messages/unread-count')
+    unreadCount.value = res.unread
+  } catch {
+    /* silencieux */
+  }
+}
+
+onMounted(() => {
+  void refreshUnread()
+  setInterval(() => void refreshUnread(), 60_000)
+})
 
 const initials = computed(() => {
   const name = auth.user?.name ?? ''
@@ -27,7 +44,20 @@ async function onLogout(): Promise<void> {
     <aside class="sidebar">
       <div class="brand">EduConnect</div>
       <nav>
-        <RouterLink :to="{ name: 'dashboard' }" class="nav-link">Tableau de bord</RouterLink>
+        <RouterLink
+          v-if="auth.hasRole('parent')"
+          :to="{ name: 'parent-dashboard' }"
+          class="nav-link"
+        >
+          Mon espace
+        </RouterLink>
+        <RouterLink
+          v-if="!auth.hasRole('parent')"
+          :to="{ name: 'dashboard' }"
+          class="nav-link"
+        >
+          Tableau de bord
+        </RouterLink>
         <RouterLink
           v-if="auth.hasRole('admin')"
           :to="{ name: 'school-years' }"
@@ -55,6 +85,59 @@ async function onLogout(): Promise<void> {
           class="nav-link"
         >
           Enseignants
+        </RouterLink>
+        <RouterLink
+          v-if="auth.hasRole('admin')"
+          :to="{ name: 'parents' }"
+          class="nav-link"
+        >
+          Parents
+        </RouterLink>
+        <RouterLink
+          v-if="auth.hasRole('admin')"
+          :to="{ name: 'students' }"
+          class="nav-link"
+        >
+          Élèves
+        </RouterLink>
+        <RouterLink
+          v-if="auth.hasRole('admin', 'enseignant')"
+          :to="{ name: 'evaluations' }"
+          class="nav-link"
+        >
+          Évaluations &amp; Notes
+        </RouterLink>
+        <RouterLink
+          v-if="auth.hasRole('admin', 'enseignant', 'secretariat')"
+          :to="{ name: 'attendances' }"
+          class="nav-link"
+        >
+          Présences &amp; absences
+        </RouterLink>
+        <RouterLink
+          v-if="auth.hasRole('admin', 'enseignant', 'secretariat')"
+          :to="{ name: 'timetable' }"
+          class="nav-link"
+        >
+          Emploi du temps
+        </RouterLink>
+        <RouterLink
+          v-if="auth.hasRole('admin', 'enseignant')"
+          :to="{ name: 'reports' }"
+          class="nav-link"
+        >
+          Rapports
+        </RouterLink>
+        <RouterLink :to="{ name: 'messages' }" class="nav-link">
+          Messagerie
+          <span v-if="unreadCount > 0" class="nav-badge">{{ unreadCount }}</span>
+        </RouterLink>
+        <RouterLink
+          v-if="auth.hasRole('admin')"
+          :to="{ name: 'users' }"
+          class="nav-link"
+        >
+          Utilisateurs
         </RouterLink>
       </nav>
     </aside>
@@ -124,6 +207,21 @@ nav {
 .nav-link.router-link-active {
   background: rgba(37, 99, 235, 0.85);
   color: white;
+}
+
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #dc2626;
+  color: white;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.3rem;
+  margin-left: auto;
 }
 
 .main {

@@ -110,6 +110,27 @@ async function remove(term: Term): Promise<void> {
   }
 }
 
+const closing = ref<number | null>(null)
+
+async function closeTerm(term: Term): Promise<void> {
+  if (!confirm(`Clôturer le trimestre "${term.name}" ?\n\nUn e-mail avec le bulletin PDF sera envoyé à chaque parent. Cette action ne peut pas être annulée facilement.`)) {
+    return
+  }
+  closing.value = term.id
+  try {
+    const res = await api<{ message: string; students_notified: number; parents_notified: number }>(
+      `/api/v1/terms/${term.id}/close`,
+      { method: 'POST' },
+    )
+    alert(res.message)
+    await load()
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : 'Clôture impossible.'
+  } finally {
+    closing.value = null
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -151,6 +172,7 @@ onMounted(load)
               <th style="width: 4rem">#</th>
               <th>Nom</th>
               <th>Période</th>
+              <th>Statut</th>
               <th style="width: 1%; text-align: right; white-space: nowrap">Actions</th>
             </tr>
           </thead>
@@ -159,7 +181,19 @@ onMounted(load)
               <td>{{ t.position }}</td>
               <td>{{ t.name }}</td>
               <td>{{ t.starts_on }} → {{ t.ends_on }}</td>
+              <td>
+                <span v-if="t.is_closed" class="badge badge-success">Clôturé</span>
+                <span v-else class="badge badge-muted">Ouvert</span>
+              </td>
               <td style="text-align: right; white-space: nowrap">
+                <button
+                  v-if="!t.is_closed"
+                  type="button"
+                  :disabled="closing === t.id"
+                  @click="closeTerm(t)"
+                >
+                  {{ closing === t.id ? 'Clôture…' : 'Clôturer' }}
+                </button>
                 <button type="button" @click="openEdit(t)">Modifier</button>
                 <button type="button" class="btn-danger" @click="remove(t)">Supprimer</button>
               </td>

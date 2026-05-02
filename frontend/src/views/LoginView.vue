@@ -18,8 +18,14 @@ async function onSubmit(): Promise<void> {
   submitting.value = true
   try {
     await auth.login(email.value, password.value)
-    const redirect = (route.query.redirect as string | undefined) ?? '/'
-    await router.push(redirect)
+    const redirect = route.query.redirect as string | undefined
+    if (redirect) {
+      await router.push(redirect)
+    } else {
+      await router.push(
+        auth.user?.role === 'parent' ? { name: 'parent-dashboard' } : { name: 'dashboard' },
+      )
+    }
   } catch (err) {
     if (err instanceof ApiError) {
       errorMsg.value =
@@ -59,6 +65,10 @@ async function onSubmit(): Promise<void> {
         <button type="submit" class="btn-primary" :disabled="submitting" style="width: 100%">
           {{ submitting ? 'Connexion…' : 'Se connecter' }}
         </button>
+
+        <p style="text-align: center; margin-top: 0.5rem">
+          <RouterLink :to="{ name: 'forgot-password' }" style="font-size: 0.88rem">Mot de passe oublié ?</RouterLink>
+        </p>
 
         <p class="seed-hint">
           Compte seed : <code>admin@educonnect.test</code> / <code>password</code>

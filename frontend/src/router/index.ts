@@ -19,6 +19,18 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresGuest: true, title: 'Connexion' },
   },
   {
+    path: '/forgot-password',
+    name: 'forgot-password',
+    component: () => import('../views/ForgotPasswordView.vue'),
+    meta: { requiresGuest: true, title: 'Mot de passe oublié' },
+  },
+  {
+    path: '/reset-password',
+    name: 'reset-password',
+    component: () => import('../views/ResetPasswordView.vue'),
+    meta: { requiresGuest: true, title: 'Réinitialiser le mot de passe' },
+  },
+  {
     path: '/',
     component: () => import('../layouts/AdminLayout.vue'),
     meta: { requiresAuth: true },
@@ -56,6 +68,12 @@ const routes: RouteRecordRaw[] = [
         props: true,
       },
       {
+        path: 'users',
+        name: 'users',
+        component: () => import('../views/UsersView.vue'),
+        meta: { roles: ['admin'], title: 'Utilisateurs' },
+      },
+      {
         path: 'subjects',
         name: 'subjects',
         component: () => import('../views/SubjectsView.vue'),
@@ -66,6 +84,83 @@ const routes: RouteRecordRaw[] = [
         name: 'teachers',
         component: () => import('../views/TeachersView.vue'),
         meta: { roles: ['admin'], title: 'Enseignants' },
+      },
+      {
+        path: 'parents',
+        name: 'parents',
+        component: () => import('../views/ParentsView.vue'),
+        meta: { roles: ['admin'], title: 'Parents' },
+      },
+      {
+        path: 'students',
+        name: 'students',
+        component: () => import('../views/StudentsView.vue'),
+        meta: { roles: ['admin'], title: 'Élèves' },
+      },
+      {
+        path: 'students/:id',
+        name: 'student-detail',
+        component: () => import('../views/StudentDetailView.vue'),
+        meta: { roles: ['admin'], title: 'Fiche élève' },
+        props: true,
+      },
+      {
+        path: 'students/:id/report-card',
+        name: 'report-card',
+        component: () => import('../views/ReportCardView.vue'),
+        meta: { roles: ['admin', 'enseignant'], title: 'Bulletin' },
+        props: true,
+      },
+      {
+        path: 'evaluations',
+        name: 'evaluations',
+        component: () => import('../views/EvaluationsView.vue'),
+        meta: { roles: ['admin', 'enseignant'], title: 'Évaluations' },
+      },
+      {
+        path: 'evaluations/:id/grades',
+        name: 'grade-entry',
+        component: () => import('../views/GradeEntryView.vue'),
+        meta: { roles: ['admin', 'enseignant'], title: 'Saisie des notes' },
+        props: true,
+      },
+      {
+        path: 'attendances',
+        name: 'attendances',
+        component: () => import('../views/AttendancesView.vue'),
+        meta: { roles: ['admin', 'enseignant', 'secretariat'], title: 'Présences & absences' },
+      },
+      {
+        path: 'timetable',
+        name: 'timetable',
+        component: () => import('../views/TimetableView.vue'),
+        meta: { roles: ['admin', 'enseignant', 'secretariat'], title: 'Emploi du temps' },
+      },
+      {
+        path: 'reports',
+        name: 'reports',
+        component: () => import('../views/ReportsView.vue'),
+        meta: { roles: ['admin', 'enseignant'], title: 'Rapports & exports' },
+      },
+      {
+        path: 'messages',
+        name: 'messages',
+        component: () => import('../views/MessagesView.vue'),
+        meta: { requiresAuth: true, title: 'Messagerie' },
+      },
+      // ── Portail parent ──
+      {
+        path: 'parent',
+        name: 'parent-dashboard',
+        component: () => import('../views/ParentDashboardView.vue'),
+        meta: { roles: ['parent'], title: 'Espace parent' },
+      },
+      {
+        path: 'parent/child/:id',
+        name: 'parent-child',
+        component: () => import('../views/ParentChildView.vue'),
+        meta: { roles: ['parent'], title: 'Suivi enfant' },
+        props: true,
       },
     ],
   },
@@ -99,7 +194,9 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.requiresGuest && auth.isAuthenticated) {
-    return { name: 'dashboard' }
+    return auth.user?.role === 'parent'
+      ? { name: 'parent-dashboard' }
+      : { name: 'dashboard' }
   }
 
   if (to.meta.roles && to.meta.roles.length > 0) {

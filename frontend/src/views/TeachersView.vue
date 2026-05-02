@@ -31,7 +31,7 @@ async function load(): Promise<void> {
   try {
     const [teachersRes, usersRes] = await Promise.all([
       api<Paginated<Teacher>>('/api/v1/teachers'),
-      api<Paginated<AuthUser>>('/api/v1/admin/users?role=enseignant').catch(() => ({ data: [] as AuthUser[] })),
+      api<Paginated<AuthUser>>('/api/v1/admin/users', { query: { role: 'enseignant' } }),
     ])
     items.value = teachersRes.data
     availableUsers.value = usersRes.data
@@ -146,16 +146,15 @@ onMounted(load)
       <form id="teacher-form" @submit.prevent="submit">
         <div class="field">
           <label for="t-uid">Utilisateur (rôle enseignant)</label>
-          <input
-            id="t-uid"
-            v-model.number="form.user_id"
-            type="number"
-            min="1"
-            required
-            placeholder="ID du compte utilisateur enseignant"
-          />
-          <small style="color: var(--text-soft)">
-            L'utilisateur doit avoir le rôle <code>enseignant</code>.
+          <select id="t-uid" v-model.number="form.user_id" required :disabled="!!editing">
+            <option :value="0" disabled>-- Sélectionner un utilisateur --</option>
+            <option v-for="u in availableUsers" :key="u.id" :value="u.id">
+              {{ u.name }} ({{ u.email }})
+            </option>
+          </select>
+          <small v-if="availableUsers.length === 0" style="color: var(--text-soft)">
+            Aucun compte enseignant disponible. Crée d'abord un utilisateur avec le rôle
+            <code>enseignant</code> depuis la gestion des utilisateurs.
           </small>
           <small v-if="formErrors.user_id" class="err">{{ formErrors.user_id[0] }}</small>
         </div>
