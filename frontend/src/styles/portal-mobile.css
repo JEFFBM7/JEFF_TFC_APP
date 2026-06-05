@@ -1,0 +1,372 @@
+/**
+ * Portail élève / parent — patterns mobile partagés (adapt + polish).
+ */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.portal-mobile,
+.portal-bulletin,
+.messages-page.is-portal {
+  max-width: 36rem;
+  margin-inline: auto;
+  width: 100%;
+}
+
+body.portal-thread-open .app-shell.is-portal .content {
+  padding-bottom: 0;
+}
+
+body.portal-thread-open .portal-tab-bar {
+  display: none;
+}
+
+body.portal-thread-open .app-shell.is-portal .section-nav-shell {
+  display: none;
+}
+
+/* Évite le zoom iOS sur les champs */
+.portal-mobile select,
+.portal-mobile input,
+.portal-mobile textarea,
+.portal-bulletin select,
+.portal-bulletin input,
+.portal-bulletin textarea,
+.messages-page.is-portal select,
+.messages-page.is-portal input,
+.messages-page.is-portal textarea {
+  font-size: 1rem;
+}
+
+.portal-mobile .portal-back-link,
+.portal-bulletin .back-link {
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 800;
+}
+
+.portal-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.portal-metrics-grid > div {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.65rem 0.7rem;
+  border-radius: var(--radius);
+  background: var(--bg-subtle);
+}
+
+.portal-metrics-grid .metric-wide {
+  grid-column: 1 / -1;
+}
+
+.portal-metrics-grid dt {
+  color: var(--text-soft);
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.portal-metrics-grid dd {
+  margin: 0;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 850;
+}
+
+.portal-grade-card {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  box-shadow: var(--shadow);
+}
+
+.portal-grade-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.portal-grade-card-head strong {
+  min-width: 0;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.portal-grade-status {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.84rem;
+  font-weight: 750;
+}
+
+.portal-grade-total {
+  border-color: #d5e0ff;
+  background: var(--primary-tint);
+}
+
+.portal-kpi-link,
+.portal-performance-link,
+.portal-summary-link,
+.portal-child-card-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.portal-kpi-link:active,
+.portal-performance-link:active,
+.portal-summary-link:active,
+.portal-child-card-link:active {
+  transform: scale(0.985);
+}
+
+.portal-kpi-link:focus-visible,
+.portal-performance-link:focus-visible,
+.portal-summary-link:focus-visible,
+.portal-child-card-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.portal-touch,
+.portal-mobile button,
+.portal-bulletin button,
+.messages-page.is-portal button {
+  touch-action: manipulation;
+}
+
+.portal-mobile button:focus-visible,
+.portal-bulletin button:focus-visible,
+.messages-page.is-portal button:focus-visible,
+.portal-mobile a:focus-visible,
+.portal-bulletin a:focus-visible,
+.messages-page.is-portal a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.portal-section-kicker {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.portal-section-title {
+  display: grid;
+  gap: 0.2rem;
+  margin-bottom: 0.65rem;
+}
+
+.portal-section-title h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.portal-section-title p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
+.portal-sticky-toolbar {
+  position: sticky;
+  top: 4rem;
+  z-index: 8;
+  padding: 0.85rem;
+  border: 1px solid #dbe5ff;
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, rgba(52, 87, 255, 0.08), rgba(255, 255, 255, 0.96)),
+    var(--bg-card);
+  box-shadow: var(--shadow);
+}
+
+.portal-compact-band {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.portal-compact-band > div {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  box-shadow: var(--shadow);
+}
+
+.portal-compact-band span {
+  color: var(--text-soft);
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.portal-compact-band strong {
+  color: var(--text);
+  font-size: 0.92rem;
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .messages-page.is-portal.show-thread .chat-panel,
+  .messages-page.is-portal .chat-sidebar {
+    animation: none;
+  }
+}
+
+@media (min-width: 721px) {
+  .portal-mobile,
+  .portal-bulletin,
+  .messages-page.is-portal {
+    max-width: 42rem;
+  }
+}
+
+.portal-install-banner {
+  position: fixed;
+  right: 0;
+  bottom: calc(4.6rem + env(safe-area-inset-bottom));
+  left: 0;
+  z-index: 85;
+  padding: 0 max(0.65rem, env(safe-area-inset-left)) 0.45rem max(0.65rem, env(safe-area-inset-right));
+  pointer-events: none;
+}
+
+.app-shell.has-install-banner:not(.is-portal) .portal-install-banner {
+  bottom: calc(0.65rem + env(safe-area-inset-bottom));
+}
+
+.portal-install-banner-inner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  align-items: center;
+  max-width: 36rem;
+  margin-inline: auto;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 2px);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+  pointer-events: auto;
+}
+
+.portal-install-banner-icon {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  background: var(--primary-soft, #eef3ff);
+  color: var(--primary, #3457ff);
+}
+
+.portal-install-banner-copy {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.portal-install-banner-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.portal-install-banner-text {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.portal-install-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.portal-install-banner-btn {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 0.74rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.portal-install-banner-btn--primary {
+  border-color: transparent;
+  background: var(--primary, #3457ff);
+  color: #fff;
+}
+
+.portal-install-banner-close {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+}
+
+@media (display-mode: standalone) {
+  .portal-install-banner {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .portal-install-banner-inner {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .portal-install-banner-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}

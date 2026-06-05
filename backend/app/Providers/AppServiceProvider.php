@@ -29,7 +29,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RateLimiter::for('login', function (Request $request) {
-            return Limit::perMinute(10)->by($request->ip().'|'.$request->input('email'));
+            return Limit::perMinute(10)->by($request->ip().'|'.$request->input('identifier', $request->input('email')));
         });
 
         // Swagger / OpenAPI : déclare le schéma de sécurité Bearer (Sanctum)

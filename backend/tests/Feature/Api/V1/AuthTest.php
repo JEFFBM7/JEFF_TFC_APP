@@ -3,12 +3,14 @@
 namespace Tests\Feature\Api\V1;
 
 use App\Enums\UserRole;
+use App\Models\ParentProfile;
+use App\Models\Student;
 use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Password;
 use Tests\TestCase;
 
@@ -50,6 +52,70 @@ class AuthTest extends TestCase
         ]);
 
         $response->assertUnprocessable();
+    }
+
+    public function test_student_can_login_with_registration_number(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'student-internal@test.local',
+            'password' => Hash::make('secret123'),
+            'role' => UserRole::Eleve,
+        ]);
+        Student::factory()->create([
+            'user_id' => $user->id,
+            'registration_number' => 'MAL-2026-00001',
+        ]);
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'identifier' => 'MAL-2026-00001',
+            'password' => 'secret123',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('user.role', 'eleve');
+    }
+
+    public function test_inactive_student_account_cannot_login(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'student-disabled@test.local',
+            'password' => Hash::make('secret123'),
+            'role' => UserRole::Eleve,
+            'is_active' => false,
+        ]);
+        Student::factory()->create([
+            'user_id' => $user->id,
+            'registration_number' => 'MAL-2026-00002',
+        ]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'identifier' => 'MAL-2026-00002',
+            'password' => 'secret123',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['identifier'])
+            ->assertJsonPath('errors.identifier.0', 'Le portail élève est disponible à partir de la 7e. Avant cela, la consultation se fait via le portail parent.');
+    }
+
+    public function test_parent_can_login_with_phone_number(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'parent-internal@test.local',
+            'password' => Hash::make('secret123'),
+            'role' => UserRole::Parent,
+        ]);
+        ParentProfile::factory()->create([
+            'user_id' => $user->id,
+            'phone' => '+243810000001',
+        ]);
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'identifier' => '+243810000001',
+            'password' => 'secret123',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('user.role', 'parent');
     }
 
     public function test_me_requires_authentication(): void

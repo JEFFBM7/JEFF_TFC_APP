@@ -58,7 +58,7 @@ Ce document est une **carte de route** : ordre suggéré, découpage `backend/` 
 
 Ordre logique des **migrations / domaines** :
 
-1. **Années scolaires & trimestres** (`SchoolYear`, `Term`) — **EN COURS**.
+1. **Années scolaires, trimestres & périodes** (`SchoolYear`, `Term`, `Period`) — **EN COURS**.
 2. **Niveaux / sections / classes** (`Level`, `Section`, `ClassRoom`).
 3. **Matières & coefficients** par classe (`Subject`, pivot classe–matière–coef).
 4. **Enseignants** (profil lié à `User`) + affectations enseignant ↔ matière ↔ classe.
@@ -66,10 +66,10 @@ Ordre logique des **migrations / domaines** :
 
 **Ce qui est en place (étape 1)**
 
-- Tables `school_years` (`name`, `starts_on`, `ends_on`, `is_current`) et `terms` (`school_year_id`, `name`, `position`, dates) — cascade à la suppression de l'année.
-- API admin `/api/v1/school-years` (CRUD + pagination, `is_current` exclusif) et `/api/v1/terms` (CRUD + filtre `school_year_id`).
-- Validation : nom unique d'année, position et nom uniques par année, `ends_on > starts_on`.
-- **26 tests verts** (auth + RBAC + school-years + terms).
+- Tables `school_years`, `terms` et `periods` : 3 trimestres par année, 6 périodes annuelles (T1 = P1/P2, T2 = P3/P4, T3 = P5/P6).
+- API admin `/api/v1/school-years`, `/api/v1/terms`, `/api/v1/periods` + clôture `terms/{term}/close` et `periods/{period}/close`.
+- Validation : unicité par année/trimestre, numérotation annuelle des périodes, bornes de dates cohérentes, max 2 périodes par trimestre.
+- Tests backend complets verts (249 tests).
 
 **API** : CRUD admin (filtré RBAC) sous `/api/v1/...` par ressource.
 
@@ -79,9 +79,18 @@ Ordre logique des **migrations / domaines** :
 - Store Pinia auth (`src/stores/auth.ts`).
 - Router avec gardes (`requiresAuth`, `requiresGuest`, `roles`).
 - Layout admin avec sidebar (`src/layouts/AdminLayout.vue`).
-- Vues : `LoginView`, `DashboardView`, `SchoolYearsView` (CRUD + définir année courante), `SchoolYearDetailView` (CRUD trimestres), `ForbiddenView`, `NotFoundView`.
+- Vues : `LoginView`, `DashboardView`, `SchoolYearsView` (CRUD + définir année courante), `SchoolYearDetailView` (CRUD trimestres + périodes), `ForbiddenView`, `NotFoundView`.
 
 **Critère de fin** : créer une année, une classe, une matière avec coefficient, affecter un enseignant.
+
+### Contexte global année scolaire — implémenté
+
+- `GET /api/v1/school-years/current` est exposé à tous les rôles authentifiés pour hydrater le contexte UI.
+- Le client API Vue injecte automatiquement `school_year_id` sur les requêtes métier, sauf endpoints globaux (`auth`, `school-years`, messagerie, utilisateurs, health).
+- Le store Pinia `useSchoolYearStore` porte l'année courante, l'année consultée et la liste des années disponibles ; le sélecteur global est affiché dans la topbar admin/enseignant/secrétariat.
+- Les vues élèves, cours, évaluations, emploi du temps, rapports et bulletins utilisent le store global au lieu de recalculer localement `currentSchoolYear`.
+- Lorsqu'une année est définie courante dans `SchoolYearsView`, le store est mis à jour immédiatement et l'écran actif se recharge avec le nouveau contexte.
+- Les exports/téléchargements utilisant `fetch` passent par le même résolveur d'URL que le client API pour conserver `school_year_id`.
 
 ---
 
@@ -97,9 +106,9 @@ Ordre logique des **migrations / domaines** :
 
 ## Phase 4 — Notes & bulletins
 
-1. **Évaluations** : type (devoir, contrôle…), date, trimestre.  
+1. **Évaluations** : type (devoir, contrôle…), date, trimestre et période.  
 2. **Notes** : contrainte 0–20, recalcul moyennes pondérées, log des modifications.  
-3. **Bulletins** : agrégation trimestre, PDF (bibliothèque serveur), clôture trimestre (admin).
+3. **Bulletins** : moyenne trimestrielle calculée depuis les deux moyennes de période, PDF (bibliothèque serveur), clôture trimestre (admin).
 
 **Critère de fin** : saisie notes enseignant → moyenne visible côté parent (lecture seule).
 

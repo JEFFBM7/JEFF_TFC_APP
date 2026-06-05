@@ -28,4 +28,13 @@ class SchoolYearFactory extends Factory
     {
         return $this->state(fn () => ['is_current' => true]);
     }
+
+    public function archived(): static
+    {
+        return $this->state(fn () => [
+            'is_current' => false,
+            'closed_at' => now(),
+            'archived_at' => now(),
+        ]);
+    }
 }

@@ -4,7 +4,11 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\LoginLog;
+use App\Models\ParentProfile;
+use App\Models\Student;
+use App\Models\Teacher;
 use App\Models\User;
+use App\Support\AdminScopeContext;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,26 +23,38 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'email' => ['required', 'string', 'email'],
+            'identifier' => ['nullable', 'string', 'max:255', 'required_without:email'],
+            'email' => ['nullable', 'string', 'max:255', 'required_without:identifier'],
             'password' => ['required', 'string'],
             'device_name' => ['sometimes', 'string', 'max:255'],
         ]);
+        $identifier = trim((string) ($validated['identifier'] ?? $validated['email']));
 
         /** @var User|null $user */
-        $user = User::query()->where('email', $validated['email'])->first();
+        $user = $this->findUserForLoginIdentifier($identifier);
 
         if (! $user || ! Hash::check($validated['password'], $user->password)) {
-            LoginLog::log($validated['email'], $request, false);
+            LoginLog::log($identifier, $request, false);
 
             throw ValidationException::withMessages([
-                'email' => ['Identifiants incorrects.'],
+                'identifier' => ['Identifiants incorrects.'],
+            ]);
+        }
+
+        if (! $user->is_active) {
+            LoginLog::log($user->email ?? $identifier, $request, false, $user->id);
+
+            throw ValidationException::withMessages([
+                'identifier' => [
+                    'Le portail élève est disponible à partir de la 7e. Avant cela, la consultation se fait via le portail parent.',
+                ],
             ]);
         }
 
         $deviceName = $validated['device_name'] ?? 'spa';
         $token = $user->createToken($deviceName)->plainTextToken;
 
-        LoginLog::log($user->email, $request, true, $user->id);
+        LoginLog::log($user->email ?? $identifier, $request, true, $user->id);
 
         return response()->json([
             'token' => $token,
@@ -48,8 +64,41 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role->value,
+                ...AdminScopeContext::userPayload($user),
             ],
         ]);
+    }
+
+    private function findUserForLoginIdentifier(string $identifier): ?User
+    {
+        /** @var User|null $user */
+        $user = User::query()->where('email', $identifier)->first();
+        if ($user) {
+            return $user;
+        }
+
+        $student = Student::query()
+            ->with('user')
+            ->where('registration_number', $identifier)
+            ->first();
+        if ($student?->user) {
+            return $student->user;
+        }
+
+        $teacher = Teacher::query()
+            ->with('user')
+            ->where('registration_number', $identifier)
+            ->first();
+        if ($teacher?->user) {
+            return $teacher->user;
+        }
+
+        $parent = ParentProfile::query()
+            ->with('user')
+            ->where('phone', $identifier)
+            ->first();
+
+        return $parent?->user;
     }
 
     /** Envoie un lien de réinitialisation (CDC §4.1 / UC-01). */
@@ -120,6 +169,7 @@ class AuthController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'role' => $user->role->value,
+            ...AdminScopeContext::userPayload($user),
         ]);
     }
 

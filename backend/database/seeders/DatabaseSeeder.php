@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\UserRole;
+use App\Models\AppSetting;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -18,6 +19,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // User::factory(10)->create();
+        $this->call(SchoolStructureSeeder::class);
 
         User::query()->updateOrCreate(
             ['email' => 'admin@educonnect.test'],
@@ -28,5 +30,17 @@ class DatabaseSeeder extends Seeder
                 'email_verified_at' => now(),
             ],
         );
+
+        foreach (AppSetting::KEYS as $key => $meta) {
+            AppSetting::query()->updateOrCreate(
+                ['key' => $key],
+                [
+                    'value' => $meta['default'],
+                    'description' => $meta['description'] ?? null,
+                ],
+            );
+        }
+
+        AppSetting::flushCache();
     }
 }

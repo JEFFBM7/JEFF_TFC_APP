@@ -16,7 +16,7 @@ class ClassRoomFactory extends Factory
         return [
             'level_id' => Level::factory(),
             'section' => $this->faker->randomElement(['A', 'B', 'C', 'D']),
-            'capacity' => $this->faker->numberBetween(25, 45),
+            'option' => '',
         ];
     }
 }

@@ -132,7 +132,7 @@ La mise en place d'un **Système d'Information Scolaire (SIS)** vise à centrali
 
 ### 4.6 Gestion des notes et bulletins
 
-- Saisie des notes par l'enseignant (matière, type d'évaluation, date, trimestre)
+- Saisie des notes par l'enseignant (matière, type d'évaluation, date, trimestre et période)
 - Validation des notes dans l'intervalle [0–20]
 - Calcul automatique des moyennes pondérées par coefficient
 - Génération automatique du bulletin trimestriel (moyennes par matière, moyenne générale, appréciations)
@@ -161,7 +161,7 @@ La mise en place d'un **Système d'Information Scolaire (SIS)** vise à centrali
 
 ### 4.9 Configuration et paramétrage (Administrateur)
 
-- Définition des années scolaires et des trimestres
+- Définition des années scolaires, des trimestres et des 6 périodes annuelles (2 périodes par trimestre)
 - Configuration des coefficients par matière et par niveau
 - Gestion des seuils d'alerte (absentéisme, notes en dessous d'un seuil)
 - Sauvegardes manuelles et automatiques de la base de données
@@ -451,7 +451,8 @@ date_generation     lu (bool)
 | **SPA** | Single Page Application — application web à page unique |
 | **SSR** | Server-Side Rendering — rendu côté serveur |
 | **CI/CD** | Continuous Integration / Continuous Deployment |
-| **Trimestre** | Période scolaire de référence pour le calcul des moyennes et la génération des bulletins |
+| **Trimestre** | Période scolaire de référence pour le calcul des moyennes et la génération des bulletins trimestriels |
+| **Période** | Sous-division d'un trimestre ; chaque année scolaire contient 6 périodes numérotées P1 à P6 |
 | **Coefficient** | Pondération appliquée à une matière dans le calcul de la moyenne générale |
 
 ---
@@ -467,12 +468,12 @@ Gestion des matières et classes : définition des matières enseignées et des 
 Inscriptions aux cours : inscription des élèves aux cours/activités, enregistrement des détails de l’enseignement (salle, horaire, etc.).
 Suivi de l’assiduité : saisie des présences et absences des élèves par cours/jour. Gestion des justifications. Le système doit alerter automatiquement les parents au-delà de certains seuils d’absentéisme
 .
-Gestion des notes et bulletins : saisie des notes de chaque élève par matière et période (trimestre), calcul des moyennes et génération automatique des bulletins scolaires.
+Gestion des notes et bulletins : saisie des notes de chaque élève par matière et période rattachée à un trimestre, calcul des moyennes et génération automatique des bulletins scolaires trimestriels.
 Rapports et analyses : génération de rapports et tableaux de bord (par classe, par matière, taux d’absentéisme, résultats par groupe) pour le suivi pédagogique
 . Ces indicateurs aident la direction à prendre des décisions (orientation des élèves, remédiation).
 Communication scolaire : module de messagerie interne et/ou notifications (email, SMS) entre les enseignants, les parents et l’administration. Par exemple, envoi de messages ciblés aux familles (circulaires, convocations, alertes). Un SIS efficace inclut cette communication intégrée pour simplifier les échanges
 .
-Gestion de comptes administratifs : pour l’administrateur du système (ATICE), fonctions de configuration (semestres, années scolaires, coefficients, etc.), gestion des droits d’accès, et maintenance (sauvegardes, archivage).
+Gestion de comptes administratifs : pour l’administrateur du système (ATICE), fonctions de configuration (trimestres, périodes, années scolaires, coefficients, etc.), gestion des droits d’accès, et maintenance (sauvegardes, archivage).
 Note : Ces besoins fonctionnels sont inspirés des « fonctions clés » d’un SIS moderne : dossier scolaire centralisé, gestion de l’assiduité, communication structurée et reporting
 .
 
@@ -506,7 +507,7 @@ Parent : suivi de son(ses) enfant(s) (bulletins, absences, messages reçus), pla
 Gestion des élèves et classes : L’administrateur crée les classes (ex. 6ème A, Terminale S) et inscrit des élèves via un formulaire de saisie (ou import CSV). Les enseignants peuvent consulter la liste des élèves par classe. Cas d’usage : l’ATICE ajoute un nouvel élève et l’affecte à la classe 3ème B.
 Saisie des notes : L’enseignant choisit une classe et une matière, puis saisit les notes des élèves pour un devoir/examen. Un contrôle vérifie que la note est dans l’intervalle valide. Les moyennes sont recalculées automatiquement. Cas d’usage : un professeur d’histoire saisit les notes du dernier DS pour 2de C ; les moyennes trimestrielles sont mises à jour.
 Gestion des absences : Pour chaque cours, l’enseignant coche les élèves absents. Les absences peuvent être justifiées ultérieurement par le parent via l’interface ou le secrétariat. Cas d’usage : le professeur principal enregistre les absences du premier cours du jour et fait une relance automatique aux parents des élèves absents injustifiés.
-Bulletin et rapports : À la fin de chaque période, l’application génère un bulletin regroupant les moyennes par matière et la moyenne générale. L’enseignant principal peut ajouter des appréciations. Les bulletins peuvent être exportés en PDF et distribués (impression ou envoi électronique). Cas d’usage : le système compile les notes du 1er trimestre et envoie les bulletins aux parents par email.
+Bulletin et rapports : À la fin de chaque trimestre, l’application génère un bulletin regroupant les moyennes par matière et la moyenne générale des deux périodes du trimestre. La moyenne trimestrielle est calculée à partir des deux moyennes de période, puis la moyenne annuelle à partir des trois trimestres. L’enseignant principal peut ajouter des appréciations. Les bulletins peuvent être exportés en PDF et distribués (impression ou envoi électronique). Cas d’usage : le système compile les notes du 1er trimestre et envoie les bulletins aux parents par email.
 Communication et notifications : Les utilisateurs peuvent s’envoyer des messages internes (ex. enseignant → parent), ou le système envoie automatiquement des notifications (SMS/email) pour les événements critiques : absences fréquentes, rendez-vous parents, retards aux paiements de scolarité, etc. Cas d’usage : la plateforme envoie automatiquement un email à un parent si l’enfant a plus de 3 absences non justifiées en une semaine.
 Import/Export et intégrations : Pour faciliter le déploiement, possibilité d’importer des données initiales (élèves, enseignants, classes) via CSV ou fichier Excel. Export des données sous divers formats (PDF, CSV) pour archivage ou statistiques externes. Éventuellement, une API pour interagir avec d’autres systèmes (comptabilité, bibliothèque).
 Paramétrage : L’administrateur définit des paramètres globaux : périodes scolaires, coefficients de matières, taux de présence minimale, etc. Cas d’usage : mise à jour de la grille des coefficients suite à une réforme.

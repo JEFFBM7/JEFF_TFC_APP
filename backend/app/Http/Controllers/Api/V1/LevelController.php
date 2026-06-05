@@ -6,15 +6,30 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\LevelRequest;
 use App\Http\Resources\Api\V1\LevelResource;
 use App\Models\Level;
+use App\Support\AdminScopeContext;
+use App\Support\SchoolYearContext;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class LevelController extends Controller
 {
-    public function index(): AnonymousResourceCollection
+    public function index(Request $request): AnonymousResourceCollection
     {
+        $schoolYearId = SchoolYearContext::requestedOrCurrentId($request);
+
+        $query = Level::query()
+            ->with(['classrooms' => fn ($query) => $this->withClassroomContext(
+                AdminScopeContext::applyClassroomScope($query, $request),
+                $schoolYearId,
+            )]);
+        AdminScopeContext::applyLevelScope($query, $request);
+
         return LevelResource::collection(
-            Level::query()->with('classrooms')->orderBy('order')->orderBy('name')->paginate(50),
+            $query
+                ->orderBy('order')
+                ->orderBy('name')
+                ->paginate(50),
         );
     }
 
@@ -25,16 +40,32 @@ class LevelController extends Controller
         return LevelResource::make($level)->response()->setStatusCode(201);
     }
 
-    public function show(Level $level): LevelResource
+    public function show(Request $request, Level $level): LevelResource
     {
-        return LevelResource::make($level->load('classrooms'));
+        AdminScopeContext::assertCycleAllowed($request->user(), $level->cycle);
+
+        $schoolYearId = SchoolYearContext::requestedOrCurrentId($request);
+
+        return LevelResource::make(
+            $level->load(['classrooms' => fn ($query) => $this->withClassroomContext(
+                $query,
+                $schoolYearId,
+            )]),
+        );
     }
 
     public function update(LevelRequest $request, Level $level): LevelResource
     {
+        $schoolYearId = SchoolYearContext::requestedOrCurrentId($request);
+
         $level->update($request->validated());
 
-        return LevelResource::make($level->fresh()->load('classrooms'));
+        return LevelResource::make(
+            $level->fresh()->load(['classrooms' => fn ($query) => $this->withClassroomContext(
+                $query,
+                $schoolYearId,
+            )]),
+        );
     }
 
     public function destroy(Level $level): JsonResponse
@@ -48,5 +79,18 @@ class LevelController extends Controller
         $level->delete();
 
         return response()->json(null, 204);
+    }
+
+    private function withClassroomContext($query, ?int $schoolYearId)
+    {
+        return $query
+            ->with('schoolOption')
+            ->orderBy('option')
+            ->orderBy('section')
+            ->withCount(['students' => function ($studentQuery) use ($schoolYearId): void {
+                if ($schoolYearId !== null) {
+                    $studentQuery->where('enrollment_school_year_id', $schoolYearId);
+                }
+            }]);
     }
 }

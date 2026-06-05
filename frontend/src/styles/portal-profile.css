@@ -1,0 +1,235 @@
+/**
+ * Portail parent / élève — page Mon profil
+ */
+
+.portal-profile-page {
+  padding-bottom: 0.5rem;
+}
+
+.portal-profile-hero {
+  text-align: center;
+}
+
+.portal-profile-hero .portal-dash-hero__identity {
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.portal-profile-hero .portal-dash-hero__text {
+  text-align: center;
+}
+
+.portal-profile-hero .portal-dash-hero__meta {
+  justify-content: center;
+}
+
+.portal-profile-role-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.portal-profile-role-tag--parent {
+  background: #f0f9ff;
+  color: #0369a1;
+}
+
+.portal-profile-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.portal-profile-info-cell {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  box-shadow: var(--shadow);
+}
+
+.portal-profile-info-cell span {
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.portal-profile-info-cell strong {
+  font-size: 0.95rem;
+  font-weight: 850;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.portal-profile-nav-list {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.portal-profile-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 3.25rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.portal-profile-nav-item:hover {
+  border-color: var(--primary-tint);
+  box-shadow: var(--shadow-card);
+  text-decoration: none;
+}
+
+.portal-profile-nav-item__icon {
+  display: grid;
+  place-items: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.portal-profile-nav-item__icon svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.portal-profile-nav-item__copy {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.portal-profile-nav-item__label {
+  font-size: 0.9rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.portal-profile-nav-item__desc {
+  color: var(--text-soft);
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.portal-profile-nav-item__chevron {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.portal-profile-summary-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+  color: inherit;
+  text-decoration: none;
+}
+
+.portal-profile-summary-link:hover {
+  border-color: var(--primary-tint);
+  text-decoration: none;
+}
+
+.portal-profile-summary-link__avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 900;
+}
+
+.portal-profile-summary-link__copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.portal-profile-summary-link__copy strong {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 850;
+}
+
+.portal-profile-summary-link__copy span {
+  display: block;
+  margin-top: 0.12rem;
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.portal-profile-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 2.75rem;
+  margin-top: 0.25rem;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius);
+  background: var(--danger-soft);
+  color: #b91c1c;
+  font-size: 0.9rem;
+  font-weight: 850;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.portal-profile-logout:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.portal-profile-logout:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.portal-profile-logout svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+@media (max-width: 380px) {
+  .portal-profile-info-grid {
+    grid-template-columns: 1fr;
+  }
+}

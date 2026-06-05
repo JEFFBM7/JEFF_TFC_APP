@@ -12,6 +12,7 @@ class AssignmentRequest extends FormRequest
     public function rules(): array
     {
         $id = $this->route('assignment')?->id;
+        $subjectRule = $this->boolean('is_main') ? 'nullable' : 'required';
 
         return [
             'teacher_id' => [
@@ -24,8 +25,11 @@ class AssignmentRequest extends FormRequest
                     ->ignore($id),
             ],
             'classroom_id' => ['required', 'integer', 'exists:classrooms,id'],
-            'subject_id' => ['required', 'integer', 'exists:subjects,id'],
+            'subject_id' => [$subjectRule, 'integer', 'exists:subjects,id'],
             'school_year_id' => ['required', 'integer', 'exists:school_years,id'],
+            'term_id' => ['nullable', 'integer', 'exists:terms,id'],
+            'weekly_hours' => ['nullable', 'numeric', 'min:0.25', 'max:99.99'],
+            'is_main' => ['sometimes', 'boolean'],
         ];
     }
 }

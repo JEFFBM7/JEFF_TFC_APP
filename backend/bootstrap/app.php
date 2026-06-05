@@ -11,8 +11,16 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withBroadcasting(
+        __DIR__.'/../routes/channels.php',
+        ['middleware' => ['auth:sanctum']],
+    )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->api(append: [
+            \App\Http\Middleware\ApplyDevCalendarSimulation::class,
+        ]);
         $middleware->alias([
+            'global_admin' => \App\Http\Middleware\EnsureGlobalAdmin::class,
             'role' => \App\Http\Middleware\EnsureRole::class,
         ]);
     })

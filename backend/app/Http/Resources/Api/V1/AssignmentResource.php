@@ -17,9 +17,13 @@ class AssignmentResource extends JsonResource
             'classroom_id' => $this->classroom_id,
             'subject_id' => $this->subject_id,
             'school_year_id' => $this->school_year_id,
+            'term_id' => $this->term_id,
+            'weekly_hours' => $this->weekly_hours !== null ? (float) $this->weekly_hours : null,
+            'is_main' => $this->is_main,
             'teacher' => TeacherResource::make($this->whenLoaded('teacher')),
             'classroom' => ClassRoomResource::make($this->whenLoaded('classroom')),
             'subject' => SubjectResource::make($this->whenLoaded('subject')),
+            'term' => TermResource::make($this->whenLoaded('term')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

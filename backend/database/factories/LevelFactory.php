@@ -16,6 +16,7 @@ class LevelFactory extends Factory
     {
         return [
             'name' => '6ème ' . (++self::$counter),
+            'cycle' => Level::CYCLE_PRIMAIRE,
             'order' => self::$counter,
         ];
     }

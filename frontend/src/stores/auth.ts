@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { api, getToken, setToken, setUnauthenticatedHandler } from '../api/client'
+import { disconnectRealtime } from '../api/realtime'
+import { getPortalDeviceName } from '../utils/portalPwa'
 import type { AuthUser, LoginResponse, UserRole } from '../types'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -28,15 +30,16 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login(email: string, password: string): Promise<void> {
+  async function login(identifier: string, password: string): Promise<void> {
     loading.value = true
     try {
       const res = await api<LoginResponse>('/api/v1/auth/login', {
         method: 'POST',
-        body: { email, password, device_name: 'spa-web' },
+        body: { identifier, password, device_name: getPortalDeviceName() },
       })
       setToken(res.token)
       user.value = res.user
+      disconnectRealtime()
     } finally {
       loading.value = false
     }
@@ -52,6 +55,7 @@ export const useAuthStore = defineStore('auth', () => {
     } finally {
       setToken(null)
       user.value = null
+      disconnectRealtime()
     }
   }
 
@@ -60,6 +64,7 @@ export const useAuthStore = defineStore('auth', () => {
     setUnauthenticatedHandler(() => {
       setToken(null)
       user.value = null
+      disconnectRealtime()
     })
     await fetchMe()
     initialized.value = true

@@ -7,8 +7,52 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
-## About Laravel
+# EduConnect — API Backend (Laravel)
 
+Ce répertoire contient le backend API RESTful pour la plateforme EduConnect (Complexe scolaire MALUNGA).
+
+## Documentation API (Swagger)
+
+La documentation de l'API est générée automatiquement à partir du code (sans annotations manuelles) grâce à `dedoc/scramble`.
+
+- **Swagger UI (Interactive)** : Accessible sur `GET /api/documentation`
+- **Spec OpenAPI 3.1 (JSON)** : Accessible sur `GET /docs/api.json` ou via le fichier `api.json` à la racine (généré avec `php artisan scramble:export`)
+
+### Authentification dans Swagger UI
+1. Utilisez l'endpoint `POST /api/v1/auth/login` (ex: `admin@educonnect.test` / `password`).
+2. Copiez le token retourné.
+3. Cliquez sur le bouton **Authorize** 🔓 en haut de la page Swagger UI.
+4. Collez le token. Les endpoints protégés sont maintenant testables.
+
+## Jeu de données de démonstration (DevSeeder)
+
+Pour initialiser la base de données avec un jeu complet pour la soutenance (années, classes, élèves, parents, notes, absences) :
+
+```bash
+php artisan migrate:fresh --seed --seeder=DevSeeder
+```
+
+**Comptes de test générés :**
+- Admin : `admin@educonnect.test`
+- Enseignant : `mkabila@malunga.test`
+- Secrétariat : `secretariat@malunga.test`
+- Parent : `parent.tshimanga@test.com`
+- Élève : `jean.tshimanga@eleve.malunga.test`
+(Mot de passe pour tous : `password`)
+
+## Programme scolaire RDC (génération manuelle)
+
+Le bouton **Générer le programme scolaire** (onglet Cours) applique le catalogue officiel EPST/RDC aux divisions de l’année sélectionnée.
+
+**Prérequis :** les classes de base et leurs divisions doivent exister (`POST /api/v1/school-years/{id}/generate-classes`).
+
+**Périmètre admin :** un admin cycle ne traite que les divisions de son cycle ; l’admin général couvre toute l’année.
+
+**Idempotence :** les matières déjà rattachées manuellement ne sont pas supprimées ; les coefficients sont complétés ou mis à jour selon la configuration `config/curriculum_rdc.php`.
+
+---
+
+## About Laravel
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
 
 - [Simple, fast routing engine](https://laravel.com/docs/routing).

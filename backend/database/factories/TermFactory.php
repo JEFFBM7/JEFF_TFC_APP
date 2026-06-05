@@ -20,7 +20,7 @@ class TermFactory extends Factory
             'name' => 'Trimestre '.$this->faker->numberBetween(1, 3),
             'position' => $this->faker->numberBetween(1, 3),
             'starts_on' => '2026-09-01',
-            'ends_on' => '2026-12-15',
+            'ends_on' => '2027-01-31',
         ];
     }
 }

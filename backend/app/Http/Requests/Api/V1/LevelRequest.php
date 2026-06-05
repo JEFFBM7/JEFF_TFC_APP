@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api\V1;
 
+use App\Models\Level;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -15,7 +16,10 @@ class LevelRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:64', Rule::unique('levels')->ignore($id)],
+            'abbreviation' => ['nullable', 'string', 'max:16'],
+            'cycle' => ['required', 'string', Rule::in(Level::CYCLES)],
             'order' => ['sometimes', 'integer', 'min:0', 'max:255'],
+            'has_options' => ['sometimes', 'boolean'],
         ];
     }
 }

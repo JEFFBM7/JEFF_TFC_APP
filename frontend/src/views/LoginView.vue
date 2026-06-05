@@ -8,7 +8,7 @@ const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 
-const email = ref('admin@educonnect.test')
+const identifier = ref('admin@educonnect.test')
 const password = ref('password')
 const errorMsg = ref('')
 const submitting = ref(false)
@@ -17,18 +17,21 @@ async function onSubmit(): Promise<void> {
   errorMsg.value = ''
   submitting.value = true
   try {
-    await auth.login(email.value, password.value)
+    await auth.login(identifier.value, password.value)
     const redirect = route.query.redirect as string | undefined
     if (redirect) {
       await router.push(redirect)
+    } else if (auth.user?.role === 'parent') {
+      await router.push({ name: 'parent-dashboard' })
+    } else if (auth.user?.role === 'eleve') {
+      await router.push({ name: 'student-dashboard' })
     } else {
-      await router.push(
-        auth.user?.role === 'parent' ? { name: 'parent-dashboard' } : { name: 'dashboard' },
-      )
+      await router.push({ name: 'dashboard' })
     }
   } catch (err) {
     if (err instanceof ApiError) {
       errorMsg.value =
+        err.errors?.identifier?.[0] ??
         err.errors?.email?.[0] ??
         err.errors?.password?.[0] ??
         err.message
@@ -51,8 +54,15 @@ async function onSubmit(): Promise<void> {
         <p class="hint">Connecte-toi avec un compte de test.</p>
 
         <div class="field">
-          <label for="email">Email</label>
-          <input id="email" v-model="email" type="email" required autofocus />
+          <label for="identifier">Identifiant</label>
+          <input
+            id="identifier"
+            v-model="identifier"
+            type="text"
+            required
+            autofocus
+            placeholder="Email, matricule ou téléphone"
+          />
         </div>
 
         <div class="field">

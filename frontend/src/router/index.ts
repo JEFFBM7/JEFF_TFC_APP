@@ -7,6 +7,7 @@ declare module 'vue-router' {
     requiresAuth?: boolean
     requiresGuest?: boolean
     roles?: UserRole[]
+    requiresGlobalAdmin?: boolean
     title?: string
   }
 }
@@ -45,39 +46,64 @@ const routes: RouteRecordRaw[] = [
         path: 'school-years',
         name: 'school-years',
         component: () => import('../views/SchoolYearsView.vue'),
-        meta: { roles: ['admin'], title: 'Années scolaires' },
+        meta: { roles: ['admin'], requiresGlobalAdmin: true, title: 'Années scolaires' },
+      },
+      {
+        path: 'school-years/:id/classrooms/:classroomId',
+        name: 'school-year-class-detail',
+        component: () => import('../views/SchoolYearClassDetailView.vue'),
+        meta: { roles: ['admin'], title: 'Détail classe' },
+        props: true,
       },
       {
         path: 'school-years/:id',
         name: 'school-year-detail',
         component: () => import('../views/SchoolYearDetailView.vue'),
-        meta: { roles: ['admin'], title: 'Détail année scolaire' },
+        meta: { roles: ['admin'], requiresGlobalAdmin: true, title: 'Détail année scolaire' },
         props: true,
+      },
+      {
+        path: 'classes',
+        name: 'levels',
+        component: () => import('../views/LevelsView.vue'),
+        meta: { roles: ['admin'], title: 'Classes' },
       },
       {
         path: 'levels',
-        name: 'levels',
-        component: () => import('../views/LevelsView.vue'),
-        meta: { roles: ['admin'], title: 'Niveaux scolaires' },
+        redirect: { name: 'levels' },
+      },
+      {
+        path: 'classes/:id',
+        name: 'level-detail',
+        component: () => import('../views/LevelDetailView.vue'),
+        meta: { roles: ['admin'], title: 'Classes' },
+        props: true,
       },
       {
         path: 'levels/:id',
-        name: 'level-detail',
-        component: () => import('../views/LevelDetailView.vue'),
-        meta: { roles: ['admin'], title: 'Classes d\'un niveau' },
-        props: true,
+        redirect: (to) => ({ name: 'level-detail', params: { id: to.params.id } }),
       },
       {
         path: 'users',
         name: 'users',
         component: () => import('../views/UsersView.vue'),
-        meta: { roles: ['admin'], title: 'Utilisateurs' },
+        meta: { roles: ['admin'], requiresGlobalAdmin: true, title: 'Utilisateurs' },
+      },
+      {
+        path: 'secondary-admins',
+        name: 'secondary-admins',
+        component: () => import('../views/SecondaryAdminsView.vue'),
+        meta: { roles: ['admin'], requiresGlobalAdmin: true, title: 'Admins secondaires' },
+      },
+      {
+        path: 'cours',
+        name: 'subjects',
+        component: () => import('../views/SubjectsView.vue'),
+        meta: { roles: ['admin'], title: 'Cours' },
       },
       {
         path: 'subjects',
-        name: 'subjects',
-        component: () => import('../views/SubjectsView.vue'),
-        meta: { roles: ['admin'], title: 'Matières' },
+        redirect: { name: 'subjects' },
       },
       {
         path: 'teachers',
@@ -86,10 +112,24 @@ const routes: RouteRecordRaw[] = [
         meta: { roles: ['admin'], title: 'Enseignants' },
       },
       {
+        path: 'teachers/:id',
+        name: 'teacher-detail',
+        component: () => import('../views/TeacherDetailView.vue'),
+        meta: { roles: ['admin'], title: 'Fiche enseignant' },
+        props: true,
+      },
+      {
         path: 'parents',
         name: 'parents',
         component: () => import('../views/ParentsView.vue'),
         meta: { roles: ['admin'], title: 'Parents' },
+      },
+      {
+        path: 'parents/:id',
+        name: 'parent-detail',
+        component: () => import('../views/ParentDetailView.vue'),
+        meta: { roles: ['admin'], title: 'Fiche parent' },
+        props: true,
       },
       {
         path: 'students',
@@ -143,20 +183,76 @@ const routes: RouteRecordRaw[] = [
         meta: { roles: ['admin', 'enseignant'], title: 'Rapports & exports' },
       },
       {
+        path: 'students-at-risk',
+        name: 'students-at-risk',
+        component: () => import('../views/StudentsAtRiskView.vue'),
+        meta: { roles: ['admin', 'enseignant'], title: 'Élèves en difficulté' },
+      },
+      {
+        path: 'settings',
+        name: 'settings',
+        component: () => import('../views/SettingsView.vue'),
+        meta: { roles: ['admin'], requiresGlobalAdmin: true, title: 'Paramètres & seuils' },
+      },
+      {
         path: 'messages',
         name: 'messages',
         component: () => import('../views/MessagesView.vue'),
         meta: { requiresAuth: true, title: 'Messagerie' },
+      },
+      // ── Portail élève ──
+      {
+        path: 'student',
+        name: 'student-dashboard',
+        component: () => import('../views/StudentDashboardView.vue'),
+        meta: { roles: ['eleve'], title: 'Tableau de bord' },
+      },
+      {
+        path: 'student/bulletin',
+        name: 'student-bulletin',
+        component: () => import('../views/StudentBulletinView.vue'),
+        meta: { roles: ['eleve'], title: 'Mon bulletin' },
+      },
+      {
+        path: 'student/absences',
+        name: 'student-absences',
+        component: () => import('../views/StudentAbsencesView.vue'),
+        meta: { roles: ['eleve'], title: 'Mes absences' },
+      },
+      {
+        path: 'student/timetable',
+        name: 'student-timetable',
+        component: () => import('../views/StudentTimetableView.vue'),
+        meta: { roles: ['eleve'], title: 'Mon emploi du temps' },
+      },
+      {
+        path: 'student/profile',
+        name: 'student-profile',
+        component: () => import('../views/PortalProfileView.vue'),
+        meta: { roles: ['eleve'], title: 'Mon profil' },
       },
       // ── Portail parent ──
       {
         path: 'parent',
         name: 'parent-dashboard',
         component: () => import('../views/ParentDashboardView.vue'),
-        meta: { roles: ['parent'], title: 'Espace parent' },
+        meta: { roles: ['parent'], title: 'Tableau de bord' },
       },
       {
-        path: 'parent/child/:id',
+        path: 'parent/profile',
+        name: 'parent-profile',
+        component: () => import('../views/PortalProfileView.vue'),
+        meta: { roles: ['parent'], title: 'Mon profil' },
+      },
+      {
+        path: 'parent/children',
+        name: 'parent-children',
+        component: () => import('../views/ParentChildrenView.vue'),
+        meta: { roles: ['parent'], title: 'Mes enfants' },
+      },
+      {
+        path: 'parent/children/:id',
+        alias: 'parent/child/:id',
         name: 'parent-child',
         component: () => import('../views/ParentChildView.vue'),
         meta: { roles: ['parent'], title: 'Suivi enfant' },
@@ -194,13 +290,25 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.requiresGuest && auth.isAuthenticated) {
-    return auth.user?.role === 'parent'
-      ? { name: 'parent-dashboard' }
-      : { name: 'dashboard' }
+    if (auth.user?.role === 'parent') return { name: 'parent-dashboard' }
+    if (auth.user?.role === 'eleve') return { name: 'student-dashboard' }
+    return { name: 'dashboard' }
+  }
+
+  if (auth.isAuthenticated && (to.name === 'dashboard' || to.path === '/')) {
+    if (auth.user?.role === 'eleve') return { name: 'student-dashboard' }
+    if (auth.user?.role === 'parent') return { name: 'parent-dashboard' }
   }
 
   if (to.meta.roles && to.meta.roles.length > 0) {
     if (!auth.user || !to.meta.roles.includes(auth.user.role)) {
+      return { name: 'forbidden' }
+    }
+  }
+
+  if (to.meta.requiresGlobalAdmin) {
+    const isGlobalAdmin = auth.user?.role === 'admin' && (auth.user.admin_scope ?? 'global') === 'global'
+    if (!isGlobalAdmin) {
       return { name: 'forbidden' }
     }
   }

@@ -1,13 +1,56 @@
 <script setup lang="ts">
-defineProps<{ title: string; open: boolean }>()
+import { computed } from 'vue'
+
+const props = withDefaults(
+  defineProps<{
+    title: string
+    open: boolean
+    maxWidth?: string
+    size?: 'default' | 'large' | 'xlarge'
+    /** Fermeture au clic sur le fond (désactivé par défaut pour éviter les fermetures accidentelles). */
+    closeOnBackdrop?: boolean
+  }>(),
+  {
+    size: 'default',
+    closeOnBackdrop: false,
+  },
+)
+
+function onOverlayClick(): void {
+  if (props.closeOnBackdrop) {
+    emit('close')
+  }
+}
+
 const emit = defineEmits<{ (e: 'close'): void }>()
+
+const resolvedMaxWidth = computed(() => {
+  if (props.maxWidth) {
+    return props.maxWidth
+  }
+
+  if (props.size === 'xlarge') {
+    return 'min(56rem, 96vw)'
+  }
+
+  if (props.size === 'large') {
+    return 'min(42rem, 94vw)'
+  }
+
+  return '28rem'
+})
+
+const dialogClass = computed(() => ({
+  'dialog--large': props.size === 'large' || props.maxWidth !== undefined,
+  'dialog--xlarge': props.size === 'xlarge',
+}))
 </script>
 
 <template>
   <Teleport to="body">
     <Transition name="fade">
-      <div v-if="open" class="overlay" role="dialog" aria-modal="true" @click.self="emit('close')">
-        <div class="dialog">
+      <div v-if="open" class="overlay" role="dialog" aria-modal="true" @click.self="onOverlayClick">
+        <div class="dialog" :class="dialogClass" :style="{ maxWidth: resolvedMaxWidth }">
           <header class="dialog-header">
             <h2 style="margin: 0">{{ title }}</h2>
             <button type="button" class="close" aria-label="Fermer" @click="emit('close')">×</button>
@@ -38,11 +81,28 @@ const emit = defineEmits<{ (e: 'close'): void }>()
   background: var(--bg-card);
   border-radius: var(--radius);
   width: 100%;
-  max-width: 28rem;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
-  max-height: 90vh;
+  max-height: min(92vh, 900px);
+}
+.dialog--large .dialog-header,
+.dialog--large .dialog-footer {
+  padding-inline: 1.35rem;
+}
+.dialog--large .dialog-body,
+.dialog--xlarge .dialog-body {
+  padding: 1.35rem 1.5rem;
+}
+.dialog--xlarge {
+  max-height: min(94vh, 960px);
+}
+.dialog--xlarge .dialog-header,
+.dialog--xlarge .dialog-footer {
+  padding: 1.1rem 1.5rem;
+}
+.dialog--xlarge .dialog-header h2 {
+  font-size: 1.15rem;
 }
 .dialog-header {
   padding: 1rem 1.2rem;

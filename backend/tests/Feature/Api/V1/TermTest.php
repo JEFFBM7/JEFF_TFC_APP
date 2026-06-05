@@ -82,6 +82,29 @@ class TermTest extends TestCase
         $this->assertSame('A', $response->json('data.0.name'));
     }
 
+    public function test_terms_default_to_current_school_year_and_allow_historical_filter(): void
+    {
+        $oldYear = SchoolYear::factory()->create(['name' => '2024-2025']);
+        $currentYear = SchoolYear::factory()->current()->create(['name' => '2025-2026']);
+
+        Term::factory()->create(['school_year_id' => $oldYear->id, 'position' => 1, 'name' => 'Ancien T1']);
+        Term::factory()->create(['school_year_id' => $currentYear->id, 'position' => 1, 'name' => 'Courant T1']);
+
+        $default = $this->actingAs($this->admin(), 'sanctum')
+            ->getJson('/api/v1/terms')
+            ->assertOk();
+
+        $this->assertCount(1, $default->json('data'));
+        $this->assertSame('Courant T1', $default->json('data.0.name'));
+
+        $historical = $this->actingAs($this->admin(), 'sanctum')
+            ->getJson('/api/v1/terms?school_year_id='.$oldYear->id)
+            ->assertOk();
+
+        $this->assertCount(1, $historical->json('data'));
+        $this->assertSame('Ancien T1', $historical->json('data.0.name'));
+    }
+
     public function test_cascade_delete_when_school_year_deleted(): void
     {
         $year = SchoolYear::factory()->create();
@@ -96,5 +119,45 @@ class TermTest extends TestCase
             ->assertNoContent();
 
         $this->assertDatabaseMissing('terms', ['id' => $term->id]);
+    }
+
+    public function test_archived_year_blocks_term_mutations(): void
+    {
+        $year = SchoolYear::factory()->archived()->create();
+        $term = Term::factory()->create([
+            'school_year_id' => $year->id,
+            'position' => 1,
+            'name' => 'T1',
+        ]);
+
+        $this->actingAs($this->admin(), 'sanctum')
+            ->postJson('/api/v1/terms', [
+                'school_year_id' => $year->id,
+                'name' => 'Trimestre 2',
+                'position' => 2,
+                'starts_on' => '2026-01-05',
+                'ends_on' => '2026-03-31',
+            ])
+            ->assertStatus(423);
+
+        $this->actingAs($this->admin(), 'sanctum')
+            ->putJson("/api/v1/terms/{$term->id}", [
+                'school_year_id' => $year->id,
+                'name' => 'T1 modifié',
+                'position' => 1,
+                'starts_on' => '2025-09-01',
+                'ends_on' => '2025-12-15',
+            ])
+            ->assertStatus(423);
+
+        $this->actingAs($this->admin(), 'sanctum')
+            ->deleteJson("/api/v1/terms/{$term->id}")
+            ->assertStatus(423);
+
+        $this->actingAs($this->admin(), 'sanctum')
+            ->postJson("/api/v1/terms/{$term->id}/close")
+            ->assertStatus(423);
+
+        $this->assertDatabaseHas('terms', ['id' => $term->id, 'name' => 'T1']);
     }
 }
