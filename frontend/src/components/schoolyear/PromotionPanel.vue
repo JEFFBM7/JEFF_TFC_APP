@@ -4,7 +4,7 @@ import { api, ApiError } from '../../api/client'
 import { useConfirmStore } from '../../stores/confirm'
 import type { ApiResource, Paginated, SchoolYear } from '../../types'
 
-const props = defineProps<{ fromYear: SchoolYear }>()
+const props = defineProps<{ fromYear: SchoolYear; lockTo?: SchoolYear }>()
 const emit = defineEmits<{ (e: 'committed'): void }>()
 
 type Decision = 'promu' | 'redouble' | 'diplome' | 'skip'
@@ -50,7 +50,7 @@ interface CommittedBatch {
 const confirmDialog = useConfirmStore()
 
 const targetYears = ref<SchoolYear[]>([])
-const toYearId = ref<number | null>(null)
+const toYearId = ref<number | null>(props.lockTo?.id ?? null)
 const preview = ref<PromotionPreview | null>(null)
 const committedBatch = ref<CommittedBatch | null>(null)
 
@@ -70,7 +70,7 @@ const DECISION_LABELS: Record<Decision, string> = {
   skip: 'Ne pas traiter',
 }
 
-const toYear = computed(() => targetYears.value.find((y) => y.id === toYearId.value) ?? null)
+const toYear = computed(() => props.lockTo ?? (targetYears.value.find((y) => y.id === toYearId.value) ?? null))
 
 const canCommit = computed(
   () => preview.value !== null && committedBatch.value === null && toYearId.value !== null,
@@ -218,17 +218,18 @@ const STATUS_HINT: Record<PromotionStudentRow['resolution_status'], string> = {
     <div v-if="error" class="promotion-error" role="alert">{{ error }}</div>
 
     <div class="promotion-controls">
-      <label>
+      <label v-if="!lockTo">
         Année cible
         <select v-model.number="toYearId" @focus="ensureYears" :disabled="committedBatch !== null">
           <option v-if="toYearId === null" :value="null" disabled>Choisir une année…</option>
           <option v-for="y in targetYears" :key="y.id" :value="y.id">{{ y.name }}</option>
         </select>
       </label>
+      <p v-else class="locked-target">Année cible : <strong>{{ lockTo.name }}</strong></p>
       <button class="btn-secondary" :disabled="loadingPreview || toYearId === null || committedBatch !== null" @click="runPreview">
         {{ loadingPreview ? 'Calcul…' : 'Prévisualiser le passage' }}
       </button>
-      <button v-if="!targetYears.length && !loadingYears" class="btn-ghost" @click="ensureYears">Charger les années</button>
+      <button v-if="!lockTo && !targetYears.length && !loadingYears" class="btn-ghost" @click="ensureYears">Charger les années</button>
     </div>
 
     <!-- Résultat d'un passage confirmé -->
@@ -318,6 +319,7 @@ const STATUS_HINT: Record<PromotionStudentRow['resolution_status'], string> = {
 .promotion-controls { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; }
 .promotion-controls label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; }
 .promotion-controls select { min-width: 14rem; padding: 0.4rem 0.5rem; }
+.locked-target { margin: 0; font-size: 0.9rem; }
 .promotion-error { background: #fef2f2; color: #b91c1c; padding: 0.6rem 0.8rem; border-radius: 0.5rem; }
 .promotion-result { background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 0.6rem; padding: 0.8rem 1rem; display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start; }
 .promotion-summary { display: flex; flex-wrap: wrap; gap: 0.5rem; }

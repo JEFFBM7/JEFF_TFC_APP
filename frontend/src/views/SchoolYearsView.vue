@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { api, ApiError } from '../api/client'
 import type { ApiResource, Paginated, SchoolYear } from '../types'
 import Modal from '../components/Modal.vue'
+import PromotionPanel from '../components/schoolyear/PromotionPanel.vue'
 import RowActionMenu from '../components/RowActionMenu.vue'
 import { useConfirmStore } from '../stores/confirm'
 import { useSchoolYearStore } from '../stores/schoolYear'
@@ -22,6 +23,16 @@ const editing = ref<SchoolYear | null>(null)
 const formError = ref('')
 const formErrors = reactive<Record<string, string[]>>({})
 const submitting = ref(false)
+
+// Modale création en 2 étapes : 1) créer l'année, 2) passage de classe.
+const step = ref<1 | 2>(1)
+const createdYear = ref<SchoolYear | null>(null)
+const passageSource = ref<SchoolYear | null>(null)
+const canPromoteOnCreate = computed(() => !editing.value && items.value.length > 0)
+const modalTitle = computed(() => {
+  if (step.value === 2) return 'Passage de classe'
+  return editing.value ? 'Modifier une année scolaire' : 'Nouvelle année scolaire'
+})
 
 const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
   day: '2-digit',
@@ -120,6 +131,9 @@ async function load(): Promise<void> {
 
 function openCreate(): void {
   editing.value = null
+  step.value = 1
+  createdYear.value = null
+  passageSource.value = null
   resetForm()
   const defaults = nextYearDefaults()
   form.name = defaults.name
@@ -137,6 +151,7 @@ function applyAutoFill(): void {
 
 function openEdit(item: SchoolYear): void {
   editing.value = item
+  step.value = 1
   form.name = item.name
   form.starts_on = item.starts_on
   form.ends_on = item.ends_on
@@ -146,29 +161,49 @@ function openEdit(item: SchoolYear): void {
   showForm.value = true
 }
 
+function closeForm(): void {
+  showForm.value = false
+  step.value = 1
+  createdYear.value = null
+  passageSource.value = null
+}
+
 async function submit(): Promise<void> {
   submitting.value = true
   formError.value = ''
   Object.keys(formErrors).forEach((k) => delete formErrors[k])
   try {
-    let saved: SchoolYear
     if (editing.value) {
       const res = await api<ApiResource<SchoolYear>>(`/api/v1/school-years/${editing.value.id}`, {
         method: 'PUT',
         body: { ...form },
       })
-      saved = res.data
-    } else {
-      const res = await api<ApiResource<SchoolYear>>('/api/v1/school-years', {
-        method: 'POST',
-        body: { ...form },
-      })
-      saved = res.data
+      if (res.data.is_current) schoolYearStore.markCurrent(res.data.id)
+      closeForm()
+      await load()
+      return
     }
-    if (saved.is_current) {
-      schoolYearStore.markCurrent(saved.id)
+
+    // Création. Si d'autres années existent, on enchaîne sur le passage de classe :
+    // l'année est créée NON courante (sinon le passage serait bloqué).
+    const promote = canPromoteOnCreate.value
+    const res = await api<ApiResource<SchoolYear>>('/api/v1/school-years', {
+      method: 'POST',
+      body: promote ? { ...form, is_current: false } : { ...form },
+    })
+    const saved = res.data
+
+    if (promote) {
+      passageSource.value =
+        [...items.value].sort((a, b) => b.starts_on.localeCompare(a.starts_on))[0] ?? null
+      createdYear.value = saved
+      step.value = 2
+      await load() // la nouvelle année apparaît ; la modale reste ouverte
+      return
     }
-    showForm.value = false
+
+    if (saved.is_current) schoolYearStore.markCurrent(saved.id)
+    closeForm()
     await load()
   } catch (err) {
     if (err instanceof ApiError) {
@@ -180,6 +215,15 @@ async function submit(): Promise<void> {
   } finally {
     submitting.value = false
   }
+}
+
+/** Étape 2 terminée : éventuellement rendre la nouvelle année courante, puis fermer. */
+async function finishCreate(makeCurrent: boolean): Promise<void> {
+  if (makeCurrent && createdYear.value) {
+    await setCurrent(createdYear.value)
+  }
+  closeForm()
+  await load()
 }
 
 async function remove(item: SchoolYear): Promise<void> {
@@ -381,10 +425,12 @@ onMounted(load)
 
     <Modal
       :open="showForm"
-      :title="editing ? 'Modifier une année scolaire' : 'Nouvelle année scolaire'"
-      @close="showForm = false"
+      :title="modalTitle"
+      :size="step === 2 ? 'xlarge' : 'default'"
+      @close="closeForm"
     >
-      <form id="school-year-form" class="year-form" @submit.prevent="submit">
+      <!-- ÉTAPE 1 : création de l'année -->
+      <form v-if="step === 1" id="school-year-form" class="year-form" @submit.prevent="submit">
         <div v-if="!editing" class="autofill-hint">
           <span>
             Nom et dates pré-remplis pour l'année suivante. Vous pouvez les modifier librement.
@@ -422,27 +468,54 @@ onMounted(load)
           </div>
         </div>
 
-        <label class="check-row">
+        <!-- Année courante : caché en mode passage (on la rendra courante après le passage) -->
+        <label v-if="editing || !canPromoteOnCreate" class="check-row">
           <input v-model="form.is_current" type="checkbox" />
           <span>
             <strong>Définir comme année courante</strong>
             <small>Les autres années seront automatiquement archivées.</small>
           </span>
         </label>
+        <p v-else class="autofill-hint passage-hint">
+          <span>
+            Après création, vous pourrez <strong>faire passer les élèves de l'année précédente</strong>
+            vers cette nouvelle année (étape suivante).
+          </span>
+        </p>
 
         <p v-if="formError" class="alert alert-error">{{ formError }}</p>
       </form>
 
+      <!-- ÉTAPE 2 : passage de classe vers la nouvelle année -->
+      <div v-else-if="step === 2 && createdYear && passageSource" class="passage-step">
+        <p class="autofill-hint">
+          <span>
+            Année <strong>{{ createdYear.name }}</strong> créée (pas encore courante). Faites passer
+            les élèves de <strong>{{ passageSource.name }}</strong> vers cette nouvelle année, ou
+            cliquez « Terminer » pour le faire plus tard.
+          </span>
+        </p>
+        <PromotionPanel :fromYear="passageSource" :lockTo="createdYear" @committed="load" />
+      </div>
+
       <template #footer>
-        <button type="button" @click="showForm = false">Annuler</button>
-        <button
-          type="submit"
-          form="school-year-form"
-          class="btn-primary"
-          :disabled="submitting"
-        >
-          {{ submitting ? 'Enregistrement...' : editing ? 'Enregistrer' : 'Créer' }}
-        </button>
+        <template v-if="step === 1">
+          <button type="button" @click="closeForm">Annuler</button>
+          <button
+            type="submit"
+            form="school-year-form"
+            class="btn-primary"
+            :disabled="submitting"
+          >
+            {{ submitting ? 'Enregistrement...' : editing ? 'Enregistrer' : (canPromoteOnCreate ? 'Créer et continuer' : 'Créer') }}
+          </button>
+        </template>
+        <template v-else>
+          <button type="button" @click="finishCreate(false)">Terminer</button>
+          <button type="button" class="btn-primary" @click="finishCreate(true)">
+            Rendre {{ createdYear?.name }} courante &amp; terminer
+          </button>
+        </template>
       </template>
     </Modal>
   </section>
