@@ -217,10 +217,20 @@ async function submit(): Promise<void> {
   }
 }
 
-/** Étape 2 terminée : éventuellement rendre la nouvelle année courante, puis fermer. */
+/**
+ * Étape 2 terminée. Si on active la nouvelle année : elle devient courante et
+ * l'année précédente est automatiquement archivée (clôture de l'année écoulée).
+ */
 async function finishCreate(makeCurrent: boolean): Promise<void> {
   if (makeCurrent && createdYear.value) {
     await setCurrent(createdYear.value)
+    if (passageSource.value) {
+      try {
+        await api(`/api/v1/school-years/${passageSource.value.id}/archive`, { method: 'POST' })
+      } catch {
+        // Archivage non bloquant : l'activation a déjà réussi.
+      }
+    }
   }
   closeForm()
   await load()
@@ -493,6 +503,9 @@ onMounted(load)
             Année <strong>{{ createdYear.name }}</strong> créée (pas encore courante). Faites passer
             les élèves de <strong>{{ passageSource.name }}</strong> vers cette nouvelle année, ou
             cliquez « Terminer » pour le faire plus tard.
+            <br />
+            En l'<strong>activant</strong>, l'année <strong>{{ passageSource.name }}</strong> sera
+            automatiquement <strong>archivée</strong> (clôturée).
           </span>
         </p>
         <PromotionPanel :fromYear="passageSource" :lockTo="createdYear" @committed="load" />
