@@ -321,7 +321,7 @@ const STATUS_HINT: Record<PromotionStudentRow['resolution_status'], string> = {
 .promotion-error { background: #fef2f2; color: #b91c1c; padding: 0.6rem 0.8rem; border-radius: 0.5rem; }
 .promotion-result { background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 0.6rem; padding: 0.8rem 1rem; display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start; }
 .promotion-summary { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.chip { background: #f3f4f6; border-radius: 999px; padding: 0.2rem 0.7rem; font-size: 0.8rem; }
+.chip { background: #f3f4f6; color: #1f2937; border-radius: 999px; padding: 0.2rem 0.7rem; font-size: 0.8rem; }
 .chip-ok { background: #dcfce7; color: #166534; }
 .chip-warn { background: #fef3c7; color: #92400e; }
 .chip-review { background: #fee2e2; color: #991b1b; }
