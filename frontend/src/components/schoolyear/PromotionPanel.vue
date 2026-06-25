@@ -312,7 +312,7 @@ const STATUS_HINT: Record<PromotionStudentRow['resolution_status'], string> = {
 </template>
 
 <style scoped>
-.promotion-panel { display: flex; flex-direction: column; gap: 1rem; }
+.promotion-panel { display: flex; flex-direction: column; gap: 1rem; padding: 1.25rem 1.5rem; }
 .promotion-head h3 { margin: 0 0 0.25rem; }
 .muted { color: var(--color-text-muted, #6b7280); font-size: 0.85rem; }
 .promotion-controls { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; }
@@ -327,7 +327,7 @@ const STATUS_HINT: Record<PromotionStudentRow['resolution_status'], string> = {
 .chip-review { background: #fee2e2; color: #991b1b; }
 .promotion-table-wrap { overflow-x: auto; }
 .promotion-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-.promotion-table th, .promotion-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid #eef0f3; vertical-align: top; }
+.promotion-table th, .promotion-table td { text-align: left; padding: 0.7rem 0.9rem; border-bottom: 1px solid #eef0f3; vertical-align: top; }
 .promotion-table select { width: 100%; padding: 0.3rem 0.4rem; }
 .student-name { display: block; font-weight: 600; }
 .avg-fail { color: #b91c1c; font-weight: 600; }
