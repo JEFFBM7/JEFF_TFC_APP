@@ -7,6 +7,9 @@
 # =============================================================================
 set -euo pipefail
 
+# Le VPS exécute en root : autorise Composer (sinon plugins/scripts désactivés + warnings).
+export COMPOSER_ALLOW_SUPERUSER=1
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND="$ROOT/backend"
 FRONTEND="$ROOT/frontend"
@@ -39,7 +42,7 @@ echo "→ Backend : dépendances + migrations + caches"
 cd "$BACKEND"
 composer install --no-dev --optimize-autoloader --no-interaction
 php artisan migrate --force
-php artisan storage:link 2>/dev/null || true
+php artisan storage:link >/dev/null 2>&1 || true   # déjà présent = sans gravité
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
