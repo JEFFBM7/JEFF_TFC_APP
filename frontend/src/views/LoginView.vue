@@ -106,10 +106,6 @@ async function onSubmit(): Promise<void> {
         </button>
       </form>
 
-      <!-- demo hint -->
-      <p class="demo">
-        Démo&nbsp;: <code>admin@educonnect.test</code> · <code>password</code>
-      </p>
     </div>
   </div>
 </template>
@@ -294,22 +290,6 @@ label {
   opacity: 0.55;
   cursor: not-allowed;
   box-shadow: none;
-}
-
-/* ── Demo hint ── */
-.demo {
-  margin: 1rem 0 0;
-  font-size: 0.75rem;
-  color: #8295b5;
-  text-align: center;
-}
-
-.demo code {
-  background: rgba(96, 165, 250, 0.12);
-  border-radius: 4px;
-  padding: 0.1rem 0.3rem;
-  color: #aebfda;
-  font-size: 0.74rem;
 }
 
 /* ── Responsive ── */
