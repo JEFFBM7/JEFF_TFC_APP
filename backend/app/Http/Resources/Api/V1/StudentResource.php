@@ -14,10 +14,15 @@ class StudentResource extends JsonResource
     {
         $portalAccounts = app(StudentPortalAccountService::class);
 
+        // Si l'inscription de l'année consultée a été chargée (liste filtrée par
+        // année), on présente la classe + le statut de CETTE année plutôt que le
+        // cache année-courante (students.classroom_id / enrollment_status).
+        $yearEnrollment = $this->relationLoaded('enrollments') ? $this->enrollments->first() : null;
+
         return [
             'id' => $this->id,
             'user_id' => $this->user_id,
-            'classroom_id' => $this->classroom_id,
+            'classroom_id' => $yearEnrollment ? $yearEnrollment->classroom_id : $this->classroom_id,
             'enrollment_school_year_id' => $this->enrollment_school_year_id,
             'first_name' => $this->first_name,
             'last_name' => $this->last_name,
@@ -29,7 +34,7 @@ class StudentResource extends JsonResource
             'nationality' => $this->nationality,
             'registration_number' => $this->registration_number,
             'photo_path' => $this->photo_path,
-            'enrollment_status' => $this->enrollment_status,
+            'enrollment_status' => $yearEnrollment ? $yearEnrollment->status : $this->enrollment_status,
             'order_number' => $this->order_number,
             'enrolled_on' => $this->enrolled_on?->toDateString(),
             'previous_school' => $this->previous_school,
@@ -44,7 +49,9 @@ class StudentResource extends JsonResource
             'father_profession' => $this->father_profession,
             'mother_profession' => $this->mother_profession,
             'notes' => $this->notes,
-            'classroom' => ClassRoomResource::make($this->whenLoaded('classroom')),
+            'classroom' => $yearEnrollment
+                ? ($yearEnrollment->classroom ? ClassRoomResource::make($yearEnrollment->classroom) : null)
+                : ClassRoomResource::make($this->whenLoaded('classroom')),
             'enrollment_school_year' => SchoolYearResource::make($this->whenLoaded('enrollmentSchoolYear')),
             'parents' => ParentResource::collection($this->whenLoaded('parents')),
             'student_portal_status' => $portalAccounts->status($this->resource),

@@ -30,23 +30,44 @@ class StudentController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = Student::query()->with(['classroom.level', 'enrollmentSchoolYear', 'user']);
+        $yearId = SchoolYearContext::requestedOrCurrentId($request);
+
+        $query = Student::query()->with([
+            'classroom.level', 'enrollmentSchoolYear', 'user',
+            // Inscription de l'année consultée → classe + statut de CETTE année
+            // (et non le cache année-courante porté par students.classroom_id).
+            'enrollments' => fn ($q) => $q->where('school_year_id', $yearId)->with('classroom.level'),
+        ]);
         AdminScopeContext::applyStudentScope($query, $request);
 
         if ($request->filled('classroom_id')) {
             AdminScopeContext::assertClassroomAllowed($request->user(), $request->integer('classroom_id'));
-            $query->where('classroom_id', $request->integer('classroom_id'));
+            $classroomId = $request->integer('classroom_id');
+            if ($request->filled('school_year_id')) {
+                // Classe de l'année consultée (via enrollments) plutôt que le cache.
+                $query->whereHas('enrollments', fn ($q) => $q
+                    ->where('school_year_id', $yearId)
+                    ->where('classroom_id', $classroomId));
+            } else {
+                $query->where('classroom_id', $classroomId);
+            }
         }
 
-        SchoolYearContext::applyStudentEnrollmentYear($query, $request);
+        SchoolYearContext::applyStudentEnrollmentYearId($query, $yearId);
 
         if ($request->filled('cycle')) {
             if (! AdminScopeContext::requestedCycleIsAllowed($request)) {
                 $query->whereRaw('1 = 0');
             }
-            $query->whereHas('classroom.level', function ($levelQuery) use ($request): void {
-                $levelQuery->where('cycle', $request->string('cycle')->value());
-            });
+            $cycle = $request->string('cycle')->value();
+            if ($request->filled('school_year_id')) {
+                // Cycle de la classe de l'année consultée (via enrollments).
+                $query->whereHas('enrollments', fn ($q) => $q
+                    ->where('school_year_id', $yearId)
+                    ->whereHas('classroom.level', fn ($lq) => $lq->where('cycle', $cycle)));
+            } else {
+                $query->whereHas('classroom.level', fn ($levelQuery) => $levelQuery->where('cycle', $cycle));
+            }
         }
 
         if ($request->filled('search')) {

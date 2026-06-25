@@ -74,7 +74,10 @@ class SchoolYearContext
             return $query;
         }
 
-        return $query->where('enrollment_school_year_id', $yearId);
+        // La vérité « qui est inscrit cette année-là » vit dans `enrollments`.
+        // `students.enrollment_school_year_id` n'est qu'un cache de l'année
+        // courante : s'en servir masquerait les élèves promus/historiques.
+        return $query->whereHas('enrollments', fn (Builder $q) => $q->where('school_year_id', $yearId));
     }
 
     public static function applyEvaluationSchoolYear(
