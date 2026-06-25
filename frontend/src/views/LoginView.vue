@@ -117,13 +117,13 @@ async function onSubmit(): Promise<void> {
 <style scoped>
 /* ── Page ── */
 .page {
-  min-height: 100vh;
-  /* dvh : tient compte du clavier mobile (viewport dynamique) */
-  min-height: 100dvh;
+  /* remplit #app (hauteur = --vvh, qui rétrécit avec le clavier iOS) et
+     défile à l'intérieur ; margin:auto sur .card recentre sans rogner le haut */
+  height: 100%;
   display: flex;
+  flex-direction: column;
   background: radial-gradient(ellipse 100% 80% at 50% -10%, #14306e 0%, #0a1838 45%, #060e22 100%);
   padding: 1.5rem;
-  /* permet de faire défiler la carte quand le clavier réduit la hauteur */
   overflow-y: auto;
 }
 
