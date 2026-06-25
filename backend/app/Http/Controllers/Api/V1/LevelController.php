@@ -84,6 +84,13 @@ class LevelController extends Controller
     private function withClassroomContext($query, ?int $schoolYearId)
     {
         return $query
+            // Ne renvoyer que les classes de l'année consultée (chaque année a son
+            // propre jeu de classes) : sinon une même classe apparaît une fois par
+            // année (doublons dans les listes déroulantes).
+            ->when($schoolYearId !== null, fn ($q) => $q->whereHas(
+                'schoolClass',
+                fn ($scQuery) => $scQuery->where('school_year_id', $schoolYearId),
+            ))
             ->with('schoolOption')
             ->orderBy('option')
             ->orderBy('section')
