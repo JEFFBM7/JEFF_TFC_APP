@@ -4,7 +4,7 @@
 #   sudo systemctl enable --now educonnect-reverb
 [Unit]
 Description=EduConnect Reverb (WebSocket)
-After=network.target mysql.service
+After=network.target postgresql.service
 
 [Service]
 Type=simple

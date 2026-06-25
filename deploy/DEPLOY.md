@@ -21,8 +21,8 @@ par ton chemin réel.
 ## 1. Paquets système
 ```bash
 apt update && apt upgrade -y
-apt install -y nginx mysql-server git unzip curl \
-  php8.3-fpm php8.3-cli php8.3-mysql php8.3-mbstring php8.3-xml \
+apt install -y nginx postgresql git unzip curl \
+  php8.3-fpm php8.3-cli php8.3-pgsql php8.3-mbstring php8.3-xml \
   php8.3-curl php8.3-zip php8.3-bcmath php8.3-intl php8.3-gd
 # Composer
 curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/local/bin/composer
@@ -32,11 +32,10 @@ curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt install -y node
 > Vérifie ta version PHP : `php -v`. Si ce n'est pas 8.3, adapte `php8.3` partout
 > (fichier Nginx, services systemd, `scripts/deploy.sh`).
 
-## 2. Base de données MySQL
+## 2. Base de données PostgreSQL
 ```bash
-mysql -e "CREATE DATABASE educonnect CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-mysql -e "CREATE USER 'educonnect'@'127.0.0.1' IDENTIFIED BY 'change_me_strong';"
-mysql -e "GRANT ALL PRIVILEGES ON educonnect.* TO 'educonnect'@'127.0.0.1'; FLUSH PRIVILEGES;"
+sudo -u postgres psql -c "CREATE ROLE educonnect LOGIN PASSWORD 'change_me_strong';"
+sudo -u postgres psql -c "CREATE DATABASE educonnect OWNER educonnect ENCODING 'UTF8';"
 ```
 
 ## 3. Récupérer le code
