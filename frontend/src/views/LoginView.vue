@@ -118,17 +118,21 @@ async function onSubmit(): Promise<void> {
 /* ── Page ── */
 .page {
   min-height: 100vh;
+  /* dvh : tient compte du clavier mobile (viewport dynamique) */
+  min-height: 100dvh;
   display: flex;
-  align-items: center;
-  justify-content: center;
   background: radial-gradient(ellipse 100% 80% at 50% -10%, #14306e 0%, #0a1838 45%, #060e22 100%);
   padding: 1.5rem;
+  /* permet de faire défiler la carte quand le clavier réduit la hauteur */
+  overflow-y: auto;
 }
 
 /* ── Card ── */
 .card {
   width: 100%;
   max-width: 420px;
+  /* centre la carte tout en autorisant le scroll si le clavier rétrécit l'espace */
+  margin: auto;
   background: linear-gradient(165deg, #15295a 0%, #0e1d44 100%);
   border: 1px solid rgba(96, 165, 250, 0.28);
   border-radius: 20px;

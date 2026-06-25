@@ -50,7 +50,7 @@ async function onSubmit(): Promise<void> {
 </template>
 
 <style scoped>
-.page { min-height: 100vh; display: grid; place-items: center; padding: 1rem; background: var(--bg); }
+.page { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 1rem; background: var(--bg); overflow-y: auto; }
 .login-card { width: 100%; max-width: 24rem; }
 .card-body { padding: 1.2rem; display: flex; flex-direction: column; gap: 0.75rem; }
 .hint { color: var(--text-soft); font-size: 0.88rem; margin: 0; }
