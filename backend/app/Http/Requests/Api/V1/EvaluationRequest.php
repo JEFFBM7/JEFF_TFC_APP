@@ -6,11 +6,29 @@ use App\Models\ClassRoom;
 use App\Models\Evaluation;
 use App\Models\Period;
 use App\Models\Term;
+use App\Support\SchoolYearContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class EvaluationRequest extends FormRequest
 {
+    /**
+     * Verrouille l'année archivée avant toute validation : une année close
+     * doit répondre 423 (Locked) même si la charge utile est par ailleurs invalide.
+     */
+    protected function prepareForValidation(): void
+    {
+        $periodId = $this->integer('period_id');
+        if ($periodId <= 0) {
+            return;
+        }
+
+        $period = Period::query()->with('term')->find($periodId);
+        if ($period?->term !== null) {
+            SchoolYearContext::assertTermNotArchived($period->term);
+        }
+    }
+
     public function authorize(): bool
     {
         /** @var Evaluation|null $evaluation */

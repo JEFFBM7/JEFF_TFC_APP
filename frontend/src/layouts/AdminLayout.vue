@@ -8,8 +8,6 @@ import { MESSAGES_UNREAD_EVENT, subscribeToMessageUpdates, type MessageRealtimeE
 import PortalBottomNav, { type PortalTab } from '../components/portal/PortalBottomNav.vue'
 import PortalInstallBanner from '../components/portal/PortalInstallBanner.vue'
 import { usePortalPwa } from '../composables/usePortalPwa'
-import DevCalendarSimulator from '../components/DevCalendarSimulator.vue'
-import SchoolCalendarBanner from '../components/SchoolCalendarBanner.vue'
 import SchoolYearSwitcher from '../components/SchoolYearSwitcher.vue'
 import { providePortalTopbarOverride } from '../composables/usePortalTopbarOverride'
 import { useAuthStore } from '../stores/auth'
@@ -364,6 +362,14 @@ const portalBottomTabs = computed<PortalTab[]>(() => {
     })
   }
 
+  if (auth.hasRole('eleve')) {
+    tabs.push({
+      label: 'Horaire',
+      to: { name: 'student-timetable' },
+      icon: CalendarDays,
+    })
+  }
+
   tabs.push({
     label: 'Messages',
     to: messagesItem.to,
@@ -577,7 +583,6 @@ async function onLogout(): Promise<void> {
             Messagerie
             <span v-if="unreadCount > 0" class="topbar-badge">{{ unreadCount }}</span>
           </RouterLink>
-          <span v-if="!isPortalUser" class="role-pill">{{ roleLabel }}</span>
           <div v-if="!isPortalUser" class="topbar-user">
             <div class="user-copy">
               <span class="user-name">{{ auth.user?.name }}</span>
@@ -601,9 +606,6 @@ async function onLogout(): Promise<void> {
         </button>
       </div>
 
-      <SchoolCalendarBanner
-        v-if="showSchoolYearSwitcher && !isPortalUser && route.name !== 'dashboard'"
-      />
 
       <nav
         v-if="sectionNavItems.length > 1"
@@ -662,9 +664,9 @@ async function onLogout(): Promise<void> {
   --sidebar-width: 280px;
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
-  min-height: 100vh;
+  height: 100%;
   background:
-    radial-gradient(circle at top left, rgba(69, 92, 255, 0.08), transparent 28rem),
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.06), transparent 28rem),
     var(--bg);
 }
 
@@ -683,7 +685,7 @@ async function onLogout(): Promise<void> {
 .sidebar {
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: 100%;
   overflow-y: auto;
   background: var(--bg-card);
   border-right: 1px solid var(--border);
@@ -704,11 +706,11 @@ async function onLogout(): Promise<void> {
   border-radius: var(--radius);
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-  color: white;
+  background: linear-gradient(135deg, #1d4ed8, #0f2455);
+  color: #60a5fa;
   font-weight: 800;
   letter-spacing: 0.02em;
-  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 
 .brand-name {
@@ -733,7 +735,7 @@ async function onLogout(): Promise<void> {
   padding: 0.75rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: #f9fbff;
+  background: var(--bg-subtle);
 }
 
 .profile-copy {
@@ -802,9 +804,11 @@ async function onLogout(): Promise<void> {
 }
 
 .nav-link.is-active {
-  background: var(--primary-soft);
-  color: var(--primary-dark);
+  background: linear-gradient(135deg, var(--primary-soft), rgba(59, 130, 246, 0.08));
+  color: var(--accent);
   font-weight: 700;
+  border-left: 2px solid var(--primary);
+  padding-left: calc(0.65rem - 2px);
 }
 
 .nav-dot {
@@ -824,7 +828,7 @@ async function onLogout(): Promise<void> {
   width: 1rem;
   height: 1rem;
   flex: 0 0 auto;
-  color: #94a3b8;
+  color: var(--text-muted);
   stroke-width: 2.2;
 }
 
@@ -857,8 +861,8 @@ async function onLogout(): Promise<void> {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  max-height: 100vh;
+  height: 100%;
+  max-height: 100%;
   overflow: hidden;
 }
 
@@ -873,7 +877,7 @@ async function onLogout(): Promise<void> {
   gap: 1rem;
   padding: 0.85rem 1.5rem;
   border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.86);
+  background: rgba(5, 13, 31, 0.9);
   backdrop-filter: blur(18px);
 }
 
@@ -1035,7 +1039,6 @@ async function onLogout(): Promise<void> {
 }
 
 .message-link,
-.role-pill,
 .logout-button {
   min-height: 2.15rem;
   display: inline-flex;
@@ -1055,16 +1058,9 @@ async function onLogout(): Promise<void> {
 }
 
 .message-link:hover {
-  border-color: #cfd9ef;
-  background: #f8faff;
+  border-color: var(--border-strong);
+  background: var(--bg-subtle);
   text-decoration: none;
-}
-
-.role-pill {
-  padding: 0.35rem 0.65rem;
-  border: 1px solid #d5e0ff;
-  background: var(--primary-soft);
-  color: var(--primary);
 }
 
 .topbar-user {
@@ -1112,8 +1108,8 @@ async function onLogout(): Promise<void> {
   height: 2.1rem;
   flex: 0 0 auto;
   border-radius: 50%;
-  background: linear-gradient(135deg, #eef3ff, #dfe8ff);
-  color: var(--primary);
+  background: linear-gradient(135deg, #1d4ed8, #0f2455);
+  color: #60a5fa;
   display: grid;
   place-items: center;
   font-size: 0.78rem;
@@ -1166,9 +1162,9 @@ async function onLogout(): Promise<void> {
   align-items: center;
   gap: 0.7rem;
   padding: 0.55rem 1.5rem;
-  border-bottom: 1px solid #fde68a;
-  background: linear-gradient(90deg, #fff7ed, #fef9c3);
-  color: #92400e;
+  border-bottom: 1px solid rgba(251, 191, 36, 0.3);
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.1), rgba(251, 191, 36, 0.05));
+  color: var(--warn);
   font-size: 0.85rem;
   font-weight: 700;
 }
@@ -1188,10 +1184,10 @@ async function onLogout(): Promise<void> {
 
 .historical-cta {
   padding: 0.35rem 0.7rem;
-  border: 1px solid #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.4);
   border-radius: 999px;
-  background: #fff7ed;
-  color: #92400e;
+  background: rgba(251, 191, 36, 0.1);
+  color: var(--warn);
   font-size: 0.78rem;
   font-weight: 800;
   cursor: pointer;
@@ -1199,8 +1195,8 @@ async function onLogout(): Promise<void> {
 }
 
 .historical-cta:hover {
-  background: #fef3c7;
-  border-color: #f59e0b;
+  background: rgba(251, 191, 36, 0.18);
+  border-color: rgba(251, 191, 36, 0.6);
 }
 
 .section-nav-shell {
@@ -1208,7 +1204,7 @@ async function onLogout(): Promise<void> {
   top: 4.35rem;
   z-index: 9;
   border-bottom: 1px solid var(--border);
-  background: rgba(246, 248, 252, 0.9);
+  background: rgba(5, 13, 31, 0.9);
   backdrop-filter: blur(14px);
 }
 
@@ -1244,8 +1240,8 @@ async function onLogout(): Promise<void> {
 
 .section-nav-link:hover {
   background: var(--primary-soft);
-  border-color: #dbe5ff;
-  color: var(--primary);
+  border-color: var(--border-strong);
+  color: var(--accent);
   text-decoration: none;
 }
 
@@ -1296,8 +1292,7 @@ async function onLogout(): Promise<void> {
 }
 
 @media (max-width: 1180px) {
-  .topbar-user .user-copy,
-  .role-pill {
+  .topbar-user .user-copy {
     display: none;
   }
 }
@@ -1311,7 +1306,7 @@ async function onLogout(): Promise<void> {
     position: fixed;
     inset: 0 auto 0 0;
     width: min(86vw, var(--sidebar-width));
-    height: 100vh;
+    height: 100dvh;
     transform: translateX(-105%);
     transition: transform 0.2s ease;
   }

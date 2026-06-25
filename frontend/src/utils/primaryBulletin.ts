@@ -1,8 +1,17 @@
 import {
   getPrimaryBulletinRows,
   PRIMARY_GRAND_TOTAL_MAX,
+  type PrimaryBulletinTier,
   type PrimarySubjectRow,
 } from '../data/primaryBulletinStructure'
+import {
+  getPrimaryMoyenBulletinRows,
+  PRIMARY_MOYEN_GRAND_TOTAL_MAX,
+} from '../data/primaryMoyenBulletinStructure'
+import {
+  getPrimaryTerminalBulletinRows,
+  PRIMARY_TERMINAL_GRAND_TOTAL_MAX,
+} from '../data/primaryTerminalBulletinStructure'
 import type { ReportCardData, ReportCardEvaluation, ReportCardSubject } from '../types'
 
 export interface PrimaryTrimesterScores {
@@ -22,6 +31,8 @@ export interface PrimaryFilledRow extends PrimarySubjectRow {
 }
 
 export interface PrimaryBulletinTotals {
+  /** Somme des maxima « MAX per » (1re colonne du 1er trimestre). */
+  maxPerPeriod: number
   maximaT1: PrimaryTrimesterScores
   maximaT2: PrimaryTrimesterScores
   maximaT3: PrimaryTrimesterScores
@@ -106,11 +117,13 @@ function buildTrimesterScores(
   periodIds: [number | undefined, number | undefined],
 ): PrimaryTrimesterScores {
   if (row.kind !== 'subject' || !subject) {
+    const hasMaxima = row.kind === 'subject' || row.kind === 'subtotal'
+
     return {
-      max: row.kind === 'subtotal' ? row.trimesterMax : null,
+      max: hasMaxima ? row.trimesterMax : null,
       period1: null,
       period2: null,
-      examMax: row.kind === 'subtotal' ? row.examMax : null,
+      examMax: hasMaxima ? row.examMax : null,
       exam: null,
       total: null,
     }
@@ -161,10 +174,22 @@ function periodIdsFromReport(report: ReportCardData | null): [number | undefined
   ]
 }
 
+function resolveGrandTotalMax(tier: PrimaryBulletinTier): number {
+  if (tier === 'terminal') return PRIMARY_TERMINAL_GRAND_TOTAL_MAX
+  return tier === 'moyen' ? PRIMARY_MOYEN_GRAND_TOTAL_MAX : PRIMARY_GRAND_TOTAL_MAX
+}
+
+function resolveBulletinRows(tier: PrimaryBulletinTier): PrimarySubjectRow[] {
+  if (tier === 'terminal') return getPrimaryTerminalBulletinRows()
+  return tier === 'moyen' ? getPrimaryMoyenBulletinRows() : getPrimaryBulletinRows()
+}
+
 export function buildPrimaryBulletinRows(
   trimesterReports: [ReportCardData | null, ReportCardData | null, ReportCardData | null],
+  tier: PrimaryBulletinTier = 'debut',
 ): { rows: PrimaryFilledRow[]; totals: PrimaryBulletinTotals } {
-  const bulletinRows = getPrimaryBulletinRows()
+  const bulletinRows = resolveBulletinRows(tier)
+  const maxGrandTotal = resolveGrandTotalMax(tier)
   const periodIds = [
     periodIdsFromReport(trimesterReports[0]),
     periodIdsFromReport(trimesterReports[1]),
@@ -193,8 +218,8 @@ export function buildPrimaryBulletinRows(
     ? Math.round(((totalsT1.total ?? 0) + (totalsT2.total ?? 0) + (totalsT3.total ?? 0)) * 100) / 100
     : null
 
-  const percentage = grandTotal !== null && PRIMARY_GRAND_TOTAL_MAX > 0
-    ? Math.round((grandTotal / PRIMARY_GRAND_TOTAL_MAX) * 10000) / 100
+  const percentage = grandTotal !== null && maxGrandTotal > 0
+    ? Math.round((grandTotal / maxGrandTotal) * 10000) / 100
     : null
 
   const periodMaxSum = rows.filter((r) => r.kind === 'subject').reduce((s, r) => s + r.periodMax, 0)
@@ -211,6 +236,7 @@ export function buildPrimaryBulletinRows(
   return {
     rows,
     totals: {
+      maxPerPeriod: periodMaxSum,
       maximaT1: buildMaxima(totalsT1),
       maximaT2: buildMaxima(totalsT2),
       maximaT3: buildMaxima(totalsT3),
@@ -219,9 +245,14 @@ export function buildPrimaryBulletinRows(
       totalsT3,
       grandTotal,
       percentage,
-      maxGrandTotal: PRIMARY_GRAND_TOTAL_MAX,
+      maxGrandTotal,
     },
   }
+}
+
+export function primaryAnnualMax(row: PrimarySubjectRow): number | null {
+  if (row.kind !== 'subject' && row.kind !== 'subtotal') return null
+  return row.trimesterMax * 3
 }
 
 export { formatBulletinPercent, formatBulletinPoints } from './ctebBulletin'

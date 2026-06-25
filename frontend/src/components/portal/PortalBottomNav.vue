@@ -65,8 +65,8 @@ function isActive(tab: PortalTab): boolean {
   min-height: 4.6rem;
   padding: 0.4rem max(0.65rem, env(safe-area-inset-left)) calc(0.5rem + env(safe-area-inset-bottom)) max(0.65rem, env(safe-area-inset-right));
   border-top: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.97);
-  box-shadow: 0 -10px 32px rgba(15, 23, 42, 0.08);
+  background: rgba(13, 31, 74, 0.85);
+  box-shadow: 0 -10px 32px rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(16px);
 }
 
@@ -97,15 +97,22 @@ function isActive(tab: PortalTab): boolean {
 }
 
 .portal-tab.is-active {
-  color: var(--primary);
+  color: var(--accent);
+}
+
+.portal-tab.is-active .portal-tab-icon-wrap {
+  background: var(--primary-soft);
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px var(--primary-tint);
 }
 
 .portal-tab-icon-wrap {
   position: relative;
   display: grid;
-  width: 1.6rem;
-  height: 1.6rem;
+  width: 2.1rem;
+  height: 1.7rem;
   place-items: center;
+  transition: background 0.18s ease, box-shadow 0.18s ease;
 }
 
 .portal-tab-icon {
@@ -127,7 +134,7 @@ function isActive(tab: PortalTab): boolean {
   right: 0;
   width: 0.45rem;
   height: 0.45rem;
-  border: 1.5px solid #fff;
+  border: 1.5px solid var(--bg-card);
   border-radius: 999px;
   background: var(--danger);
 }
@@ -142,7 +149,7 @@ function isActive(tab: PortalTab): boolean {
   min-width: 1rem;
   height: 1rem;
   padding: 0 0.25rem;
-  border: 1.5px solid #fff;
+  border: 1.5px solid var(--bg-card);
   border-radius: 999px;
   background: var(--danger);
   color: #fff;

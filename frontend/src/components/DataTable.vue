@@ -6,6 +6,8 @@ export interface Column<T> {
   label: string
   width?: string
   align?: 'left' | 'center' | 'right'
+  /** Accès optionnel typé à la valeur de la cellule (extension). */
+  accessor?: (row: T) => unknown
 }
 
 const props = defineProps<{
@@ -168,7 +170,10 @@ function onRowClick(item: T, event: Event) {
   background-color: var(--bg-soft);
 }
 .is-selected {
-  background-color: #f8fbff;
+  background-color: var(--primary-soft);
+}
+.is-selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--primary);
 }
 .select-col {
   width: 3rem;

@@ -119,7 +119,7 @@ body.portal-thread-open .app-shell.is-portal .section-nav-shell {
 }
 
 .portal-grade-total {
-  border-color: #d5e0ff;
+  border-color: rgba(59, 130, 246, 0.3);
   background: var(--primary-tint);
 }
 
@@ -203,10 +203,10 @@ body.portal-thread-open .app-shell.is-portal .section-nav-shell {
   top: 4rem;
   z-index: 8;
   padding: 0.85rem;
-  border: 1px solid #dbe5ff;
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background:
-    linear-gradient(135deg, rgba(52, 87, 255, 0.08), rgba(255, 255, 255, 0.96)),
+    linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(13, 31, 74, 0.96)),
     var(--bg-card);
   box-shadow: var(--shadow);
 }
@@ -278,10 +278,10 @@ body.portal-thread-open .app-shell.is-portal .section-nav-shell {
   max-width: 36rem;
   margin-inline: auto;
   padding: 0.7rem 0.75rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: calc(var(--radius) + 2px);
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+  background: rgba(13, 31, 74, 0.98);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
   pointer-events: auto;
 }
 

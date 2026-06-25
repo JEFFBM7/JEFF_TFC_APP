@@ -20,7 +20,6 @@ import BroadcastComposeModal from '../components/BroadcastComposeModal.vue'
 import ComposeMessageSheet from '../components/messages/ComposeMessageSheet.vue'
 import PortalMessagesApp from '../components/messages/PortalMessagesApp.vue'
 import AnnouncementDetailView from '../components/messages/AnnouncementDetailView.vue'
-import Modal from '../components/Modal.vue'
 import { usePortalDashboard } from '../composables/usePortalDashboard'
 import { usePortalTopbarOverride } from '../composables/usePortalTopbarOverride'
 import { useConfirmStore } from '../stores/confirm'
@@ -257,20 +256,6 @@ const canEditSelectedAnnouncement = computed(() =>
     && Boolean(selectedAnnouncementGroup.value?.message.broadcast_id)
     && selectedAnnouncementGroup.value?.message.sender_id === auth.user?.id,
 )
-const selectedAnnouncementRecipients = computed(() =>
-  selectedAnnouncementGroup.value?.message.broadcast_recipients ?? [],
-)
-const selectedAnnouncementRecipientRoleCounts = computed(() => {
-  const counts = new Map<string, number>()
-
-  for (const recipient of selectedAnnouncementRecipients.value) {
-    const label = roleLabel(recipient.role)
-    counts.set(label, (counts.get(label) ?? 0) + 1)
-  }
-
-  return [...counts.entries()].map(([label, count]) => ({ label, count }))
-})
-
 const announcementPrimaryLabel = computed(() =>
   announcementMode.value === 'sent' ? 'Diffusions envoyées' : 'Annonces reçues',
 )
@@ -483,25 +468,6 @@ function messagePreview(msg: Message): string {
   const text = (msg.body ?? '').replace(/\s+/g, ' ').trim()
   if (!text) return 'Aucun aperçu disponible.'
   return text.length > 96 ? `${text.slice(0, 96)}…` : text
-}
-
-function formatChatTime(iso?: string): string {
-  if (!iso) return ''
-  const date = new Date(iso)
-  const now = new Date()
-  const sameDay = date.toDateString() === now.toDateString()
-
-  if (sameDay) {
-    return date.toLocaleTimeString('fr-FR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
-
-  return date.toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-  })
 }
 
 function formatListTime(value?: string): string {
@@ -967,7 +933,7 @@ async function openComposeFromStudent(
     openCompose()
     composeForm.subject = subject
     if (parentUser?.id) {
-      composeForm.recipient_id = String(parentUser.id)
+      composeForm.recipient_id = parentUser.id
     }
   } catch {
     openCompose()
@@ -1911,11 +1877,11 @@ watch([selected, draftRecipient], () => {
   justify-content: space-between;
   gap: 1rem;
   padding: 1.25rem;
-  border: 1px solid #d9e2ff;
+  border: 1px solid var(--border-strong);
   border-radius: calc(var(--radius) + 8px);
   background:
-    radial-gradient(circle at top right, rgba(52, 87, 255, 0.18), transparent 18rem),
-    linear-gradient(135deg, #ffffff 0%, #f6f8ff 100%);
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.18), transparent 18rem),
+    linear-gradient(135deg, var(--bg-card) 0%, var(--bg-subtle) 100%);
   box-shadow: var(--shadow-card);
 }
 
@@ -2008,7 +1974,7 @@ watch([selected, draftRecipient], () => {
   gap: 0.75rem;
   padding: 1rem;
   border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-subtle) 100%);
 }
 
 .sidebar-top h2 {
@@ -2081,7 +2047,7 @@ watch([selected, draftRecipient], () => {
   justify-content: center;
   flex: 0 0 auto;
   border-radius: 999px;
-  background: linear-gradient(135deg, #e6ecff, #f7f9ff);
+  background: linear-gradient(135deg, var(--primary-soft), var(--bg-soft));
   color: var(--primary);
   font-weight: 850;
 }
@@ -2099,7 +2065,7 @@ watch([selected, draftRecipient], () => {
 }
 
 .mini-avatar.muted {
-  background: #f2f4f7;
+  background: var(--bg-soft);
   color: var(--text-soft);
 }
 
@@ -2188,8 +2154,8 @@ watch([selected, draftRecipient], () => {
   margin-right: 0.35rem;
   padding: 0.12rem 0.45rem;
   border-radius: 999px;
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--primary-soft);
+  color: var(--accent);
   font-size: 0.68rem;
   font-weight: 850;
   text-transform: uppercase;
@@ -2219,7 +2185,7 @@ watch([selected, draftRecipient], () => {
   gap: 1rem;
   padding: 1.1rem 1.25rem;
   border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-subtle) 100%);
 }
 
 .reader-title {
@@ -2276,7 +2242,7 @@ watch([selected, draftRecipient], () => {
 }
 
 .reply-card {
-  border-left: 4px solid #dbeafe;
+  border-left: 4px solid var(--primary-tint);
 }
 
 .reply-heading {
@@ -2414,7 +2380,7 @@ watch([selected, draftRecipient], () => {
   padding: 0.95rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: #ffffff;
+  background: var(--bg-card);
 }
 
 .compose-panel-heading {
@@ -2453,9 +2419,9 @@ watch([selected, draftRecipient], () => {
   gap: 0.65rem;
   min-width: 0;
   padding: 0.7rem;
-  border: 1px solid #d5e0ff;
+  border: 1px solid var(--primary-tint);
   border-radius: var(--radius);
-  background: #f7f9ff;
+  background: var(--bg-soft);
 }
 
 .selected-recipient > span:last-child,
@@ -2491,7 +2457,7 @@ watch([selected, draftRecipient], () => {
   width: 2.35rem;
   height: 2.35rem;
   border-radius: 999px;
-  background: #e9eefb;
+  background: var(--primary-soft);
   color: var(--primary);
   font-size: 0.75rem;
   font-weight: 850;
@@ -2513,7 +2479,7 @@ watch([selected, draftRecipient], () => {
   padding: 0 0.72rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: #f8faff;
+  background: var(--bg-soft);
   color: var(--text-muted);
   transition:
     border-color 0.15s ease,
@@ -2525,7 +2491,7 @@ watch([selected, draftRecipient], () => {
 .compose-input-with-icon:focus-within,
 .compose-textarea-wrap:focus-within {
   border-color: var(--primary);
-  background: #ffffff;
+  background: var(--bg-card);
   box-shadow: 0 0 0 3px rgba(52, 87, 255, 0.14);
 }
 
@@ -2580,7 +2546,7 @@ watch([selected, draftRecipient], () => {
   padding: 0.28rem 0.62rem;
   border-color: var(--border);
   border-radius: 999px;
-  background: #ffffff;
+  background: var(--bg-card);
   color: var(--text-soft);
   font-size: 0.78rem;
   font-weight: 750;
@@ -2588,8 +2554,8 @@ watch([selected, draftRecipient], () => {
 }
 
 .compose-filter-tab:hover {
-  border-color: #c7d5ff;
-  background: #f7f9ff;
+  border-color: var(--primary-tint);
+  background: var(--bg-soft);
   color: var(--primary);
 }
 
@@ -2608,7 +2574,7 @@ watch([selected, draftRecipient], () => {
   min-height: 2.15rem;
   padding: 0.34rem 0.65rem;
   border-radius: 999px;
-  background: #ffffff;
+  background: var(--bg-card);
   color: var(--text);
   font-size: 0.82rem;
   font-weight: 650;
@@ -2620,7 +2586,7 @@ watch([selected, draftRecipient], () => {
   overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: #ffffff;
+  background: var(--bg-card);
 }
 
 .contact-option {
@@ -2643,7 +2609,7 @@ watch([selected, draftRecipient], () => {
 }
 
 .contact-option:hover {
-  background: #f7f9ff;
+  background: var(--bg-soft);
 }
 
 .contact-option.is-selected {
@@ -2659,7 +2625,7 @@ watch([selected, draftRecipient], () => {
   overflow: hidden;
   padding: 0.18rem 0.5rem;
   border-radius: 999px;
-  background: #f2f4f7;
+  background: var(--bg-soft);
   color: var(--text-soft);
   font-size: 0.7rem;
   font-weight: 800;
@@ -2720,7 +2686,7 @@ watch([selected, draftRecipient], () => {
   padding: 0.72rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: #ffffff;
+  background: var(--bg-card);
   color: var(--text-muted);
   transition:
     border-color 0.15s ease,
@@ -2765,7 +2731,7 @@ watch([selected, draftRecipient], () => {
 }
 
 .btn-danger-sm:hover {
-  background: #fef2f2;
+  background: var(--danger-soft);
 }
 
 .btn-muted {
@@ -2877,7 +2843,7 @@ watch([selected, draftRecipient], () => {
   min-height: 0;
   flex-direction: column;
   border-right: 1px solid var(--border);
-  background: #ffffff;
+  background: var(--bg-card);
 }
 
 .chat-sidebar-header {
@@ -2887,7 +2853,7 @@ watch([selected, draftRecipient], () => {
   gap: 0.8rem;
   padding: 1rem;
   border-bottom: 1px solid var(--border);
-  background: #f7f9fc;
+  background: var(--bg-soft);
 }
 
 .chat-sidebar-header h1 {
@@ -2927,13 +2893,13 @@ watch([selected, draftRecipient], () => {
 .chat-search {
   padding: 0.7rem 0.85rem;
   border-bottom: 1px solid var(--border);
-  background: #ffffff;
+  background: var(--bg-card);
 }
 
 .chat-search input {
   min-height: 2.35rem;
   border-radius: 999px;
-  background: #f2f5fb;
+  background: var(--bg-soft);
   padding-inline: 0.95rem;
 }
 
@@ -2982,18 +2948,18 @@ watch([selected, draftRecipient], () => {
 }
 
 .conversation-row:hover {
-  background: #f7f9fc;
+  background: var(--bg-soft);
 }
 
 .msg-item-active .conversation-row {
-  background: #edf3ff;
+  background: var(--primary-soft);
   box-shadow: inset 4px 0 0 var(--primary);
 }
 
 .conversation-row .msg-avatar {
   width: 2.75rem;
   height: 2.75rem;
-  background: #e9eefb;
+  background: var(--primary-soft);
   color: var(--primary);
 }
 
@@ -3026,7 +2992,7 @@ watch([selected, draftRecipient], () => {
   gap: 0.5rem;
   padding: 0.65rem 0.85rem;
   border-top: 1px solid var(--border);
-  background: #ffffff;
+  background: var(--bg-card);
   color: var(--text-muted);
   font-size: 0.78rem;
 }
@@ -3036,7 +3002,7 @@ watch([selected, draftRecipient], () => {
   min-width: 0;
   min-height: 0;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  background: #f4f7fb;
+  background: var(--bg-soft);
 }
 
 .chat-header {
@@ -3173,8 +3139,8 @@ watch([selected, draftRecipient], () => {
 
 .is-mine .bubble {
   border-bottom-right-radius: 0.28rem;
-  background: #dce9ff;
-  color: #102a56;
+  background: var(--primary-soft);
+  color: var(--accent);
 }
 
 .is-other .bubble {
@@ -3206,8 +3172,8 @@ watch([selected, draftRecipient], () => {
   margin-bottom: 0.3rem !important;
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
-  background: rgba(29, 78, 216, 0.12);
-  color: #1d4ed8;
+  background: var(--primary-soft);
+  color: var(--accent);
   font-size: 0.68rem;
   font-weight: 850;
   text-transform: uppercase;
@@ -3258,7 +3224,7 @@ watch([selected, draftRecipient], () => {
   max-height: 8rem;
   resize: vertical;
   border-radius: 1.35rem;
-  background: #f7f9fc;
+  background: var(--bg-soft);
   padding: 0.72rem 0.95rem;
 }
 
@@ -3367,7 +3333,7 @@ watch([selected, draftRecipient], () => {
   padding: 0.6rem;
   border: 1px solid var(--border);
   border-radius: calc(var(--radius) + 2px);
-  background: #ffffff;
+  background: var(--bg-card);
   color: var(--text-soft);
   font-size: 0.78rem;
 }
@@ -3385,7 +3351,7 @@ watch([selected, draftRecipient], () => {
   padding: 0.35rem;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: #ffffff;
+  background: var(--bg-card);
   box-shadow: var(--shadow);
 }
 
@@ -3433,8 +3399,8 @@ watch([selected, draftRecipient], () => {
   border: 1px solid var(--border);
   border-radius: calc(var(--radius) + 10px);
   background:
-    radial-gradient(circle at top right, rgba(52, 87, 255, 0.1), transparent 18rem),
-    #ffffff;
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.1), transparent 18rem),
+    var(--bg-card);
   box-shadow: var(--shadow-card);
 }
 
@@ -3488,7 +3454,7 @@ watch([selected, draftRecipient], () => {
   padding: 2rem;
   border: 1px dashed var(--border-strong);
   border-radius: calc(var(--radius) + 6px);
-  background: rgba(249, 251, 255, 0.76);
+  background: var(--bg-soft);
 }
 
 .announcement-empty h2,
@@ -3511,7 +3477,7 @@ watch([selected, draftRecipient], () => {
   padding: 1rem;
   border: 1px solid var(--border);
   border-radius: calc(var(--radius) + 6px);
-  background: #ffffff;
+  background: var(--bg-card);
   box-shadow: var(--shadow);
   transition:
     transform 0.15s ease,
@@ -3520,8 +3486,7 @@ watch([selected, draftRecipient], () => {
 }
 
 .announcement-card:hover {
-  transform: translateY(-2px);
-  border-color: #c7d5ff;
+  border-color: var(--primary-tint);
   box-shadow: var(--shadow-card);
 }
 

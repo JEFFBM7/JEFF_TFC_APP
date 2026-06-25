@@ -7,7 +7,6 @@ import {
   ChevronRight,
   FileText,
   LogOut,
-  Mail,
   Users,
   GraduationCap,
   User,
@@ -107,28 +106,22 @@ onMounted(() => {
 
 <template>
   <section class="portal-dash portal-profile-page portal-mobile">
-    <header class="portal-dash-hero portal-profile-hero portal-dash-animate">
-      <div class="portal-dash-hero__identity">
-        <div class="portal-dash-hero__avatar" aria-hidden="true">{{ initials(displayName) }}</div>
-        <div class="portal-dash-hero__text">
-          <p class="portal-dash-hero__date">
-            <User aria-hidden="true" />
-            <span>Mon profil</span>
-          </p>
-          <h1>{{ displayName }}</h1>
-          <p class="portal-dash-hero__meta">
-            <span
-              class="portal-profile-role-tag"
-              :class="{ 'portal-profile-role-tag--parent': isParent }"
-            >{{ roleLabel }}</span>
-          </p>
-          <p v-if="auth.user?.email" class="portal-dash-hero__meta" style="margin-top: 0.35rem">
-            <Mail aria-hidden="true" style="width:0.9rem;height:0.9rem" />
-            <span>{{ auth.user.email }}</span>
-          </p>
-        </div>
-      </div>
+    <header class="portal-profile-title portal-dash-animate">
+      <h1>Mon profil</h1>
     </header>
+
+    <!-- Carte d'identité -->
+    <div class="portal-profile-id portal-dash-animate">
+      <div class="portal-profile-id__avatar" aria-hidden="true">{{ initials(displayName) }}</div>
+      <div class="portal-profile-id__info">
+        <strong>{{ displayName }}</strong>
+        <span v-if="auth.user?.email" class="portal-profile-id__email">{{ auth.user.email }}</span>
+        <span
+          class="portal-profile-role-tag"
+          :class="{ 'portal-profile-role-tag--parent': isParent }"
+        >{{ roleLabel }}</span>
+      </div>
+    </div>
 
     <p v-if="loading" class="portal-child-empty portal-dash-animate">Chargement du profil…</p>
     <p v-else-if="error" class="alert alert-error portal-dash-animate" role="alert">{{ error }}</p>
@@ -137,115 +130,95 @@ onMounted(() => {
       <!-- Élève : infos scolaires -->
       <section
         v-if="isStudent && studentProfile"
-        class="portal-dash-section portal-dash-animate portal-dash-animate--delay-1"
+        class="portal-settings-group portal-dash-animate portal-dash-animate--delay-1"
         aria-labelledby="school-info-heading"
       >
-        <div class="portal-dash-section__head">
-          <h2 id="school-info-heading">Informations scolaires</h2>
-        </div>
-        <div class="portal-profile-info-grid">
-          <div v-if="classroomLabel" class="portal-profile-info-cell">
-            <span>Classe</span>
-            <strong>{{ classroomLabel }}</strong>
+        <p id="school-info-heading" class="portal-settings-group__label">Informations scolaires</p>
+        <div class="portal-settings-card">
+          <div v-if="classroomLabel" class="portal-settings-row portal-settings-row--static">
+            <span class="portal-settings-row__icon"><GraduationCap aria-hidden="true" /></span>
+            <span class="portal-settings-row__label">Classe</span>
+            <span class="portal-settings-row__value">{{ classroomLabel }}</span>
           </div>
-          <div v-if="studentProfile.registration_number" class="portal-profile-info-cell">
-            <span>Matricule</span>
-            <strong>{{ studentProfile.registration_number }}</strong>
+          <div v-if="studentProfile.registration_number" class="portal-settings-row portal-settings-row--static">
+            <span class="portal-settings-row__icon"><User aria-hidden="true" /></span>
+            <span class="portal-settings-row__label">Matricule</span>
+            <span class="portal-settings-row__value">{{ studentProfile.registration_number }}</span>
           </div>
-          <div v-if="!classroomLabel && !studentProfile.registration_number" class="portal-profile-info-cell" style="grid-column: 1 / -1">
-            <span>Profil</span>
-            <strong>Informations en cours de mise à jour</strong>
+          <div v-if="!classroomLabel && !studentProfile.registration_number" class="portal-settings-row portal-settings-row--static">
+            <span class="portal-settings-row__icon"><User aria-hidden="true" /></span>
+            <span class="portal-settings-row__label">Profil</span>
+            <span class="portal-settings-row__value">Mise à jour en cours</span>
           </div>
-        </div>
-      </section>
-
-      <!-- Parent : accès enfants (lien unique, pas liste dupliquée) -->
-      <section
-        v-if="isParent"
-        class="portal-dash-section portal-dash-animate portal-dash-animate--delay-1"
-        aria-labelledby="family-heading"
-      >
-        <div class="portal-dash-section__head">
-          <h2 id="family-heading">Famille</h2>
-        </div>
-        <RouterLink
-          v-if="children.length > 0"
-          :to="{ name: 'parent-children' }"
-          class="portal-profile-summary-link portal-kpi-link"
-        >
-          <span class="portal-profile-summary-link__avatar" aria-hidden="true">
-            <Users style="width:1.15rem;height:1.15rem" />
-          </span>
-          <span class="portal-profile-summary-link__copy">
-            <strong>Mes enfants</strong>
-            <span>{{ childCountLabel }} · Voir le détail</span>
-          </span>
-          <ChevronRight class="portal-profile-nav-item__chevron" aria-hidden="true" />
-        </RouterLink>
-        <div v-else class="portal-child-empty">
-          <strong>Aucun enfant rattaché</strong>
-          <p>Contactez le secrétariat pour associer un enfant à votre compte parent.</p>
         </div>
       </section>
 
       <!-- Élève : accès rapides (hors barre de navigation) -->
       <section
         v-if="studentLinks.length"
-        class="portal-child-section portal-dash-animate portal-dash-animate--delay-2"
+        class="portal-settings-group portal-dash-animate portal-dash-animate--delay-2"
         aria-labelledby="access-heading"
       >
-        <div class="portal-child-section__head">
-          <div>
-            <p class="portal-child-section__kicker">
-              <GraduationCap aria-hidden="true" />
-              Scolarité
-            </p>
-            <h2 id="access-heading">Accès rapides</h2>
-            <p class="portal-child-section__sub">Bulletin, absences et emploi du temps</p>
-          </div>
+        <p id="access-heading" class="portal-settings-group__label">Scolarité</p>
+        <div class="portal-settings-card">
+          <RouterLink
+            v-for="link in studentLinks"
+            :key="link.label"
+            :to="link.to"
+            class="portal-settings-row portal-kpi-link"
+          >
+            <span class="portal-settings-row__icon">
+              <component :is="link.icon" aria-hidden="true" />
+            </span>
+            <span class="portal-settings-row__label">{{ link.label }}</span>
+            <ChevronRight class="portal-settings-row__chevron" aria-hidden="true" />
+          </RouterLink>
         </div>
-        <div class="portal-child-section__body">
-          <ul class="portal-profile-nav-list">
-            <li v-for="link in studentLinks" :key="link.label">
-              <RouterLink :to="link.to" class="portal-profile-nav-item portal-kpi-link">
-                <span class="portal-profile-nav-item__icon">
-                  <component :is="link.icon" aria-hidden="true" />
-                </span>
-                <span class="portal-profile-nav-item__copy">
-                  <span class="portal-profile-nav-item__label">{{ link.label }}</span>
-                  <span class="portal-profile-nav-item__desc">{{ link.description }}</span>
-                </span>
-                <ChevronRight class="portal-profile-nav-item__chevron" aria-hidden="true" />
-              </RouterLink>
-            </li>
-          </ul>
+      </section>
+
+      <!-- Parent : accès enfants -->
+      <section
+        v-if="isParent"
+        class="portal-settings-group portal-dash-animate portal-dash-animate--delay-1"
+        aria-labelledby="family-heading"
+      >
+        <p id="family-heading" class="portal-settings-group__label">Famille</p>
+        <div class="portal-settings-card">
+          <RouterLink
+            v-if="children.length > 0"
+            :to="{ name: 'parent-children' }"
+            class="portal-settings-row portal-kpi-link"
+          >
+            <span class="portal-settings-row__icon"><Users aria-hidden="true" /></span>
+            <span class="portal-settings-row__label">Mes enfants</span>
+            <span class="portal-settings-row__value">{{ childCountLabel }}</span>
+            <ChevronRight class="portal-settings-row__chevron" aria-hidden="true" />
+          </RouterLink>
+          <div v-else class="portal-child-empty">
+            <strong>Aucun enfant rattaché</strong>
+            <p>Contactez le secrétariat pour associer un enfant à votre compte parent.</p>
+          </div>
         </div>
       </section>
 
       <!-- Compte -->
       <section
-        class="portal-child-section portal-dash-animate portal-dash-animate--delay-3"
+        class="portal-settings-group portal-dash-animate portal-dash-animate--delay-3"
         aria-labelledby="account-heading"
       >
-        <div class="portal-child-section__head">
-          <div>
-            <p class="portal-child-section__kicker">
-              <User aria-hidden="true" />
-              Session
-            </p>
-            <h2 id="account-heading">Compte</h2>
-            <p class="portal-child-section__sub">Déconnexion sécurisée de l'application</p>
-          </div>
-        </div>
-        <div class="portal-child-section__body">
+        <p id="account-heading" class="portal-settings-group__label">Compte</p>
+        <div class="portal-settings-card">
           <button
             type="button"
-            class="portal-profile-logout"
+            class="portal-settings-row portal-settings-row--danger"
             :disabled="loggingOut"
             @click="onLogout"
           >
-            <LogOut aria-hidden="true" />
-            <span>{{ loggingOut ? 'Déconnexion…' : 'Se déconnecter' }}</span>
+            <span class="portal-settings-row__icon portal-settings-row__icon--danger">
+              <LogOut aria-hidden="true" />
+            </span>
+            <span class="portal-settings-row__label">{{ loggingOut ? 'Déconnexion…' : 'Se déconnecter' }}</span>
+            <ChevronRight class="portal-settings-row__chevron" aria-hidden="true" />
           </button>
         </div>
       </section>

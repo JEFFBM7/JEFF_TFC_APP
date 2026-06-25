@@ -376,14 +376,32 @@ const divisionRows = computed(() => {
       classroom.section,
       classroom.option ?? classroom.school_option?.name ?? '',
     )
-    if (linkedDivisionKeys.has(key)) continue
+    // À clé identique, on n'écarte la classe d'une autre année que si elle n'a
+    // aucun élève : une division qui porte une inscription sur l'année courante
+    // (ex. issue d'un seed historique) doit primer sur sa jumelle vide.
+    if (linkedDivisionKeys.has(key) && (classroom.student_count ?? 0) === 0) continue
 
     rows.push(
       classroomToRow(classroom, classroom.school_class_id ?? 0),
     )
   }
 
-  const scopedRows = rows.filter((row) => isCycleAuthorized(row.level?.cycle))
+  // Déduplication finale par clé : on conserve la division la plus « peuplée »
+  // pour éviter qu'une jumelle vide masque celle qui contient réellement les élèves.
+  const rowsByKey = new Map<string, ClassTableRow>()
+  for (const row of rows) {
+    const key = divisionKey(
+      row.level_id,
+      row.section,
+      row.option ?? row.school_option?.name ?? '',
+    )
+    const existing = rowsByKey.get(key)
+    if (!existing || (row.student_count ?? 0) > (existing.student_count ?? 0)) {
+      rowsByKey.set(key, row)
+    }
+  }
+
+  const scopedRows = [...rowsByKey.values()].filter((row) => isCycleAuthorized(row.level?.cycle))
 
   return sortClassRows(scopedRows)
 })
@@ -400,9 +418,9 @@ const structureCatalogRows = computed(() => {
 
 const searchedDivisionRows = computed(() => {
   const term = normalizeClassSearch(classSearchQuery.value)
-  if (!term) return divisionRows.value
-
-  return divisionRows.value.filter((row) => rowMatchesSearch(row, term))
+  const withStudents = divisionRows.value.filter((row) => (row.student_count ?? 0) > 0)
+  if (!term) return withStudents
+  return withStudents.filter((row) => rowMatchesSearch(row, term))
 })
 
 const searchedStructureRows = computed(() => {
@@ -434,6 +452,18 @@ const activeGroup = computed(
 const totalDivisions = computed(() => divisionRows.value.length)
 
 const structureSlotsCount = computed(() => structureCatalogRows.value.length)
+
+/** Divisions existantes pour le cycle actif, AVANT le filtre "élèves > 0". */
+const activeCycleRawDivisions = computed(() => {
+  const cycle = activeCycle.value
+  if (cycle === 'all' || cycle === 'structure') return divisionRows.value
+  return divisionRows.value.filter((r) => r.level?.cycle === cycle)
+})
+
+/** Vrai si des divisions existent pour ce cycle mais aucune n'a d'élève inscrit. */
+const activeCycleExistsButEmpty = computed(
+  () => activeGroup.value?.classrooms.length === 0 && activeCycleRawDivisions.value.length > 0,
+)
 
 const hasPlannedStructureOnly = computed(() =>
   structureCatalogRows.value.length > 0 && structureCatalogRows.value.every((row) => row.isPlanned),
@@ -842,6 +872,12 @@ onUnmounted(() => {
 
           <div v-if="activeGroup.classrooms.length === 0" class="empty-state compact">
             <template v-if="isStructureView">Aucun emplacement dans ce cycle.</template>
+            <template v-else-if="activeCycleExistsButEmpty">
+              <p>Aucun élève inscrit dans ce cycle.</p>
+              <p class="empty-hint">
+                Les divisions s’afficheront dès la première inscription d’un élève.
+              </p>
+            </template>
             <template v-else>
               <p>Aucune division dans ce cycle.</p>
               <p v-if="isGlobalAdmin" class="empty-hint">
@@ -863,22 +899,6 @@ onUnmounted(() => {
             <template #col-name="{ item }">
               <strong>{{ item.full_name }}</strong>
               <span v-if="item.isPlanned" class="planned-badge">Catalogue EPST</span>
-              <small
-                v-if="item.level?.name && (isStructureView || item.full_name !== item.level.name)"
-                class="row-subtitle"
-              >
-                {{ item.level.name }}
-              </small>
-              <small v-if="!isStructureView && item.section" class="row-subtitle">
-                Section {{ item.section }}
-              </small>
-              <span
-                v-if="item.school_option?.filiere && !isStructureView"
-                class="filiere-badge"
-                :class="`filiere-${item.school_option.filiere}`"
-              >
-                {{ filiereLabel(item.school_option.filiere) }}
-              </span>
             </template>
             <template #col-divisions_count="{ item }">
               <span v-if="item.isPlanned" class="muted-cell">—</span>
@@ -1077,7 +1097,7 @@ button + button { margin-left: 0.4rem; }
   padding: 0.45rem 0.8rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--bg-soft);
   color: var(--text-soft);
   display: inline-flex;
   align-items: center;
@@ -1094,9 +1114,9 @@ button + button { margin-left: 0.4rem; }
 }
 .cycle-tab strong {
   align-items: center;
-  background: #eef2ff;
+  background: var(--primary-soft);
   border-radius: 999px;
-  color: var(--primary);
+  color: var(--accent);
   display: inline-flex;
   font-size: 0.78rem;
   justify-content: center;
@@ -1150,19 +1170,19 @@ button + button { margin-left: 0.4rem; }
   white-space: nowrap;
 }
 .filiere-generale {
-  background: #eef2ff;
-  color: #3730a3;
-  border: 1px solid #c7d2fe;
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--accent);
+  border: 1px solid rgba(59, 130, 246, 0.25);
 }
 .filiere-technique {
-  background: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fde68a;
+  background: var(--warn-soft);
+  color: var(--warn);
+  border: 1px solid rgba(251, 191, 36, 0.25);
 }
 .filiere-professionnelle {
-  background: #dcfce7;
-  color: #166534;
-  border: 1px solid #bbf7d0;
+  background: var(--success-soft);
+  color: var(--success);
+  border: 1px solid rgba(74, 222, 128, 0.25);
 }
 .options-cell {
   position: relative;
@@ -1250,16 +1270,16 @@ button + button { margin-left: 0.4rem; }
   }
 }
 .cycle-tab.structure-tab.active {
-  border-color: #64748b;
-  background: #64748b;
-  box-shadow: 0 8px 18px rgb(100 116 139 / 16%);
+  border-color: var(--text-muted);
+  background: var(--text-muted);
+  box-shadow: 0 8px 18px rgba(74, 106, 144, 0.2);
 }
 .structure-hint,
 .empty-hint {
   margin: 0 0 1rem;
   padding: 0.75rem 1rem;
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--bg-soft);
   border: 1px solid var(--border);
   color: var(--text-soft);
   font-size: 0.88rem;
@@ -1294,8 +1314,8 @@ button + button { margin-left: 0.4rem; }
   margin-left: 0.45rem;
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
-  background: #fef9c3;
-  color: #854d0e;
+  background: var(--warn-soft);
+  color: var(--warn);
   font-size: 0.68rem;
   font-weight: 700;
   vertical-align: middle;

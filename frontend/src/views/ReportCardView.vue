@@ -4,7 +4,7 @@ import { RouterLink } from 'vue-router'
 import { api, apiUrl, ApiError, getToken } from '../api/client'
 import CtebBulletinSheet from '../components/bulletin/CtebBulletinSheet.vue'
 import PrimaireDebutBulletinSheet from '../components/bulletin/PrimaireDebutBulletinSheet.vue'
-import { isPrimaireDebutLevel } from '../data/primaryBulletinStructure'
+import { isOfficialPrimaireBulletinLevel } from '../data/primaryBulletinStructure'
 import MiniChart from '../components/charts/MiniChart.vue'
 import type { ApiResource, ChartSeries, ReportCardData, SchoolYear, Student, StudentTimeline, Term } from '../types'
 import { useSchoolYearStore } from '../stores/schoolYear'
@@ -50,12 +50,12 @@ const selectedTermOption = computed(() =>
 
 const isCtebStudent = computed(() => student.value?.classroom?.level?.cycle === 'cteb')
 
-const isPrimaireDebutStudent = computed(() =>
-  isPrimaireDebutLevel(student.value?.classroom?.level ?? null),
+const isOfficialPrimaireStudent = computed(() =>
+  isOfficialPrimaireBulletinLevel(student.value?.classroom?.level ?? null),
 )
 
 const isOfficialAnnualBulletin = computed(() =>
-  isCtebStudent.value || isPrimaireDebutStudent.value,
+  isCtebStudent.value || isOfficialPrimaireStudent.value,
 )
 
 const ctebSchoolYear = computed(() =>
@@ -70,7 +70,7 @@ const ctebSemesterTerms = computed(() => {
   if (!yearId) return [] as Array<{ term: Term; year: SchoolYear }>
 
   return allTerms.value
-    .filter(({ term, year }) => year.id === yearId)
+    .filter(({ year }) => year.id === yearId)
     .filter(({ term }) => term.applicable_cycle === 'secondaire' || term.term_type === 'semestre')
     .sort((a, b) => a.term.position - b.term.position)
     .slice(0, 2)
@@ -88,7 +88,7 @@ const primaryTrimesterTerms = computed(() => {
   if (!yearId) return [] as Array<{ term: Term; year: SchoolYear }>
 
   return allTerms.value
-    .filter(({ term, year }) => year.id === yearId)
+    .filter(({ year }) => year.id === yearId)
     .filter(({ term }) => term.applicable_cycle === 'primaire' || term.term_type === 'trimestre')
     .sort((a, b) => a.term.position - b.term.position)
     .slice(0, 3)
@@ -170,7 +170,7 @@ async function loadStudentAndYears(): Promise<void> {
     return
   }
 
-  if (isPrimaireDebutLevel(s.data.classroom?.level ?? null)) {
+  if (isOfficialPrimaireBulletinLevel(s.data.classroom?.level ?? null)) {
     const yearId = schoolYearStore.effectiveId ?? schoolYears.value[0]?.id ?? null
     const yearTerms = yearId
       ? allTerms.value.filter(({ year }) => year.id === yearId)
@@ -303,7 +303,7 @@ async function loadReport(): Promise<void> {
     await loadCtebBulletin()
     return
   }
-  if (isPrimaireDebutStudent.value) {
+  if (isOfficialPrimaireStudent.value) {
     await loadPrimaireBulletin()
     return
   }
@@ -331,7 +331,7 @@ const appreciationTermId = computed(() => {
   if (isCtebStudent.value) {
     return ctebSemesterTerms.value[ctebSemesterTerms.value.length - 1]?.term.id ?? null
   }
-  if (isPrimaireDebutStudent.value) {
+  if (isOfficialPrimaireStudent.value) {
     return primaryTrimesterTerms.value[primaryTrimesterTerms.value.length - 1]?.term.id ?? null
   }
   return selectedTerm.value
@@ -358,7 +358,7 @@ async function saveAppreciation(): Promise<void> {
 function downloadPdf(): void {
   const termId = isCtebStudent.value
     ? ctebSemesterTerms.value[ctebSemesterTerms.value.length - 1]?.term.id
-    : isPrimaireDebutStudent.value
+    : isOfficialPrimaireStudent.value
       ? primaryTrimesterTerms.value[primaryTrimesterTerms.value.length - 1]?.term.id
       : selectedTerm.value
   if (!termId || !student.value) return
@@ -433,7 +433,7 @@ onMounted(loadStudentAndYears)
           </select>
         </label>
         <button
-          v-if="report || (isCtebStudent && ctebSemesterReports.some(Boolean)) || (isPrimaireDebutStudent && primaryTrimesterReports.some(Boolean))"
+          v-if="report || (isCtebStudent && ctebSemesterReports.some(Boolean)) || (isOfficialPrimaireStudent && primaryTrimesterReports.some(Boolean))"
           type="button"
           class="btn-primary"
           @click="downloadPdf"
@@ -445,7 +445,7 @@ onMounted(loadStudentAndYears)
 
     <p v-if="error" class="alert alert-error">{{ error }}</p>
     <div v-if="loading" class="empty-state">Calcul du bulletin...</div>
-    <div v-else-if="student && !report && !(isCtebStudent && ctebSemesterReports.some(Boolean)) && !(isPrimaireDebutStudent && primaryTrimesterReports.some(Boolean))" class="empty-state">
+    <div v-else-if="student && !report && !(isCtebStudent && ctebSemesterReports.some(Boolean)) && !(isOfficialPrimaireStudent && primaryTrimesterReports.some(Boolean))" class="empty-state">
       {{ isOfficialAnnualBulletin ? 'Sélectionnez une année scolaire pour afficher le bulletin officiel.' : 'Sélectionnez un trimestre pour afficher le bulletin.' }}
     </div>
 
@@ -460,7 +460,7 @@ onMounted(loadStudentAndYears)
     />
 
     <PrimaireDebutBulletinSheet
-      v-if="student && isPrimaireDebutStudent && primaryTrimesterReports.some(Boolean)"
+      v-if="student && isOfficialPrimaireStudent && primaryTrimesterReports.some(Boolean)"
       :student="student"
       :school-year-name="primarySchoolYear?.name ?? '—'"
       :trimester-reports="primaryTrimesterReports"
@@ -617,7 +617,7 @@ onMounted(loadStudentAndYears)
     </template>
 
     <section
-      v-if="student && (report || (isCtebStudent && ctebSemesterReports.some(Boolean)) || (isPrimaireDebutStudent && primaryTrimesterReports.some(Boolean)))"
+      v-if="student && (report || (isCtebStudent && ctebSemesterReports.some(Boolean)) || (isOfficialPrimaireStudent && primaryTrimesterReports.some(Boolean)))"
       class="appreciation-editor"
     >
       <div class="editor-heading">
@@ -774,7 +774,7 @@ onMounted(loadStudentAndYears)
   padding: 1rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--bg-soft);
 }
 
 .average-block strong {
@@ -798,8 +798,8 @@ onMounted(loadStudentAndYears)
 }
 
 .average-block.tone-success {
-  border-color: #bbf7d0;
-  background: #f0fdf4;
+  border-color: rgba(74, 222, 128, 0.3);
+  background: var(--success-soft);
 }
 
 .average-block.tone-success strong {
@@ -807,8 +807,8 @@ onMounted(loadStudentAndYears)
 }
 
 .average-block.tone-warning {
-  border-color: #fed7aa;
-  background: #fff7ed;
+  border-color: rgba(251, 191, 36, 0.3);
+  background: var(--warn-soft);
 }
 
 .average-block.tone-warning strong {
@@ -816,8 +816,8 @@ onMounted(loadStudentAndYears)
 }
 
 .average-block.tone-danger {
-  border-color: #fecdd3;
-  background: #fff1f2;
+  border-color: rgba(248, 113, 113, 0.3);
+  background: var(--danger-soft);
 }
 
 .average-block.tone-danger strong {
@@ -907,7 +907,7 @@ onMounted(loadStudentAndYears)
 }
 
 .report-table tfoot td {
-  background: #f8fafc;
+  background: var(--bg-soft);
   color: var(--text);
   font-weight: 900;
 }
@@ -932,7 +932,7 @@ onMounted(loadStudentAndYears)
   justify-content: center;
   padding: 0.18rem 0.45rem;
   border-radius: 999px;
-  background: #f2f4f7;
+  background: var(--bg-soft);
   color: var(--text-soft);
   font-weight: 900;
 }

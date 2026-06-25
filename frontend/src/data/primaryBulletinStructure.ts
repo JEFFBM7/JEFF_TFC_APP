@@ -85,10 +85,23 @@ export function resolvePrimaryGradeYear(level?: PrimaryLevelRef | null): Primary
   return 1
 }
 
-export function isPrimaireDebutLevel(level?: PrimaryLevelRef | null): boolean {
-  if (level?.cycle !== 'primaire') return false
+export type PrimaryBulletinTier = 'debut' | 'moyen' | 'terminal'
+
+export function resolvePrimaryTier(level?: PrimaryLevelRef | null): PrimaryBulletinTier | null {
+  if (level?.cycle !== 'primaire') return null
   const abbreviation = (level?.abbreviation ?? '').toUpperCase()
-  return abbreviation === '1P' || abbreviation === '2P'
+  if (abbreviation === '1P' || abbreviation === '2P') return 'debut'
+  if (abbreviation === '3P' || abbreviation === '4P') return 'moyen'
+  if (abbreviation === '5P' || abbreviation === '6P') return 'terminal'
+  return null
+}
+
+export function isPrimaireDebutLevel(level?: PrimaryLevelRef | null): boolean {
+  return resolvePrimaryTier(level) === 'debut'
+}
+
+export function isOfficialPrimaireBulletinLevel(level?: PrimaryLevelRef | null): boolean {
+  return resolvePrimaryTier(level) !== null
 }
 
 export function primaryBulletinMeta(level?: PrimaryLevelRef | null): PrimaryBulletinMeta {

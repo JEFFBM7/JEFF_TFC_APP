@@ -151,12 +151,6 @@ function teacherDisplayName(item: Teacher): string {
   return item.user?.name ?? `Enseignant #${item.id}`
 }
 
-function teacherTypeLabel(type?: string | null): string {
-  if (type === 'primaire') return 'Primaire'
-  if (type === 'secondaire') return 'Secondaire'
-  return '—'
-}
-
 const CYCLE_LABELS: Record<LevelCycle, string> = {
   maternel: 'Maternelle',
   primaire: 'Primaire',
@@ -847,7 +841,7 @@ onMounted(load)
           </div>
         </section>
 
-        <section v-else-if="form.teacher_type === 'primaire'" class="form-section">
+        <section v-if="form.teacher_type === 'primaire'" class="form-section">
           <h3>Affectation</h3>
           <p class="section-note">
             Après création, utilisez le menu <strong>⋮</strong> → <strong>Assigner une classe</strong> :
@@ -1023,7 +1017,7 @@ onMounted(load)
 button + button { margin-left: 0.4rem; }
 code {
   font-family: ui-monospace, Consolas, monospace;
-  background: #f1f5f9;
+  background: var(--bg-soft);
   padding: 0.1rem 0.35rem;
   border-radius: 4px;
   font-size: 0.78rem;
@@ -1074,6 +1068,15 @@ code {
   width: 1rem;
   height: 1rem;
   margin: 0;
+}
+tbody .select-col input {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+tbody tr:hover .select-col input,
+tbody tr.is-selected .select-col input,
+tbody tr:focus-within .select-col input {
+  opacity: 1;
 }
 .teacher-toolbar {
   display: flex;
@@ -1128,9 +1131,9 @@ code {
   gap: 0.75rem;
   width: fit-content;
   padding: 0.5rem 0.7rem;
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--primary-tint);
   border-radius: 8px;
-  background: #eff6ff;
+  background: var(--primary-soft);
   color: var(--text);
   font-size: 0.86rem;
 }
@@ -1146,9 +1149,9 @@ code {
 .selection-strip button {
   min-height: 1.8rem;
   padding: 0.2rem 0.55rem;
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--primary-tint);
   border-radius: 6px;
-  background: #fff;
+  background: var(--bg-soft);
   color: var(--primary);
   font-size: 0.8rem;
   font-weight: 800;
@@ -1158,11 +1161,11 @@ code {
   opacity: 0.65;
 }
 .selection-strip .bulk-danger {
-  border-color: #fecdd3;
+  border-color: rgba(248, 113, 113, 0.35);
   color: var(--danger);
 }
 .selection-strip .bulk-danger:hover:not(:disabled) {
-  background: #fff1f2;
+  background: var(--danger-soft);
 }
 .teacher-form {
   display: grid;
@@ -1209,7 +1212,7 @@ code {
   padding: 0.58rem 0.7rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--bg-soft);
   color: var(--text-soft);
   font-size: 0.9rem;
   font-weight: 750;
@@ -1238,14 +1241,14 @@ code {
   padding: 0.8rem;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--bg-soft);
   cursor: pointer;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .type-option.active {
   border-color: var(--primary);
   box-shadow: 0 0 0 1px var(--primary);
-  background: #f8fbff;
+  background: var(--primary-soft);
 }
 .type-option input {
   position: absolute;
@@ -1274,13 +1277,13 @@ code {
   padding: 0.75rem;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--bg-soft);
   cursor: pointer;
 }
 .secondary-role-option.active {
   border-color: var(--primary);
-  background: #f8fbff;
-  box-shadow: 0 0 0 1px rgb(37 99 235 / 12%);
+  background: var(--primary-soft);
+  box-shadow: 0 0 0 1px rgb(59 130 246 / 25%);
 }
 .secondary-role-option input {
   position: absolute;
@@ -1364,7 +1367,7 @@ code {
   min-height: 1.6rem;
   padding: 0.1rem 0.55rem;
   border-radius: 999px;
-  background: #eff6ff;
+  background: var(--primary-soft);
   color: var(--primary);
   font-size: 0.76rem;
   font-weight: 800;
@@ -1375,11 +1378,11 @@ code {
   padding: 0.75rem;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: linear-gradient(180deg, #fbfdff 0%, #f8fafc 100%);
+  background: linear-gradient(180deg, var(--bg-subtle) 0%, var(--bg-soft) 100%);
 }
 .classroom-picker--single {
-  border-color: #bfdbfe;
-  background: linear-gradient(180deg, #f8fbff 0%, #eff6ff 100%);
+  border-color: var(--primary-tint);
+  background: linear-gradient(180deg, var(--bg-subtle) 0%, var(--primary-soft) 100%);
 }
 .classroom-picker--single .classroom-grid {
   grid-template-columns: 1fr;
@@ -1388,7 +1391,7 @@ code {
   padding: 1rem;
   border: 1px dashed var(--border);
   border-radius: 10px;
-  background: #f8fafc;
+  background: var(--bg-soft);
   color: var(--text-soft);
   font-size: 0.84rem;
   text-align: center;
@@ -1407,17 +1410,17 @@ code {
   gap: 0.35rem;
   max-width: 100%;
   padding: 0.28rem 0.45rem 0.28rem 0.6rem;
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--primary-tint);
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-soft);
   color: var(--primary);
   font-size: 0.78rem;
   font-weight: 800;
   line-height: 1.2;
 }
 .selected-classroom-chip:hover {
-  border-color: #93c5fd;
-  background: #eff6ff;
+  border-color: var(--primary);
+  background: var(--primary-soft);
 }
 .selected-classroom-chip span:first-child {
   overflow: hidden;
@@ -1430,7 +1433,7 @@ code {
   width: 1rem;
   height: 1rem;
   border-radius: 999px;
-  background: #dbeafe;
+  background: var(--primary-tint);
   font-size: 0.82rem;
   line-height: 1;
 }
@@ -1446,7 +1449,7 @@ code {
   padding: 0.45rem 0.7rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--bg-soft);
   font-size: 0.86rem;
 }
 .classroom-search:focus-visible {
@@ -1501,19 +1504,19 @@ code {
   padding: 0.62rem 0.68rem;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--bg-soft);
   color: var(--text);
   text-align: left;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 .classroom-card:hover {
-  border-color: #93c5fd;
-  box-shadow: 0 6px 16px rgb(37 99 235 / 8%);
+  border-color: var(--primary);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 35%);
 }
 .classroom-card.selected {
   border-color: var(--primary);
-  background: #eff6ff;
-  box-shadow: 0 0 0 1px rgb(37 99 235 / 12%);
+  background: var(--primary-soft);
+  box-shadow: 0 0 0 1px rgb(59 130 246 / 25%);
 }
 .classroom-card-check {
   display: inline-grid;
@@ -1521,9 +1524,9 @@ code {
   width: 1.15rem;
   height: 1.15rem;
   margin-top: 0.1rem;
-  border: 1.5px solid #cbd5e1;
+  border: 1.5px solid var(--border-strong);
   border-radius: 4px;
-  background: #fff;
+  background: var(--bg-card);
   color: transparent;
   flex-shrink: 0;
 }
@@ -1540,8 +1543,8 @@ code {
   border-radius: 999px;
 }
 .classroom-card.single.selected .classroom-card-check {
-  background: #fff;
-  color: var(--primary);
+  background: var(--primary);
+  color: #fff;
 }
 .radio-dot {
   width: 0.42rem;
@@ -1587,25 +1590,25 @@ code {
   padding: 0.2rem 0.65rem;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: #f8fafc;
+  background: var(--bg-soft);
   color: var(--text-soft);
   font-size: 0.78rem;
   font-weight: 800;
   white-space: nowrap;
 }
 .subject-picker-count--active {
-  border-color: #bfdbfe;
-  background: #eff6ff;
+  border-color: var(--primary-tint);
+  background: var(--primary-soft);
   color: var(--primary);
 }
 .subject-picker {
   display: grid;
   gap: 0.65rem;
   padding: 0.85rem;
-  border: 1px solid #dbeafe;
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 80%);
+  background: linear-gradient(180deg, var(--bg-subtle) 0%, var(--bg-card) 100%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 5%);
 }
 .subject-picker-toolbar {
   display: flex;
@@ -1636,7 +1639,7 @@ code {
   padding: 0.25rem 0.7rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--bg-soft);
   color: var(--text-soft);
   font-size: 0.78rem;
   font-weight: 800;
@@ -1644,8 +1647,8 @@ code {
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 .subject-toolbar-btn:hover:not(:disabled) {
-  border-color: #fecdd3;
-  background: #fff1f2;
+  border-color: rgba(248, 113, 113, 0.35);
+  background: var(--danger-soft);
   color: var(--danger);
 }
 .subject-toolbar-btn:disabled {
@@ -1668,7 +1671,7 @@ code {
   padding: 0.62rem 0.68rem;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--bg-soft);
   color: var(--text);
   font-size: 0.84rem;
   line-height: 1.25;
@@ -1676,8 +1679,8 @@ code {
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 .subject-card:hover {
-  border-color: #93c5fd;
-  box-shadow: 0 4px 12px rgb(37 99 235 / 8%);
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 35%);
 }
 .subject-card:focus-within {
   outline: 2px solid var(--primary);
@@ -1697,9 +1700,9 @@ code {
   width: 1.15rem;
   height: 1.15rem;
   margin-top: 0.08rem;
-  border: 1.5px solid #cbd5e1;
+  border: 1.5px solid var(--border-strong);
   border-radius: 4px;
-  background: #fff;
+  background: var(--bg-card);
   color: transparent;
 }
 .subject-card-check svg {
@@ -1708,8 +1711,8 @@ code {
 }
 .subject-card.selected {
   border-color: var(--primary);
-  background: #eff6ff;
-  box-shadow: 0 0 0 1px rgb(37 99 235 / 10%);
+  background: var(--primary-soft);
+  box-shadow: 0 0 0 1px rgb(59 130 246 / 25%);
 }
 .subject-card.selected .subject-card-check {
   border-color: var(--primary);

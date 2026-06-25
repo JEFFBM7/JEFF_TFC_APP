@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\ClassRoom;
+use App\Models\Enrollment;
 use App\Models\Evaluation;
 use App\Models\Grade;
 use App\Models\Period;
@@ -10,7 +12,6 @@ use App\Models\SchoolYear;
 use App\Models\Term;
 use App\Models\Student;
 use App\Models\Subject;
-use App\Support\SchoolYearContext;
 use Illuminate\Support\Collection;
 
 class ReportCardService
@@ -138,9 +139,13 @@ class ReportCardService
     /** @return Collection<int, array<string, mixed>> */
     public function classRanking(int $classroomId, Term $term, bool $publishedOnly = false): Collection
     {
-        $studentsQuery = Student::query()->where('classroom_id', $classroomId);
-        SchoolYearContext::applyStudentEnrollmentYearId($studentsQuery, $term->school_year_id);
-        $students = $studentsQuery->get();
+        // Roster de l'année du trimestre lu depuis les inscriptions (pas le cache),
+        // afin que les classements d'années passées restent corrects après un passage.
+        $studentIds = Enrollment::query()
+            ->forYear($term->school_year_id)
+            ->forClassroom($classroomId)
+            ->pluck('student_id');
+        $students = Student::query()->whereIn('id', $studentIds)->get();
 
         return $students
             ->map(fn (Student $s) => [
@@ -174,11 +179,12 @@ class ReportCardService
 
     private function subjectsForReport(Student $student, Term $term, bool $publishedOnly = false): Collection
     {
-        $student->loadMissing('classroom');
+        $classroom = $this->classroomForYear($student, (int) $term->school_year_id);
+        $classroomId = $classroom?->id;
 
         $evaluationSubjectIds = Evaluation::query()
             ->where('term_id', $term->id)
-            ->when($student->classroom_id, fn ($query) => $query->where('classroom_id', $student->classroom_id))
+            ->when($classroomId, fn ($query) => $query->where('classroom_id', $classroomId))
             ->when($publishedOnly, fn ($query) => $query->whereNotNull('published_at'))
             ->distinct()
             ->pluck('subject_id')
@@ -189,7 +195,7 @@ class ReportCardService
             ->where('student_id', $student->id)
             ->whereHas('evaluation', fn ($q) => $q
                 ->where('term_id', $term->id)
-                ->when($student->classroom_id, fn ($evaluationQuery) => $evaluationQuery->where('classroom_id', $student->classroom_id))
+                ->when($classroomId, fn ($evaluationQuery) => $evaluationQuery->where('classroom_id', $classroomId))
                 ->when($publishedOnly, fn ($evaluationQuery) => $evaluationQuery->whereNotNull('published_at')))
             ->with('evaluation:id,subject_id')
             ->get()
@@ -207,8 +213,8 @@ class ReportCardService
             return collect();
         }
 
-        $classroomSubjectsById = $student->classroom
-            ? $student->classroom->subjects()->get()->keyBy('id')
+        $classroomSubjectsById = $classroom
+            ? $classroom->subjects()->get()->keyBy('id')
             : collect();
 
         return Subject::query()
@@ -224,6 +230,34 @@ class ReportCardService
                 return $subject;
             })
             ->values();
+    }
+
+    /**
+     * Classe de l'élève pour une année donnée. Pour l'année courante le cache
+     * (students.classroom_id) suffit ; pour une année passée on lit l'inscription
+     * correspondante afin que les bulletins archivés restent exacts.
+     */
+    private function classroomForYear(Student $student, int $schoolYearId): ?ClassRoom
+    {
+        if ((int) $student->enrollment_school_year_id === $schoolYearId) {
+            $student->loadMissing('classroom');
+
+            return $student->classroom;
+        }
+
+        $classroom = $student->enrollments()
+            ->where('school_year_id', $schoolYearId)
+            ->with('classroom')
+            ->first()?->classroom;
+
+        if ($classroom !== null) {
+            return $classroom;
+        }
+
+        // Aucune inscription enregistrée pour cette année : repli sur le cache.
+        $student->loadMissing('classroom');
+
+        return $student->classroom;
     }
 
     public function computeAnnualAverage(Student $student, SchoolYear $schoolYear, bool $publishedOnly = false): ?float

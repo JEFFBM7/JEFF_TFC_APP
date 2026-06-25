@@ -47,6 +47,12 @@ class ClassRoom extends Model
         return $this->hasMany(Student::class, 'classroom_id');
     }
 
+    /** @return HasMany<Enrollment, $this> */
+    public function enrollments(): HasMany
+    {
+        return $this->hasMany(Enrollment::class, 'classroom_id');
+    }
+
     /** @return HasMany<TeacherAssignment, $this> */
     public function teacherAssignments(): HasMany
     {

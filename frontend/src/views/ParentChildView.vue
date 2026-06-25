@@ -891,7 +891,7 @@ onMounted(async () => {
         <strong>Date :</strong> {{ formatDate(justifyTarget.date) }}
         <span v-if="justifyTarget.subject?.name"> · <strong>Cours :</strong> {{ justifyTarget.subject.name }}</span>
       </p>
-      <p v-if="justifyTarget?.student_justification" class="alert" style="background:#f8fafc;border:1px solid var(--border);color:var(--text)">
+      <p v-if="justifyTarget?.student_justification" class="alert" style="background:var(--bg-soft);border:1px solid var(--border);color:var(--text)">
         {{ justifyTarget.student_justification }}
       </p>
       <div class="field">
@@ -1010,7 +1010,7 @@ onMounted(async () => {
   min-width: 3.8rem;
   padding: 0.28rem 0.6rem;
   border-radius: 999px;
-  background: #f2f4f7;
+  background: var(--bg-soft);
   color: var(--text-soft);
   font-weight: 900;
   text-align: center;
@@ -1027,7 +1027,7 @@ onMounted(async () => {
 }
 
 .subject-total-card {
-  border-color: #d5e0ff;
+  border-color: var(--primary-tint);
   background: var(--primary-tint);
 }
 
@@ -1063,16 +1063,16 @@ onMounted(async () => {
 }
 .att-grid dt { font-size: 0.78rem; color: var(--text-soft); margin: 0; }
 .att-grid dd { font-size: 1.2rem; font-weight: 700; margin: 0.2rem 0 0; }
-.good { color: #16a34a; }
-.warn { color: #ea580c; }
-.badge-warn { background: #fff7ed; color: #9a3412; }
-.badge-danger { background: #fef3f2; color: #b42318; }
+.good { color: var(--success); }
+.warn { color: var(--warn); }
+.badge-warn { background: var(--warn-soft); color: var(--warn); }
+.badge-danger { background: var(--danger-soft); color: var(--danger); }
 
 .attendance-alert {
   margin: 0.75rem 0 0;
-  border: 1px solid #fdba74;
-  background: #fff7ed;
-  color: #9a3412;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  background: var(--warn-soft);
+  color: var(--warn);
 }
 
 .attendance-followup {
@@ -1201,8 +1201,8 @@ onMounted(async () => {
 }
 
 .portal-average-banner.good {
-  border-color: #bbf7d0;
-  background: #f0fdf4;
+  border-color: rgba(74, 222, 128, 0.3);
+  background: var(--success-soft);
 }
 
 .portal-average-banner.good strong {
@@ -1210,8 +1210,8 @@ onMounted(async () => {
 }
 
 .portal-average-banner.warn {
-  border-color: #fed7aa;
-  background: #fff7ed;
+  border-color: rgba(251, 191, 36, 0.3);
+  background: var(--warn-soft);
 }
 
 .portal-average-banner.warn strong {
@@ -1226,9 +1226,9 @@ onMounted(async () => {
   margin: 0 0.85rem 0.75rem;
   padding: 0.7rem 0.85rem;
   border-radius: var(--radius);
-  border: 1px solid #bfdbfe;
-  background: #eff6ff;
-  color: #1e40af;
+  border: 1px solid var(--primary-tint);
+  background: var(--primary-soft);
+  color: var(--accent);
   font-size: 0.84rem;
   line-height: 1.45;
 }
@@ -1419,7 +1419,7 @@ onMounted(async () => {
 .child-loading-hero,
 .child-loading-grid span {
   border-radius: var(--radius);
-  background: #e8eef8;
+  background: var(--primary-soft);
   animation: child-pulse 1.35s ease-in-out infinite;
 }
 
@@ -1453,7 +1453,7 @@ onMounted(async () => {
   padding: 1.05rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: linear-gradient(135deg, #ffffff 0%, #fff7fb 50%, #f5f7ff 100%);
+  background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-subtle) 100%);
   box-shadow: var(--shadow-card);
 }
 
@@ -1469,11 +1469,11 @@ onMounted(async () => {
 }
 
 .child-hero.tone-good {
-  background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+  background: linear-gradient(135deg, var(--bg-card) 0%, var(--success-soft) 100%);
 }
 
 .child-hero.tone-warn {
-  background: linear-gradient(135deg, #ffffff 0%, #fff7ed 100%);
+  background: linear-gradient(135deg, var(--bg-card) 0%, var(--warn-soft) 100%);
 }
 
 .child-hero-main {
@@ -1602,18 +1602,18 @@ onMounted(async () => {
 }
 
 .insight-card.tone-good {
-  border-color: #bbf7d0;
-  background: #f6fef9;
+  border-color: rgba(74, 222, 128, 0.3);
+  background: var(--success-soft);
 }
 
 .insight-card.tone-warn {
-  border-color: #fedf89;
-  background: #fffcf5;
+  border-color: rgba(251, 191, 36, 0.3);
+  background: var(--warn-soft);
 }
 
 .insight-card.tone-danger {
-  border-color: #fecdca;
-  background: #fffbfa;
+  border-color: rgba(248, 113, 113, 0.3);
+  background: var(--danger-soft);
 }
 
 .insight-icon {
@@ -1702,7 +1702,7 @@ onMounted(async () => {
   gap: 0.8rem;
   padding: 1rem 1.15rem;
   border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-subtle) 100%);
 }
 
 .portal-section-title {
@@ -1799,19 +1799,19 @@ onMounted(async () => {
 }
 
 .attendance-card.needs-action {
-  border-color: #fedf89;
-  background: #fffcf5;
+  border-color: rgba(251, 191, 36, 0.3);
+  background: var(--warn-soft);
 }
 
 .btn-confirm {
-  border-color: #d5e0ff;
+  border-color: var(--primary-tint);
   background: var(--primary-soft);
   color: var(--primary);
 }
 
 .btn-confirm:hover:not(:disabled) {
-  border-color: #c7d5ff;
-  background: #e5edff;
+  border-color: var(--primary);
+  background: var(--primary-tint);
 }
 
 @media (max-width: 720px) {
@@ -1880,10 +1880,10 @@ onMounted(async () => {
 
 .mini-trend {
   min-height: 8rem;
-  border-color: #d8e2ff;
+  border-color: var(--primary-tint);
   background:
-    linear-gradient(135deg, rgba(52, 87, 255, 0.08), rgba(124, 58, 237, 0.05)),
-    #ffffff;
+    linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(124, 58, 237, 0.08)),
+    var(--bg-card);
 }
 
 .mini-trend :deep(.apexcharts-canvas),
@@ -1896,7 +1896,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   min-height: 2.35rem;
-  border-color: #d5e0ff;
+  border-color: var(--primary-tint);
   background: var(--primary-soft);
   color: var(--primary);
   font-size: 0.85rem;
@@ -1904,8 +1904,8 @@ onMounted(async () => {
 }
 
 .subject-expand-button:hover {
-  border-color: #c7d5ff;
-  background: #e5edff;
+  border-color: var(--primary-tint);
+  background: var(--primary-soft);
 }
 
 .subject-evaluations {
@@ -1919,7 +1919,7 @@ onMounted(async () => {
   padding: 0.75rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: #fbfcff;
+  background: var(--bg-soft);
 }
 
 .evaluation-inline-head {
@@ -1960,7 +1960,7 @@ onMounted(async () => {
   place-items: center;
   margin-right: 0.45rem;
   padding: 0;
-  border-color: #d5e0ff;
+  border-color: var(--primary-tint);
   border-radius: 999px;
   background: var(--primary-soft);
   color: var(--primary);

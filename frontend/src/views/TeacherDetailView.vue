@@ -389,7 +389,7 @@ onMounted(load)
 .teacher-meta code {
   padding: 0.12rem 0.45rem;
   border-radius: 6px;
-  background: #f1f5f9;
+  background: var(--bg-soft);
   color: var(--text);
   font-family: ui-monospace, Consolas, monospace;
   font-size: 0.82rem;
@@ -523,7 +523,7 @@ onMounted(load)
   border: 1px solid var(--border);
   border-left: 3px solid var(--primary);
   border-radius: 6px;
-  background: #fff;
+  background: var(--bg-card);
 }
 
 .slot-row span,
@@ -548,7 +548,7 @@ onMounted(load)
 
 .detail-list div {
   padding-bottom: 0.65rem;
-  border-bottom: 1px dotted #cbd5e1;
+  border-bottom: 1px dotted var(--border-strong);
 }
 
 .detail-list div:last-child {
@@ -566,7 +566,7 @@ onMounted(load)
 .detail-list code {
   padding: 0.1rem 0.35rem;
   border-radius: 4px;
-  background: #f1f5f9;
+  background: var(--bg-soft);
   font-family: ui-monospace, Consolas, monospace;
   font-size: 0.84rem;
 }

@@ -333,11 +333,11 @@ function fmtAvg(v: number | null | undefined): string {
   font-size: 0.77rem;
   font-weight: 700;
   color: var(--text-soft);
-  background: #f8fafc;
+  background: var(--bg-soft);
 }
 .threshold-term {
   background: var(--primary-soft);
-  border-color: #d5e0ff;
+  border-color: var(--primary-tint);
   color: var(--primary);
 }
 
@@ -355,7 +355,7 @@ function fmtAvg(v: number | null | undefined): string {
   color: var(--text-soft);
   cursor: pointer;
 }
-.tab:hover { color: var(--primary); border-color: #cfd9ef; }
+.tab:hover { color: var(--primary); border-color: var(--border-strong); }
 .tab.is-active { background: var(--primary); color: white; border-color: var(--primary); }
 .tab-count {
   background: rgba(255,255,255,0.25);
@@ -383,9 +383,9 @@ function fmtAvg(v: number | null | undefined): string {
 .cell-danger { color: var(--danger); font-weight: 700; }
 
 .badge { margin-right: 0.25rem; }
-.badge-absence { background: #fee2e2; color: #b91c1c; }
-.badge-late { background: #fef3c7; color: #92400e; }
-.badge-grade { background: #fde68a; color: #92400e; }
+.badge-absence { background: var(--danger-soft); color: var(--danger); }
+.badge-late { background: var(--warn-soft); color: var(--warn); }
+.badge-grade { background: rgba(251, 191, 36, 0.3); color: var(--warn); }
 
 .message-target-intro {
   margin: 0 0 1rem;

@@ -210,7 +210,7 @@ onMounted(load)
   background: var(--bg-card);
 }
 
-.setting-row.has-error { border-color: var(--danger); background: #fef2f2; }
+.setting-row.has-error { border-color: var(--danger); background: var(--danger-soft); }
 
 .setting-label { display: flex; flex-direction: column; gap: 0.2rem; }
 .setting-title { font-weight: 700; color: var(--text); font-size: 0.92rem; }
@@ -235,7 +235,7 @@ onMounted(load)
   font-weight: 700;
   padding: 0.3rem 0.55rem;
   border: 1px solid var(--border);
-  background: #f8fafc;
+  background: var(--bg-soft);
   border-radius: 0.5rem;
   cursor: pointer;
 }
@@ -252,7 +252,7 @@ onMounted(load)
 .switch input { opacity: 0; width: 0; height: 0; }
 .switch-slider {
   position: absolute; inset: 0;
-  background: #cbd5e1;
+  background: var(--text-muted);
   border-radius: 999px;
   cursor: pointer;
   transition: background 0.2s ease;
@@ -270,7 +270,7 @@ onMounted(load)
 
 .err { display: block; grid-column: 1 / -1; color: var(--danger); font-size: 0.78rem; margin-top: 0.25rem; }
 
-.alert-success { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+.alert-success { background: var(--success-soft); color: var(--success); border: 1px solid rgba(74, 222, 128, 0.3); }
 
 @media (max-width: 720px) {
   .setting-row { grid-template-columns: 1fr; }

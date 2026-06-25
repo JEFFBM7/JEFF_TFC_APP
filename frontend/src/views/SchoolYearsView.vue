@@ -6,6 +6,10 @@ import Modal from '../components/Modal.vue'
 import RowActionMenu from '../components/RowActionMenu.vue'
 import { useConfirmStore } from '../stores/confirm'
 import { useSchoolYearStore } from '../stores/schoolYear'
+import { CalendarDays, Star, BookOpen, Archive, RefreshCw, Plus } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const schoolYearStore = useSchoolYearStore()
 const confirmDialog = useConfirmStore()
@@ -53,6 +57,47 @@ function formatDate(value: string): string {
   return dateFormatter.format(date)
 }
 
+function toIsoDate(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function addYears(value: string, years: number): string {
+  const date = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return value
+  date.setFullYear(date.getFullYear() + years)
+  return toIsoDate(date)
+}
+
+function deriveName(startsOn: string, endsOn: string): string {
+  const startYear = new Date(`${startsOn}T00:00:00`).getFullYear()
+  const endYear = new Date(`${endsOn}T00:00:00`).getFullYear()
+  if (Number.isNaN(startYear)) return ''
+  return endYear > startYear ? `${startYear}-${endYear}` : `${startYear}`
+}
+
+/**
+ * Calcule le nom et les dates de l'année suivante en se basant sur la dernière
+ * année enregistrée (décalée d'un an). À défaut, retombe sur l'année scolaire
+ * civile courante (rentrée en septembre). Les valeurs restent modifiables.
+ */
+function nextYearDefaults(): { name: string; starts_on: string; ends_on: string } {
+  const reference = [...items.value].sort((a, b) => b.starts_on.localeCompare(a.starts_on))[0]
+  if (reference) {
+    const startsOn = addYears(reference.starts_on, 1)
+    const endsOn = addYears(reference.ends_on, 1)
+    return { name: deriveName(startsOn, endsOn), starts_on: startsOn, ends_on: endsOn }
+  }
+
+  const now = new Date()
+  const startYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1
+  const startsOn = `${startYear}-09-01`
+  const endsOn = `${startYear + 1}-07-02`
+  return { name: deriveName(startsOn, endsOn), starts_on: startsOn, ends_on: endsOn }
+}
+
 function periodLabel(item: SchoolYear): string {
   return `${formatDate(item.starts_on)} - ${formatDate(item.ends_on)}`
 }
@@ -76,7 +121,18 @@ async function load(): Promise<void> {
 function openCreate(): void {
   editing.value = null
   resetForm()
+  const defaults = nextYearDefaults()
+  form.name = defaults.name
+  form.starts_on = defaults.starts_on
+  form.ends_on = defaults.ends_on
   showForm.value = true
+}
+
+function applyAutoFill(): void {
+  const defaults = nextYearDefaults()
+  form.name = defaults.name
+  form.starts_on = defaults.starts_on
+  form.ends_on = defaults.ends_on
 }
 
 function openEdit(item: SchoolYear): void {
@@ -169,35 +225,50 @@ onMounted(load)
   <section class="school-years-page">
     <div class="page-heading">
       <div>
-        <p class="eyebrow">Administration</p>
+        <p class="eyebrow">Scolarité</p>
         <h1>Années scolaires</h1>
         <p class="heading-copy">
           Organiser les périodes, trimestres et archives de l'établissement.
         </p>
       </div>
-      <button type="button" class="btn-primary" @click="openCreate">+ Nouvelle année</button>
+      <button type="button" class="btn-primary page-cta" @click="openCreate">
+        <Plus class="cta-icon" aria-hidden="true" />
+        Nouvelle année
+      </button>
     </div>
 
     <p v-if="error" class="alert alert-error">{{ error }}</p>
 
     <div class="summary-grid">
       <div class="summary-card">
-        <span class="summary-label">Années</span>
+        <div class="summary-card-header">
+          <span class="summary-label">Années</span>
+          <div class="summary-icon"><CalendarDays /></div>
+        </div>
         <strong>{{ items.length }}</strong>
         <span class="summary-note">enregistrées</span>
       </div>
-      <div class="summary-card">
-        <span class="summary-label">Courante</span>
-        <strong>{{ currentYear?.name ?? '-' }}</strong>
+      <div class="summary-card summary-card--current">
+        <div class="summary-card-header">
+          <span class="summary-label">Courante</span>
+          <div class="summary-icon summary-icon--current"><Star /></div>
+        </div>
+        <strong>{{ currentYear?.name ?? '—' }}</strong>
         <span class="summary-note">{{ currentYear ? periodLabel(currentYear) : 'non définie' }}</span>
       </div>
       <div class="summary-card">
-        <span class="summary-label">Trimestres</span>
+        <div class="summary-card-header">
+          <span class="summary-label">Trimestres</span>
+          <div class="summary-icon"><BookOpen /></div>
+        </div>
         <strong>{{ totalTerms }}</strong>
         <span class="summary-note">sur toutes les années</span>
       </div>
       <div class="summary-card">
-        <span class="summary-label">Archives</span>
+        <div class="summary-card-header">
+          <span class="summary-label">Archives</span>
+          <div class="summary-icon summary-icon--muted"><Archive /></div>
+        </div>
         <strong>{{ archivedCount }}</strong>
         <span class="summary-note">années passées</span>
       </div>
@@ -209,8 +280,9 @@ onMounted(load)
           <h2>Registre des années</h2>
           <p>La ligne courante pilote les filtres, trimestres et rapports associés.</p>
         </div>
-        <button type="button" class="btn-secondary" @click="load" :disabled="loading">
-          {{ loading ? 'Actualisation...' : 'Actualiser' }}
+        <button type="button" class="btn-secondary refresh-btn" @click="load" :disabled="loading">
+          <RefreshCw class="refresh-icon" :class="{ spinning: loading }" aria-hidden="true" />
+          {{ loading ? 'Actualisation…' : 'Actualiser' }}
         </button>
       </div>
 
@@ -235,14 +307,15 @@ onMounted(load)
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(item, index) in items" :key="item.id" :class="{ current: item.is_current }">
+              <tr
+                v-for="(item, index) in items"
+                :key="item.id"
+                :class="{ current: item.is_current }"
+                class="clickable-row"
+                @click="router.push({ name: 'school-year-detail', params: { id: item.id } })"
+              >
                 <td>
-                  <RouterLink
-                    class="year-link"
-                    :to="{ name: 'school-year-detail', params: { id: item.id } }"
-                  >
-                    {{ item.name }}
-                  </RouterLink>
+                  <span class="year-name">{{ item.name }}</span>
                 </td>
                 <td>{{ periodLabel(item) }}</td>
                 <td>{{ item.terms?.length ?? 0 }}</td>
@@ -250,14 +323,12 @@ onMounted(load)
                   <span v-if="item.is_current" class="badge badge-success">Courante</span>
                   <span v-else class="badge badge-muted">Archivée</span>
                 </td>
-                <td class="actions-cell">
+                <td class="actions-cell" @click.stop>
                   <RowActionMenu
                     :open-up="items.length > 3 && index >= items.length - 2"
                     :aria-label="`Actions pour ${item.name}`"
                   >
-                    <RouterLink
-                      :to="{ name: 'school-year-detail', params: { id: item.id } }"
-                    >
+                    <RouterLink :to="{ name: 'school-year-detail', params: { id: item.id } }">
                       Ouvrir
                     </RouterLink>
                     <button v-if="!item.is_current" type="button" @click="setCurrent(item)">
@@ -273,15 +344,16 @@ onMounted(load)
         </div>
 
         <div class="year-mobile-list">
-          <article v-for="item in items" :key="item.id" class="year-mobile-card">
+          <article
+            v-for="item in items"
+            :key="item.id"
+            class="year-mobile-card"
+            :class="{ 'year-mobile-card--current': item.is_current }"
+            @click="router.push({ name: 'school-year-detail', params: { id: item.id } })"
+          >
             <div class="mobile-card-top">
               <div>
-                <RouterLink
-                  class="year-link"
-                  :to="{ name: 'school-year-detail', params: { id: item.id } }"
-                >
-                  {{ item.name }}
-                </RouterLink>
+                <span class="year-name">{{ item.name }}</span>
                 <p>{{ periodLabel(item) }}</p>
               </div>
               <span v-if="item.is_current" class="badge badge-success">Courante</span>
@@ -290,11 +362,9 @@ onMounted(load)
             <div class="mobile-meta">
               <span>{{ item.terms?.length ?? 0 }} trimestre(s)</span>
             </div>
-            <div class="mobile-actions">
+            <div class="mobile-actions" @click.stop>
               <RowActionMenu :aria-label="`Actions pour ${item.name}`">
-                <RouterLink
-                  :to="{ name: 'school-year-detail', params: { id: item.id } }"
-                >
+                <RouterLink :to="{ name: 'school-year-detail', params: { id: item.id } }">
                   Ouvrir
                 </RouterLink>
                 <button v-if="!item.is_current" type="button" @click="setCurrent(item)">
@@ -315,6 +385,16 @@ onMounted(load)
       @close="showForm = false"
     >
       <form id="school-year-form" class="year-form" @submit.prevent="submit">
+        <div v-if="!editing" class="autofill-hint">
+          <span>
+            Nom et dates pré-remplis pour l'année suivante. Vous pouvez les modifier librement.
+          </span>
+          <button type="button" class="autofill-btn" @click="applyAutoFill">
+            <RefreshCw class="autofill-icon" aria-hidden="true" />
+            Recalculer
+          </button>
+        </div>
+
         <div class="field">
           <label for="sy-name">Nom</label>
           <input
@@ -369,12 +449,14 @@ onMounted(load)
 </template>
 
 <style scoped>
+/* ── Page shell ── */
 .school-years-page {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.35rem;
 }
 
+/* ── Page heading ── */
 .page-heading {
   display: flex;
   align-items: flex-start;
@@ -382,111 +464,212 @@ onMounted(load)
   gap: 1rem;
 }
 
-.page-heading h1 {
-  margin: 0;
-}
+.page-heading h1 { margin: 0; }
 
 .eyebrow {
   margin: 0 0 0.12rem;
-  color: var(--text-soft);
-  font-size: 0.73rem;
+  color: var(--primary);
+  font-size: 0.7rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 .heading-copy {
   max-width: 42rem;
-  margin: 0.28rem 0 0;
+  margin: 0.3rem 0 0;
   color: var(--text-soft);
-  font-size: 0.94rem;
+  font-size: 0.92rem;
 }
 
+.page-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cta-icon { width: 0.95rem; height: 0.95rem; }
+
+/* ── Summary cards ── */
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.85rem;
+  gap: 1rem;
 }
 
 .summary-card {
-  min-height: 6.3rem;
+  position: relative;
+  min-height: 7rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: 0.35rem;
-  padding: 0.9rem;
+  padding: 1.1rem 1.15rem 1rem;
   border: 1px solid var(--border);
+  border-top: 3px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-card);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  overflow: hidden;
+}
+
+.summary-card:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+/* Current year card gets sky-blue top accent */
+.summary-card--current {
+  border-top-color: var(--primary);
+  background: linear-gradient(160deg, var(--bg-card) 0%, var(--primary-soft) 100%);
+}
+
+.summary-card--current::after {
+  content: '';
+  position: absolute;
+  top: -20%;
+  right: -10%;
+  width: 45%;
+  height: 70%;
+  background: radial-gradient(circle, rgba(3, 105, 161, 0.07) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.summary-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 0.45rem;
 }
 
 .summary-label {
   color: var(--text-soft);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
+.summary-icon {
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--bg-subtle);
+  color: var(--text-soft);
+  flex-shrink: 0;
+}
+
+.summary-icon svg { width: 0.95rem; height: 0.95rem; stroke-width: 2; }
+
+.summary-icon--current {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.summary-icon--muted {
+  background: var(--bg-soft);
+  color: var(--text-muted);
+}
+
 .summary-card strong {
+  display: block;
   overflow: hidden;
   color: var(--text);
-  font-size: 1.45rem;
-  font-weight: 850;
+  font-size: 1.55rem;
+  font-weight: 900;
   line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: -0.02em;
 }
+
+.summary-card--current strong { color: var(--primary-dark); }
 
 .summary-note {
+  display: block;
   overflow: hidden;
   color: var(--text-muted);
-  font-size: 0.76rem;
-  font-weight: 650;
+  font-size: 0.75rem;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+  margin-top: 0.25rem;
 }
 
-.years-card-header h2 {
-  margin: 0;
-}
+/* ── Table card ── */
+.years-card-header h2 { margin: 0; }
 
 .years-card-header p {
   margin: 0.2rem 0 0;
   color: var(--text-soft);
-  font-size: 0.86rem;
+  font-size: 0.84rem;
 }
 
-.table-wrap {
-  overflow: visible;
+.refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
-.years-card {
-  overflow: visible;
-}
+.refresh-icon { width: 0.85rem; height: 0.85rem; }
+.spinning { animation: spin 0.85s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-.years-table {
-  min-width: 58rem;
-}
+.table-wrap { overflow: visible; }
+.years-card  { overflow: visible; }
+.years-table { min-width: 58rem; }
 
+/* Current row — left accent + subtle tint */
 .years-table tr.current td {
-  background: #fbfdff;
+  background: linear-gradient(90deg, rgba(3, 105, 161, 0.04) 0%, rgba(3, 105, 161, 0.01) 100%);
 }
 
-.year-link {
+.years-table tr.current td:first-child {
+  border-left: 3px solid var(--primary);
+  padding-left: calc(0.85rem - 3px);
+}
+
+/* Ligne cliquable — toute la tr navigue */
+.clickable-row {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.clickable-row:hover td {
+  background: var(--bg-subtle) !important;
+}
+
+.clickable-row:active td {
+  background: var(--primary-soft) !important;
+}
+
+.year-name {
   font-weight: 800;
+  color: var(--text);
 }
 
-.actions-heading {
-  text-align: right;
+/* Carte mobile cliquable */
+.year-mobile-card {
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-.actions-cell {
-  text-align: right;
-  white-space: nowrap;
+.year-mobile-card:hover {
+  box-shadow: var(--shadow-hover);
 }
 
+.year-mobile-card--current {
+  border-left: 3px solid var(--primary);
+}
+
+.actions-heading { text-align: right; }
+.actions-cell    { text-align: right; white-space: nowrap; }
+
+/* ── Mobile cards ── */
 .year-mobile-list {
   display: none;
   padding: 0.8rem;
@@ -520,6 +703,7 @@ onMounted(load)
   margin-top: 0.75rem;
 }
 
+/* ── Skeleton ── */
 .year-list-skeleton {
   display: grid;
   gap: 0.65rem;
@@ -529,10 +713,53 @@ onMounted(load)
 .year-skeleton-row {
   height: 3.4rem;
   border-radius: var(--radius);
-  background: linear-gradient(90deg, #f2f4f7, #f8faff, #f2f4f7);
-  background-size: 180% 100%;
-  animation: shimmer 1.2s infinite linear;
+  background: linear-gradient(90deg, var(--bg-subtle) 0%, var(--bg-soft) 50%, var(--bg-subtle) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite ease-in-out;
 }
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Form ── */
+.autofill-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--primary-tint);
+  border-radius: var(--radius);
+  background: var(--primary-soft);
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.autofill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--primary-tint);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  color: var(--primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.autofill-btn:hover {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+}
+
+.autofill-icon { width: 0.8rem; height: 0.8rem; }
 
 .form-grid {
   display: grid;
@@ -544,17 +771,20 @@ onMounted(load)
   display: flex;
   align-items: flex-start;
   gap: 0.65rem;
-  padding: 0.78rem;
+  padding: 0.8rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-subtle);
   cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
-.check-row input {
-  width: auto;
-  margin-top: 0.15rem;
+.check-row:has(input:checked) {
+  border-color: var(--primary-tint);
+  background: var(--primary-soft);
 }
+
+.check-row input { width: auto; margin-top: 0.15rem; }
 
 .check-row strong {
   display: block;
@@ -576,45 +806,21 @@ onMounted(load)
   margin-top: 0.25rem;
 }
 
-@keyframes shimmer {
-  from {
-    background-position: 120% 0;
-  }
-
-  to {
-    background-position: -120% 0;
-  }
-}
-
+/* ── Responsive ── */
 @media (max-width: 920px) {
-  .summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+  .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 720px) {
-  .page-heading {
-    flex-direction: column;
-  }
+  .page-heading { flex-direction: column; }
+  .page-heading .btn-primary { width: 100%; justify-content: center; }
+  .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .table-wrap   { display: none; }
+  .year-mobile-list { display: grid; }
+  .form-grid    { grid-template-columns: 1fr; }
+}
 
-  .page-heading .btn-primary {
-    width: 100%;
-  }
-
-  .summary-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .table-wrap {
-    display: none;
-  }
-
-  .year-mobile-list {
-    display: grid;
-  }
-
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
+@media (max-width: 480px) {
+  .summary-grid { grid-template-columns: 1fr; }
 }
 </style>

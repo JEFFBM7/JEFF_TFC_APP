@@ -73,5 +73,6 @@ export function useStudentMessageNavigation() {
     openParentConversation,
     openStudentConversation,
     navigateToRecipient,
+    navigateToStudentConversation,
   }
 }

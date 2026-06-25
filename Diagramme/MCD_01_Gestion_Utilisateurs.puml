@@ -1,0 +1,87 @@
+@startuml MCD_01_Gestion_Utilisateurs
+title MCD — Gestion des utilisateurs
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam backgroundColor #FFFFFF
+
+skinparam class {
+  BackgroundColor<<entite>>     #D6EAF8
+  BorderColor<<entite>>         #2471A3
+  FontStyle<<entite>>           Bold
+  BackgroundColor<<association>> #FEF9E7
+  BorderColor<<association>>     #D4AC0D
+  FontStyle<<association>>       Bold
+  RoundCorner<<association>>     25
+}
+
+hide <<entite>>     circle
+hide <<association>> circle
+
+' ══════════════════════════════════════
+'   ENTITÉS
+' ══════════════════════════════════════
+
+class "UTILISATEUR" <<entite>> {
+  <u>id_utilisateur</u>
+  identifiant
+  email
+  mot_de_passe
+  role
+  est_actif
+}
+
+class "ELEVE" <<entite>> {
+  <u>id_eleve</u>
+  matricule
+  prenom
+  nom
+  postnom
+  date_naissance
+  sexe
+  statut_inscription
+}
+
+class "ENSEIGNANT" <<entite>> {
+  <u>id_enseignant</u>
+  numero_matricule
+  type_enseignant
+  specialite
+  genre
+}
+
+class "PARENT" <<entite>> {
+  <u>id_parent</u>
+  telephone
+  adresse
+}
+
+' ══════════════════════════════════════
+'   ASSOCIATIONS
+' ══════════════════════════════════════
+
+class "EST_ELEVE" <<association>>
+class "EST_ENSEIGNANT" <<association>>
+class "EST_PARENT" <<association>>
+
+class "SUPERVISE" <<association>> {
+  relation
+}
+
+' ══════════════════════════════════════
+'   LIENS ET CARDINALITÉS
+' ══════════════════════════════════════
+
+"UTILISATEUR"  "(0,1)"  --  "EST_ELEVE"
+"EST_ELEVE"            --  "(1,1)"  "ELEVE"
+
+"UTILISATEUR"  "(0,1)"  --  "EST_ENSEIGNANT"
+"EST_ENSEIGNANT"       --  "(1,1)"  "ENSEIGNANT"
+
+"UTILISATEUR"  "(0,1)"  --  "EST_PARENT"
+"EST_PARENT"           --  "(1,1)"  "PARENT"
+
+"PARENT"  "(0,N)"  --  "SUPERVISE"
+"SUPERVISE"       --  "(0,N)"  "ELEVE"
+
+@enduml

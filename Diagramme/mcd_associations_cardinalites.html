@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Associations et cardinalités du MCD - EduConnect</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172033;
+      --muted: #596777;
+      --line: #d7dee7;
+      --paper: #ffffff;
+      --page: #f7f9f6;
+      --head: #26384d;
+      --users: #eaf4fb;
+      --users-strong: #2f77a6;
+      --structure: #e9f7ef;
+      --structure-strong: #238057;
+      --suivi: #fff3df;
+      --suivi-strong: #b47424;
+      --comm: #f4ecf7;
+      --comm-strong: #8b5a9d;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font-family: Aptos, "Segoe UI", system-ui, sans-serif;
+      line-height: 1.35;
+    }
+
+  .page-shell {
+      width: min(1480px, calc(100% - 48px));
+      margin: 38px auto;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: end;
+      margin-bottom: 22px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 3vw, 42px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0;
+      max-width: 980px;
+      color: var(--muted);
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .meta {
+      min-width: 210px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--paper);
+      box-shadow: 0 18px 45px rgba(23, 32, 51, 0.08);
+    }
+
+    table {
+      width: 100%;
+      min-width: 1180px;
+      border-collapse: collapse;
+    }
+
+    caption {
+      padding: 18px 20px;
+      text-align: left;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    th,
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--head);
+      color: #ffffff;
+      font-size: 12px;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .num {
+      width: 48px;
+      color: var(--muted);
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .association {
+      min-width: 155px;
+      font-weight: 800;
+      letter-spacing: .01em;
+    }
+
+    .entity {
+      min-width: 150px;
+      font-weight: 700;
+      color: #253142;
+    }
+
+    .cardinality {
+      width: 86px;
+      font-weight: 800;
+      color: #3f4b59;
+      white-space: nowrap;
+    }
+
+    .attrs {
+      min-width: 220px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .domain {
+      width: 145px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .users td {
+      background: var(--users);
+    }
+
+    .users .association,
+    .users .domain {
+      color: var(--users-strong);
+    }
+
+    .structure td {
+      background: var(--structure);
+    }
+
+    .structure .association,
+    .structure .domain {
+      color: var(--structure-strong);
+    }
+
+    .suivi td {
+      background: var(--suivi);
+    }
+
+    .suivi .association,
+    .suivi .domain {
+      color: var(--suivi-strong);
+    }
+
+    .comm td {
+      background: var(--comm);
+    }
+
+    .comm .association,
+    .comm .domain {
+      color: var(--comm-strong);
+    }
+
+    .empty {
+      color: #98a2af;
+      font-weight: 700;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .swatch {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+    }
+
+    .swatch.users { background: var(--users-strong); }
+    .swatch.structure { background: var(--structure-strong); }
+    .swatch.suivi { background: var(--suivi-strong); }
+    .swatch.comm { background: var(--comm-strong); }
+
+    .note {
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    @media (max-width: 820px) {
+      .page-shell {
+        width: min(100% - 24px, 1480px);
+        margin: 24px auto;
+      }
+
+      header,
+      .legend {
+        grid-template-columns: 1fr;
+      }
+
+      .meta {
+        min-width: 0;
+      }
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+      }
+
+      .page-shell {
+        width: 100%;
+        margin: 0;
+      }
+
+      .document-header {
+        break-after: avoid;
+      }
+
+      .table-wrap {
+        overflow: visible;
+        box-shadow: none;
+        border-radius: 0;
+      }
+
+      th {
+        position: static;
+      }
+
+      th,
+      td {
+        padding: 7px 8px;
+        font-size: 10px;
+      }
+
+      .legend,
+      .note {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <div class="document-header">
+      <div>
+        <h1>Associations et cardinalités du MCD</h1>
+        <p class="subtitle">Tableau de synthèse aligné sur le modèle EduConnect / JEFF_TFC_APP : gestion des utilisateurs, structure académique, suivi scolaire et communication école-famille.</p>
+      </div>
+      <div class="meta">
+        <div>Projet : EduConnect</div>
+        <div>Format : MCD Merise</div>
+        <div>Total : 22 associations</div>
+      </div>
+    </div>
+
+    <div class="table-wrap" role="region" aria-label="Tableau des associations et cardinalités du MCD">
+      <table>
+        <caption>Cardinalités : (0,1) zéro ou un | (1,1) exactement un | (0,N) zéro ou plusieurs | (1,N) un ou plusieurs.</caption>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Association</th>
+            <th>Entité 1</th>
+            <th>Card. 1</th>
+            <th>Entité 2</th>
+            <th>Card. 2</th>
+            <th>Entité 3</th>
+            <th>Card. 3</th>
+            <th>Attributs propres</th>
+            <th>Domaine</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="users">
+            <td class="num">1</td>
+            <td class="association">EST_ELEVE</td>
+            <td class="entity">UTILISATEUR</td>
+            <td class="cardinality">(0,1)</td>
+            <td class="entity">ELEVE</td>
+            <td class="cardinality">(1,1)</td>
+            <td class="empty">-</td>
+            <td class="empty">-</td>
+            <td class="attrs">-</td>
+            <td class="domain">Utilisateurs</td>
+          </tr>
+          <tr class="users">
+            <td class="num">2</td>
+            <td class="association">EST_ENSEIGNANT</td>
+            <td class="entity">UTILISATEUR</td>
+            <td class="cardinality">(0,1)</td>
+            <td class="entity">ENSEIGNANT</td>
+            <td class="cardinality">(1,1)</td>
+            <td class="empty">-</td>
+            <td class="empty">-</td>
+            <td class="attrs">-</td>
+            <td class="domain">Utilisateurs</td>
+          </tr>
+          <tr class="users">
+            <td class="num">3</td>
+            <td class="association">EST_PARENT</td>
+            <td class="entity">UTILISATEUR</td>
+            <td class="cardinality">(0,1)</td>
+            <td class="entity">PARENT</td>
+            <td class="cardinality">(1,1)</td>
+            <td class="empty">-</td>
+            <td class="empty">-</td>
+            <td class="attrs">-</td>
+            <td class="domain">Utilisateurs</td>
+          </tr>
+          <tr class="users">
+            <td class="num">4</td>
+            <td class="association">SUPERVISE</td>
+            <td class="entity">PARENT</td>
+            <td class="cardinality">(0,N)</td>
+            <td class="entity">ELEVE</td>
+            <td class="cardinality">(0,N)</td>
+            <td class="empty">-</td>
+            <td class="empty">-</td>
+            <td class="attrs">relation</td>
+            <td class="domain">Utilisateurs</td>
+          </tr>
+          <tr class="structure">
+            <td class="num">5</td>
+            <td class="association">PLANIFIE</td>
+            <td class="entity">ANNEE_SCOLAIRE</td>
+            <td class="cardinality">(1,N)</td>
+            <td class="entity">CLASSE_ANNUELLE</td>
+            <td class="cardinality">(1,1)</td>
+            <td class="empty">-</td>
+            <td class="empty">-</td>
+            <td class="attrs">-</td>
+            <td class="domain">Structure</td>
+          </tr>
+          <tr class="structure">
+            <td class="num">6</td>
+            <td class="association">NIVEAU_DE</td>
+            <td class="entity">NIVEAU</td>
+            <td class="cardinality">(1,N)</td>
+            <td class="entity">CLASSE_ANNUELLE</td>
+            <td class="cardinality">(1,1)</td>
+            <td class="empty">-</td>
+            <td class="empty">-</td>
+            <td class="attrs">-</td>
+            <td class="domain">Structure</td>
+          </tr>
+          <tr class="structure">
+            <td class="num">7</td>
+            <td class="association">OPTION_DE</td>
+            <td class="entity">OPTION</td>
+            <td class="cardinality">(0,N)</td>
+            <td class="entity">CLASSE_ANNUELLE</td>
+            <td class="cardinality">(0,1)</td>
+            <td class="empty">-</td>
+            <td class="empty">-</td>
+            <td class="attrs">-</td>
+            <td class="domain">Structure</td>
+          </tr>
+          <tr class="structure">
+            <td class="num">8</td>
+            <td class="association">COMPOSE_DE</td>
+            <td class="entity">CLASSE_ANNUELLE</td>
+            <td class="cardinality">(1,N)</td>
+            <td class="entity">DIVISION</td>
+            <td class="cardinality">(1,1)</td>
+            <td class="empty">-</td>
+            <td class="empty">-</td>
+            <td class="attrs">-</td>
+            <td class="domain">Structure</td>
+          </tr>
+          <tr class="structure">
+            <td class="num">9</td>
+            <td class="association">PROGRAMME</td>
+            <td class="entity">DIVISION</td>
+            <td class="cardinality">(0,N)</td>
+            <td class="entity">MATIERE</td>
+            <td class="cardinality">(0,N)</td>
+            <td class="empty">-</td>
+            <td class="empty">-</td>
+            <td class="attrs">coefficient</td>
+            <td class="domain">Structure</td>
+          </tr>
+          <tr class="structure">
+            <td class="num">10</td>
+            <td class="association">RYTHME</td>
+            <td class="entity">ANNEE_SCOLAIRE</td>
+            <td class="cardinality">(1,N)</td>
+            <td class="entity">TERME</td>
+            <td class="cardinality">(1,1)</td>
+            <td class="empty">-</td>
+            <td class="empty">-</td>
+            <td class="attrs">-</td>
+            <td class="domain">Structure</td>
+          </tr>
+          <tr class="structure">
+            <td class="num">11</td>
+            <td class="association">PERIODE_DE</td>
+            <td class="entity">TERME</td>
+            <td class="cardinality">(1,N)</td>
+            <td class="entity">PERIODE</td>
+            <td class="cardinality">(1,1)</td>
+            <td class="empty">-</td>
+            <td class="empty">-</td>
+            <td class="attrs">-</td>
+            <td class="domain">Structure</td>
+          </tr>
+          <tr class="suivi">
+            <td class="num">12</td>
+            <td class="association">INSCRIT_DANS</td>
+            <td class="entity">ELEVE</td>
+            <td class="cardinality">(1,1)</td>
+            <td class="entity">DIVISION</td>
+            <td class="cardinality">(0,N)</td>
+            <td class="empty">-</td>
+            <td class="empty">-</td>
+            <td class="attrs">-</td>
+            <td class="domain">Suivi scolaire</td>
+          </tr>
+          <tr class="suivi">
+            <td class="num">13</td>
+            <td class="association">AFFECTE</td>
+            <td class="entity">ENSEIGNANT</td>
+            <td class="cardinality">(0,N)</td>
+            <td class="entity">DIVISION</td>
+            <td class="cardinality">(1,N)</td>
+            <td class="entity">MATIERE</td>
+            <td class="cardinality">(0,N)</td>
+            <td class="attrs">heures_hebdo, est_principal</td>
+            <td class="domain">Suivi scolaire</td>
+          </tr>
+          <tr class="suivi">
+            <td class="num">14</td>
+            <td class="association">PROPOSE</td>
+            <td class="entity">DIVISION</td>
+            <td class="cardinality">(1,N)</td>
+            <td class="entity">EVALUATION</td>
+            <td class="cardinality">(1,1)</td>
+            <td class="empty">-</td>
+            <td class="empty">-</td>
+            <td class="attrs">-</td>
+            <td class="domain">Suivi scolaire</td>
+          </tr>
+          <tr class="suivi">
+            <td class="num">15</td>
+            <td class="association">PORTE_SUR</td>
+            <td class="entity">MATIERE</td>
+            <td class="cardinality">(1,N)</td>
+            <td class="entity">EVALUATION</td>
+            <td class="cardinality">(1,1)</td>
+            <td class="empty">-</td>
+            <td class="empty">-</td>
+            <td class="attrs">-</td>
+            <td class="domain">Suivi scolaire</td>
+          </tr>
+          <tr class="suivi">
+            <td class="num">16</td>
+            <td class="association">PLANIFIEE_EN</td>
+            <td class="entity">PERIODE</td>
+            <td class="cardinality">(1,N)</td>
+            <td class="entity">EVALUATION</td>
+            <td class="cardinality">(1,1)</td>
+            <td class="empty">-</td>
+            <td class="empty">-</td>
+            <td class="attrs">nom, type, valeur_max, est_publiee</td>
+            <td class="domain">Suivi scolaire</td>
+          </tr>
+          <tr class="suivi">
+            <td class="num">17</td>
+            <td class="association">NOTE</td>
+            <td class="entity">ELEVE</td>
+            <td class="cardinality">(1,N)</td>
+            <td class="entity">EVALUATION</td>
+            <td class="cardinality">(1,N)</td>
+            <td class="empty">-</td>
+            <td class="empty">-</td>
+            <td class="attrs">valeur, est_absent</td>
+            <td class="domain">Suivi scolaire</td>
+          </tr>
+          <tr class="suivi">
+            <td class="num">18</td>
+            <td class="association">ABSENCE</td>
+            <td class="entity">ELEVE</td>
+            <td class="cardinality">(1,N)</td>
+            <td class="entity">DIVISION</td>
+            <td class="cardinality">(1,N)</td>
+            <td class="entity">MATIERE</td>
+            <td class="cardinality">(0,N)</td>
+            <td class="attrs">date, statut, justifiee, justification</td>
+            <td class="domain">Suivi scolaire</td>
+          </tr>
+          <tr class="suivi">
+            <td class="num">19</td>
+            <td class="association">APPRECIE</td>
+            <td class="entity">ELEVE</td>
+            <td class="cardinality">(1,N)</td>
+            <td class="entity">TERME</td>
+            <td class="cardinality">(1,N)</td>
+            <td class="entity">ENSEIGNANT</td>
+            <td class="cardinality">(0,N)</td>
+            <td class="attrs">contenu</td>
+            <td class="domain">Suivi scolaire</td>
+          </tr>
+          <tr class="comm">
+            <td class="num">20</td>
+            <td class="association">ENVOIE</td>
+            <td class="entity">UTILISATEUR</td>
+            <td class="cardinality">(1,N)</td>
+            <td class="entity">MESSAGE</td>
+            <td class="cardinality">(1,1)</td>
+            <td class="empty">-</td>
+            <td class="empty">-</td>
+            <td class="attrs">-</td>
+            <td class="domain">Communication</td>
+          </tr>
+          <tr class="comm">
+            <td class="num">21</td>
+            <td class="association">RECOIT</td>
+            <td class="entity">MESSAGE</td>
+            <td class="cardinality">(1,N)</td>
+            <td class="entity">UTILISATEUR</td>
+            <td class="cardinality">(0,N)</td>
+            <td class="empty">-</td>
+            <td class="empty">-</td>
+            <td class="attrs">lu_le, supprime_destin</td>
+            <td class="domain">Communication</td>
+          </tr>
+          <tr class="comm">
+            <td class="num">22</td>
+            <td class="association">REPOND_A</td>
+            <td class="entity">MESSAGE</td>
+            <td class="cardinality">(0,N)</td>
+            <td class="entity">MESSAGE</td>
+            <td class="cardinality">(0,1)</td>
+            <td class="empty">-</td>
+            <td class="empty">-</td>
+            <td class="attrs">parent_message_id</td>
+            <td class="domain">Communication</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="legend" role="region" aria-label="Légende des domaines">
+      <div class="legend-item"><span class="swatch users"></span>Gestion des utilisateurs</div>
+      <div class="legend-item"><span class="swatch structure"></span>Structure académique</div>
+      <div class="legend-item"><span class="swatch suivi"></span>Suivi scolaire</div>
+      <div class="legend-item"><span class="swatch comm"></span>Communication</div>
+    </div>
+
+    <p class="note">Source fonctionnelle : MCD utilisateur, structure académique, suivi scolaire et communication du dossier Diagramme.</p>
+  </div>
+</body>
+</html>

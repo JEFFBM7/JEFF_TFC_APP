@@ -809,13 +809,13 @@ onMounted(async () => {
 }
 
 .role-banner.exam {
-  background: #eff6ff;
-  border-color: #bfdbfe;
+  background: var(--primary-soft);
+  border-color: var(--primary-tint);
 }
 
 .role-banner.continuous {
-  background: #f0fdf4;
-  border-color: #bbf7d0;
+  background: var(--success-soft);
+  border-color: rgba(74, 222, 128, 0.3);
 }
 
 .role-banner-icon {
@@ -824,7 +824,7 @@ onMounted(async () => {
   display: grid;
   place-items: center;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
 }
 
@@ -859,9 +859,9 @@ onMounted(async () => {
   background: var(--bg-card);
 }
 
-.summary-card.exam { border-color: #bfdbfe; background: #f8fbff; }
-.summary-card.continuous { border-color: #bbf7d0; background: #f7fef9; }
-.summary-card.draft { border-color: #fde68a; background: #fffbeb; }
+.summary-card.exam { border-color: var(--primary-tint); background: var(--primary-soft); }
+.summary-card.continuous { border-color: rgba(74, 222, 128, 0.3); background: var(--success-soft); }
+.summary-card.draft { border-color: rgba(251, 191, 36, 0.3); background: var(--warn-soft); }
 
 .summary-label {
   display: block;
@@ -1040,8 +1040,8 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   gap: 0.2rem;
-  background: #dcfce7;
-  color: #166534;
+  background: var(--success-soft);
+  color: var(--success);
   border-radius: 999px;
   padding: 2px 8px;
   font-size: 0.72rem;
@@ -1054,8 +1054,8 @@ onMounted(async () => {
 }
 
 .badge-draft {
-  background: #fef9c3;
-  color: #854d0e;
+  background: var(--warn-soft);
+  color: var(--warn);
   border-radius: 999px;
   padding: 2px 8px;
   font-size: 0.72rem;
@@ -1063,8 +1063,8 @@ onMounted(async () => {
 }
 
 .badge-exam {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--primary-soft);
+  color: var(--accent);
   border-radius: 999px;
   padding: 2px 8px;
   font-size: 0.75rem;
@@ -1072,8 +1072,8 @@ onMounted(async () => {
 }
 
 .badge-continuous {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--success-soft);
+  color: var(--success);
   border-radius: 999px;
   padding: 2px 8px;
   font-size: 0.75rem;
@@ -1111,13 +1111,13 @@ onMounted(async () => {
 }
 
 .modal-role-hint.exam {
-  background: #eff6ff;
-  color: #1e40af;
+  background: var(--primary-soft);
+  color: var(--accent);
 }
 
 .modal-role-hint.continuous {
-  background: #f0fdf4;
-  color: #166534;
+  background: var(--success-soft);
+  color: var(--success);
 }
 
 .form-grid.two {

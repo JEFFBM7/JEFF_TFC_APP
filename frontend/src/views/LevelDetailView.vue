@@ -316,19 +316,19 @@ button + button { margin-left: 0.4rem; }
   white-space: nowrap;
 }
 .filiere-generale {
-  background: #eef2ff;
+  background: var(--primary-soft);
   color: #3730a3;
   border: 1px solid #c7d2fe;
 }
 .filiere-technique {
-  background: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fde68a;
+  background: var(--warn-soft);
+  color: var(--warn);
+  border: 1px solid rgba(251, 191, 36, 0.3);
 }
 .filiere-professionnelle {
-  background: #dcfce7;
-  color: #166534;
-  border: 1px solid #bbf7d0;
+  background: var(--success-soft);
+  color: var(--success);
+  border: 1px solid rgba(74, 222, 128, 0.3);
 }
 .filiere-empty { color: var(--text-soft); font-size: 0.85rem; }
 @media (max-width: 640px) {

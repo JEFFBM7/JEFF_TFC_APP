@@ -1,6 +1,6 @@
 {
-  "name": "EduConnect — Enseignant",
-  "short_name": "EduConnect Enseignant",
+  "name": "EduConnect",
+  "short_name": "EduConnect",
   "description": "Notes, présences et emploi du temps — Complexe MALUNGA",
   "start_url": "/",
   "scope": "/",

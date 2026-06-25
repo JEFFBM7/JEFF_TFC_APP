@@ -19,8 +19,8 @@
   border: 1px solid var(--border);
   border-radius: calc(var(--radius) + 2px);
   background:
-    radial-gradient(ellipse 120% 80% at 100% -20%, rgba(37, 99, 235, 0.09), transparent 55%),
-    linear-gradient(160deg, #ffffff 0%, #f8fafc 48%, #f1f5f9 100%);
+    radial-gradient(ellipse 120% 80% at 100% -20%, rgba(59, 130, 246, 0.1), transparent 55%),
+    linear-gradient(160deg, #0d1f4a 0%, #0a1836 48%, #050d1f 100%);
   box-shadow: var(--shadow-card);
 }
 
@@ -118,7 +118,7 @@
   flex-shrink: 0;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--bg-subtle);
   color: var(--text-soft);
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
@@ -164,26 +164,25 @@
 }
 
 .portal-dash-alert:hover {
-  transform: translateY(-1px);
   text-decoration: none;
 }
 
 .portal-dash-alert--danger {
-  border-color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.3);
   border-left: 4px solid var(--danger);
-  background: linear-gradient(90deg, var(--danger-soft) 0%, #fff 40%);
+  background: linear-gradient(90deg, var(--danger-soft) 0%, transparent 40%);
 }
 
 .portal-dash-alert--warn {
-  border-color: #fde68a;
+  border-color: rgba(251, 191, 36, 0.3);
   border-left: 4px solid var(--warn);
-  background: linear-gradient(90deg, var(--warn-soft) 0%, #fff 40%);
+  background: linear-gradient(90deg, var(--warn-soft) 0%, transparent 40%);
 }
 
 .portal-dash-alert--info {
   border-color: var(--primary-tint);
   border-left: 4px solid var(--primary);
-  background: linear-gradient(90deg, var(--primary-soft) 0%, #fff 40%);
+  background: linear-gradient(90deg, var(--primary-soft) 0%, transparent 40%);
 }
 
 .portal-dash-alert__icon {
@@ -208,8 +207,8 @@
   line-height: 1.25;
 }
 
-.portal-dash-alert--danger .portal-dash-alert__body strong { color: #b91c1c; }
-.portal-dash-alert--warn .portal-dash-alert__body strong { color: #b45309; }
+.portal-dash-alert--danger .portal-dash-alert__body strong { color: var(--danger); }
+.portal-dash-alert--warn .portal-dash-alert__body strong { color: var(--warn); }
 
 .portal-dash-alert__body span {
   font-size: 0.78rem;
@@ -289,7 +288,7 @@
   min-width: 1.1rem;
   height: 1.1rem;
   padding: 0 0.28rem;
-  border: 1.5px solid #fff;
+  border: 1.5px solid var(--bg-card);
   border-radius: 999px;
   background: var(--danger);
   color: #fff;
@@ -329,8 +328,8 @@
   text-decoration: none;
 }
 
-.portal-dash-kpi--warn { border-color: #fde68a; background: var(--warn-soft); }
-.portal-dash-kpi--danger { border-color: #fecaca; background: var(--danger-soft); }
+.portal-dash-kpi--warn { border-color: rgba(251, 191, 36, 0.3); background: var(--warn-soft); }
+.portal-dash-kpi--danger { border-color: rgba(248, 113, 113, 0.3); background: var(--danger-soft); }
 
 .portal-dash-kpi__head {
   display: flex;
@@ -362,8 +361,8 @@
   height: 1rem;
 }
 
-.portal-dash-kpi--warn .portal-dash-kpi__icon { background: #fef3c7; color: var(--warn); }
-.portal-dash-kpi--danger .portal-dash-kpi__icon { background: #fee2e2; color: var(--danger); }
+.portal-dash-kpi--warn .portal-dash-kpi__icon { background: var(--warn-soft); color: var(--warn); }
+.portal-dash-kpi--danger .portal-dash-kpi__icon { background: var(--danger-soft); color: var(--danger); }
 
 .portal-dash-kpi__value {
   font-size: 1.75rem;
@@ -543,21 +542,21 @@
 }
 
 .portal-dash-child-card__stat--warn {
-  border-color: #fde68a;
+  border-color: rgba(251, 191, 36, 0.3);
   background: var(--warn-soft);
 }
 
 .portal-dash-child-card__stat--warn dd {
-  color: #b45309;
+  color: var(--warn);
 }
 
 .portal-dash-child-card__stat--danger {
-  border-color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.3);
   background: var(--danger-soft);
 }
 
 .portal-dash-child-card__stat--danger dd {
-  color: #b91c1c;
+  color: var(--danger);
 }
 
 .portal-dash-child-card__avg {
@@ -596,8 +595,8 @@
 }
 
 .portal-dash-child-card--alert {
-  border-color: #fecaca;
-  background: linear-gradient(135deg, #fff 0%, var(--danger-soft) 100%);
+  border-color: rgba(248, 113, 113, 0.3);
+  background: linear-gradient(135deg, var(--bg-card) 0%, var(--danger-soft) 100%);
 }
 
 .portal-dash-child-card__progress {
@@ -642,7 +641,7 @@
 .portal-dash-child-card__fill--good { background: linear-gradient(90deg, var(--success), #4ade80); }
 .portal-dash-child-card__fill--warn { background: linear-gradient(90deg, var(--warn), #fbbf24); }
 .portal-dash-child-card__fill--danger { background: linear-gradient(90deg, var(--danger), #f87171); }
-.portal-dash-child-card__fill--muted { background: #cbd5e1; }
+.portal-dash-child-card__fill--muted { background: var(--border-strong); }
 
 .portal-dash-child-card__flags {
   display: flex;
@@ -667,12 +666,12 @@
 
 .portal-dash-child-card__flag--warn {
   background: var(--warn-soft);
-  color: #b45309;
+  color: var(--warn);
 }
 
 .portal-dash-child-card__flag--danger {
   background: var(--danger-soft);
-  color: #b91c1c;
+  color: var(--danger);
 }
 
 .portal-dash-summary-band {
@@ -738,9 +737,9 @@
   white-space: nowrap;
 }
 
-.portal-status-pill--good { background: var(--success-soft); color: #15803d; }
-.portal-status-pill--warn { background: var(--warn-soft); color: #b45309; }
-.portal-status-pill--danger { background: var(--danger-soft); color: #b91c1c; }
+.portal-status-pill--good { background: var(--success-soft); color: var(--success); }
+.portal-status-pill--warn { background: var(--warn-soft); color: var(--warn); }
+.portal-status-pill--danger { background: var(--danger-soft); color: var(--danger); }
 .portal-status-pill--muted { background: var(--bg-subtle); color: var(--text-soft); }
 
 .portal-trend {
@@ -779,10 +778,10 @@
   text-decoration: none;
 }
 
-.portal-dash-perf--good { background: linear-gradient(135deg, #fff 0%, var(--success-soft) 100%); border-color: #bbf7d0; }
-.portal-dash-perf--warn { background: linear-gradient(135deg, #fff 0%, var(--warn-soft) 100%); border-color: #fde68a; }
-.portal-dash-perf--danger { background: linear-gradient(135deg, #fff 0%, var(--danger-soft) 100%); border-color: #fecaca; }
-.portal-dash-perf--muted { background: linear-gradient(135deg, #fff 0%, var(--bg-subtle) 100%); }
+.portal-dash-perf--good { background: linear-gradient(135deg, var(--bg-card) 0%, var(--success-soft) 100%); border-color: rgba(74, 222, 128, 0.25); }
+.portal-dash-perf--warn { background: linear-gradient(135deg, var(--bg-card) 0%, var(--warn-soft) 100%); border-color: rgba(251, 191, 36, 0.25); }
+.portal-dash-perf--danger { background: linear-gradient(135deg, var(--bg-card) 0%, var(--danger-soft) 100%); border-color: rgba(248, 113, 113, 0.25); }
+.portal-dash-perf--muted { background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-subtle) 100%); }
 
 .portal-dash-perf__head {
   display: flex;
@@ -830,7 +829,7 @@
 }
 
 .portal-dash-perf__arc-track {
-  stroke: rgba(15, 23, 42, 0.08);
+  stroke: rgba(255, 255, 255, 0.08);
 }
 
 .portal-dash-perf__arc-fill {
@@ -885,9 +884,9 @@
 
 .portal-dash-perf__insight {
   padding: 0.6rem 0.7rem;
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--bg-soft);
 }
 
 .portal-dash-perf__insight dt {
@@ -974,7 +973,7 @@
   width: 3rem;
   height: 3rem;
   margin-bottom: 0.75rem;
-  color: #cbd5e1;
+  color: var(--text-muted);
 }
 
 .portal-dash-empty h2 {
@@ -991,7 +990,7 @@
 
 .portal-dash-skeleton {
   border-radius: var(--radius);
-  background: linear-gradient(90deg, #e2e8f0, #f1f5f9, #e2e8f0);
+  background: linear-gradient(90deg, #0a1836, #0f2455, #0a1836);
   background-size: 200% 100%;
   animation: portal-dash-shimmer 1.4s ease-in-out infinite;
 }

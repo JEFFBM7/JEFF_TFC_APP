@@ -102,11 +102,13 @@ function buildSemesterScores(
   periodIds: [number | undefined, number | undefined],
 ): CtebSemesterScores {
   if (row.kind !== 'subject' || !subject) {
+    const hasMaxima = row.kind === 'subject' || row.kind === 'subtotal'
+
     return {
-      max: row.kind === 'subtotal' ? row.semesterMax : null,
+      max: hasMaxima ? row.semesterMax : null,
       period1: null,
       period2: null,
-      examMax: row.kind === 'subtotal' ? row.examMax : null,
+      examMax: hasMaxima ? row.examMax : null,
       exam: null,
       total: null,
     }

@@ -1,0 +1,328 @@
+<svg width="1600" height="1120" viewBox="0 0 1600 1120" role="img" aria-labelledby="title desc" xmlns="http://www.w3.org/2000/svg">
+  <title id="title">MCD EduConnect - JEFF_TFC_APP</title>
+  <desc id="desc">Vue globale du modele conceptuel de donnees alignee sur le projet EduConnect: utilisateurs, structure academique, suivi scolaire et communication.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 1 1 L 9 5 L 1 9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <filter id="soft-shadow" x="-8%" y="-8%" width="116%" height="116%">
+      <feDropShadow dx="0" dy="10" stdDeviation="11" flood-color="#172033" flood-opacity="0.08"/>
+    </filter>
+    <style>
+      .page { fill: #f8faf7; }
+      .title { fill: #172033; font: 700 34px "Aptos", "Segoe UI", sans-serif; letter-spacing: 0; }
+      .subtitle { fill: #53606d; font: 500 16px "Aptos", "Segoe UI", sans-serif; letter-spacing: 0; }
+      .section-label { fill: #253142; font: 700 17px "Aptos", "Segoe UI", sans-serif; letter-spacing: .4px; }
+      .section-note { fill: #617080; font: 500 12px "Aptos", "Segoe UI", sans-serif; }
+      .panel { fill: #ffffff; stroke-width: 1.2; rx: 18; filter: url(#soft-shadow); }
+      .panel-users { stroke: #2f77a6; }
+      .panel-structure { stroke: #238057; }
+      .panel-suivi { stroke: #b47424; }
+      .panel-message { stroke: #8b5a9d; }
+      .card { fill: #ffffff; stroke-width: 1.1; rx: 12; }
+      .card-title { font: 700 14px "Aptos", "Segoe UI", sans-serif; letter-spacing: .2px; }
+      .card-field { font: 500 12px "Aptos", "Segoe UI", sans-serif; letter-spacing: 0; }
+      .users .card { stroke: #2f77a6; }
+      .users .card-bg { fill: #eaf4fb; }
+      .users .card-title { fill: #155779; }
+      .users .card-field { fill: #2f77a6; }
+      .structure .card { stroke: #238057; }
+      .structure .card-bg { fill: #e9f7ef; }
+      .structure .card-title { fill: #14603f; }
+      .structure .card-field { fill: #238057; }
+      .suivi .card { stroke: #b47424; }
+      .suivi .card-bg { fill: #fff3df; }
+      .suivi .card-title { fill: #7d4b15; }
+      .suivi .card-field { fill: #9b631f; }
+      .message .card { stroke: #8b5a9d; }
+      .message .card-bg { fill: #f4ecf7; }
+      .message .card-title { fill: #663579; }
+      .message .card-field { fill: #7f4c91; }
+      .assoc { fill: #fffdf4; stroke: #c7a33c; stroke-width: 1.1; rx: 18; }
+      .assoc-red { fill: #fff4f0; stroke: #c96a4a; stroke-width: 1.1; rx: 18; }
+      .assoc-label { fill: #66511b; font: 700 12px "Aptos", "Segoe UI", sans-serif; letter-spacing: .2px; }
+      .assoc-label-red { fill: #904a34; font: 700 12px "Aptos", "Segoe UI", sans-serif; letter-spacing: .2px; }
+      .line { fill: none; stroke: #5f6b76; stroke-width: 1.5; marker-end: url(#arrow); color: #5f6b76; }
+      .line-soft { fill: none; stroke: #8a98a8; stroke-width: 1.25; stroke-dasharray: 7 6; marker-end: url(#arrow); color: #8a98a8; }
+      .cardinality { fill: #44505c; font: 700 11px "Aptos", "Segoe UI", sans-serif; }
+      .legend-title { fill: #172033; font: 700 13px "Aptos", "Segoe UI", sans-serif; }
+      .legend-text { fill: #53606d; font: 500 12px "Aptos", "Segoe UI", sans-serif; }
+    </style>
+  </defs>
+
+  <rect class="page" width="1600" height="1120"/>
+
+  <text class="title" x="70" y="70">MCD EduConnect - Systeme d'information scolaire</text>
+  <text class="subtitle" x="70" y="101">Version alignee sur JEFF_TFC_APP : classes annuelles, divisions, trimestres/termes, periodes, evaluations, notes, absences et messagerie.</text>
+
+  <rect x="70" y="134" width="1460" height="920" rx="28" fill="#ffffff" stroke="#d9e0e6" stroke-width="1.2"/>
+
+  <!-- Utilisateurs -->
+  <g class="users">
+    <rect class="panel panel-users" x="100" y="170" width="1400" height="190"/>
+    <text class="section-label" x="128" y="205">GROUPE 1 - GESTION DES UTILISATEURS</text>
+    <text class="section-note" x="128" y="226">Comptes et profils rattaches aux roles de l'application.</text>
+
+    <g transform="translate(130 248)">
+      <rect class="card" width="220" height="84"/>
+      <rect class="card-bg" width="220" height="32" rx="12"/>
+      <text class="card-title" x="110" y="21" text-anchor="middle">UTILISATEUR</text>
+      <text class="card-field" x="18" y="51">id_utilisateur, identifiant</text>
+      <text class="card-field" x="18" y="69">email, role, est_actif</text>
+    </g>
+
+    <g transform="translate(470 248)">
+      <rect class="card" width="220" height="84"/>
+      <rect class="card-bg" width="220" height="32" rx="12"/>
+      <text class="card-title" x="110" y="21" text-anchor="middle">ELEVE</text>
+      <text class="card-field" x="18" y="51">id_eleve, matricule</text>
+      <text class="card-field" x="18" y="69">nom, postnom, statut</text>
+    </g>
+
+    <g transform="translate(810 248)">
+      <rect class="card" width="220" height="84"/>
+      <rect class="card-bg" width="220" height="32" rx="12"/>
+      <text class="card-title" x="110" y="21" text-anchor="middle">ENSEIGNANT</text>
+      <text class="card-field" x="18" y="51">id_enseignant, matricule</text>
+      <text class="card-field" x="18" y="69">type, specialite, genre</text>
+    </g>
+
+    <g transform="translate(1150 248)">
+      <rect class="card" width="220" height="84"/>
+      <rect class="card-bg" width="220" height="32" rx="12"/>
+      <text class="card-title" x="110" y="21" text-anchor="middle">PARENT</text>
+      <text class="card-field" x="18" y="51">id_parent, telephone</text>
+      <text class="card-field" x="18" y="69">adresse, relation</text>
+    </g>
+
+    <path class="line" d="M 350 290 H 450"/>
+    <text class="cardinality" x="372" y="280">(0,1)</text>
+    <text class="cardinality" x="421" y="280">(1,1)</text>
+    <path class="line" d="M 350 300 C 505 365 650 365 810 300"/>
+    <text class="cardinality" x="560" y="350">(0,1) EST_ENSEIGNANT</text>
+    <path class="line" d="M 690 290 H 790"/>
+    <text class="cardinality" x="724" y="280">(1,1)</text>
+    <path class="line" d="M 690 300 C 840 365 1000 365 1150 300"/>
+    <text class="cardinality" x="890" y="350">(0,N) SUPERVISE (0,N)</text>
+  </g>
+
+  <!-- Structure academique -->
+  <g class="structure">
+    <rect class="panel panel-structure" x="100" y="390" width="670" height="445"/>
+    <text class="section-label" x="128" y="425">GROUPE 2 - STRUCTURE ACADEMIQUE</text>
+    <text class="section-note" x="128" y="446">Organisation actuelle : annee scolaire, niveaux, options, classes annuelles, divisions, matieres, termes et periodes.</text>
+
+    <g transform="translate(128 478)">
+      <rect class="card" width="180" height="72"/>
+      <rect class="card-bg" width="180" height="30" rx="12"/>
+      <text class="card-title" x="90" y="20" text-anchor="middle">ANNEE_SCOLAIRE</text>
+      <text class="card-field" x="15" y="49">libelle, dates</text>
+      <text class="card-field" x="15" y="64">est_courante</text>
+    </g>
+
+    <g transform="translate(350 478)">
+      <rect class="card" width="168" height="72"/>
+      <rect class="card-bg" width="168" height="30" rx="12"/>
+      <text class="card-title" x="84" y="20" text-anchor="middle">NIVEAU</text>
+      <text class="card-field" x="15" y="49">cycle, ordre</text>
+      <text class="card-field" x="15" y="64">a_options</text>
+    </g>
+
+    <g transform="translate(562 478)">
+      <rect class="card" width="168" height="72"/>
+      <rect class="card-bg" width="168" height="30" rx="12"/>
+      <text class="card-title" x="84" y="20" text-anchor="middle">OPTION</text>
+      <text class="card-field" x="15" y="49">nom</text>
+      <text class="card-field" x="15" y="64">filiere</text>
+    </g>
+
+    <g transform="translate(246 600)">
+      <rect class="card" width="220" height="72"/>
+      <rect class="card-bg" width="220" height="30" rx="12"/>
+      <text class="card-title" x="110" y="20" text-anchor="middle">CLASSE_ANNUELLE</text>
+      <text class="card-field" x="16" y="49">nom, est_active</text>
+      <text class="card-field" x="16" y="64">school_year + niveau + option</text>
+    </g>
+
+    <g transform="translate(510 600)">
+      <rect class="card" width="190" height="72"/>
+      <rect class="card-bg" width="190" height="30" rx="12"/>
+      <text class="card-title" x="95" y="20" text-anchor="middle">DIVISION</text>
+      <text class="card-field" x="16" y="49">section</text>
+      <text class="card-field" x="16" y="64">est_active</text>
+    </g>
+
+    <g transform="translate(128 735)">
+      <rect class="card" width="180" height="72"/>
+      <rect class="card-bg" width="180" height="30" rx="12"/>
+      <text class="card-title" x="90" y="20" text-anchor="middle">TERME</text>
+      <text class="card-field" x="15" y="49">nom, position</text>
+      <text class="card-field" x="15" y="64">type, cycle</text>
+    </g>
+
+    <g transform="translate(350 735)">
+      <rect class="card" width="168" height="72"/>
+      <rect class="card-bg" width="168" height="30" rx="12"/>
+      <text class="card-title" x="84" y="20" text-anchor="middle">PERIODE</text>
+      <text class="card-field" x="15" y="49">nom, position</text>
+      <text class="card-field" x="15" y="64">dates</text>
+    </g>
+
+    <g transform="translate(562 735)">
+      <rect class="card" width="168" height="72"/>
+      <rect class="card-bg" width="168" height="30" rx="12"/>
+      <text class="card-title" x="84" y="20" text-anchor="middle">MATIERE</text>
+      <text class="card-field" x="15" y="49">nom, code</text>
+      <text class="card-field" x="15" y="64">coefficient</text>
+    </g>
+
+    <path class="line" d="M 308 514 C 355 560 310 575 330 600"/>
+    <text class="cardinality" x="300" y="574">PLANIFIE</text>
+    <path class="line" d="M 434 550 V 590"/>
+    <text class="cardinality" x="445" y="577">NIVEAU_DE</text>
+    <path class="line-soft" d="M 600 550 C 590 575 520 590 466 622"/>
+    <text class="cardinality" x="548" y="582">OPTION_DE</text>
+    <path class="line" d="M 466 636 H 500"/>
+    <text class="cardinality" x="470" y="626">COMPOSE_DE</text>
+    <path class="line" d="M 308 770 H 340"/>
+    <text class="cardinality" x="314" y="760">PERIODE_DE</text>
+    <path class="line" d="M 308 514 C 230 600 210 665 218 735"/>
+    <text class="cardinality" x="166" y="640">RYTHME</text>
+    <path class="line" d="M 646 672 V 725"/>
+    <text class="cardinality" x="660" y="708">PROGRAMME</text>
+  </g>
+
+  <!-- Suivi scolaire -->
+  <g class="suivi">
+    <rect class="panel panel-suivi" x="830" y="390" width="670" height="445"/>
+    <text class="section-label" x="858" y="425">GROUPE 3 - SUIVI SCOLAIRE</text>
+    <text class="section-note" x="858" y="446">Ce groupe represente la saisie, la publication et la consultation des donnees scolaires.</text>
+
+    <g transform="translate(858 478)">
+      <rect class="card" width="176" height="72"/>
+      <rect class="card-bg" width="176" height="30" rx="12"/>
+      <text class="card-title" x="88" y="20" text-anchor="middle">ELEVE</text>
+      <text class="card-field" x="15" y="49">ref. utilisateur</text>
+      <text class="card-field" x="15" y="64">inscription actuelle</text>
+    </g>
+
+    <g transform="translate(1080 478)">
+      <rect class="card" width="176" height="72"/>
+      <rect class="card-bg" width="176" height="30" rx="12"/>
+      <text class="card-title" x="88" y="20" text-anchor="middle">DIVISION</text>
+      <text class="card-field" x="15" y="49">section</text>
+      <text class="card-field" x="15" y="64">classe annuelle</text>
+    </g>
+
+    <g transform="translate(1300 478)">
+      <rect class="card" width="176" height="72"/>
+      <rect class="card-bg" width="176" height="30" rx="12"/>
+      <text class="card-title" x="88" y="20" text-anchor="middle">ENSEIGNANT</text>
+      <text class="card-field" x="15" y="49">affectations</text>
+      <text class="card-field" x="15" y="64">titulariat</text>
+    </g>
+
+    <g transform="translate(858 612)">
+      <rect class="assoc-red" width="176" height="58"/>
+      <text class="assoc-label-red" x="88" y="24" text-anchor="middle">INSCRIT_DANS</text>
+      <text class="card-field" x="38" y="44">eleve -> division</text>
+    </g>
+
+    <g transform="translate(1080 612)">
+      <rect class="card" width="176" height="72"/>
+      <rect class="card-bg" width="176" height="30" rx="12"/>
+      <text class="card-title" x="88" y="20" text-anchor="middle">EVALUATION</text>
+      <text class="card-field" x="15" y="49">nom, type, date</text>
+      <text class="card-field" x="15" y="64">max, publiee</text>
+    </g>
+
+    <g transform="translate(1300 612)">
+      <rect class="assoc-red" width="176" height="58"/>
+      <text class="assoc-label-red" x="88" y="24" text-anchor="middle">AFFECTE</text>
+      <text class="card-field" x="26" y="44">enseignant/division</text>
+    </g>
+
+    <g transform="translate(858 735)">
+      <rect class="assoc-red" width="176" height="58"/>
+      <text class="assoc-label-red" x="88" y="24" text-anchor="middle">ABSENCE</text>
+      <text class="card-field" x="22" y="44">date, statut, justific.</text>
+    </g>
+
+    <g transform="translate(1080 735)">
+      <rect class="assoc-red" width="176" height="58"/>
+      <text class="assoc-label-red" x="88" y="24" text-anchor="middle">NOTE</text>
+      <text class="card-field" x="36" y="44">valeur, est_absent</text>
+    </g>
+
+    <g transform="translate(1300 735)">
+      <rect class="assoc-red" width="176" height="58"/>
+      <text class="assoc-label-red" x="88" y="24" text-anchor="middle">APPRECIE</text>
+      <text class="card-field" x="44" y="44">terme + contenu</text>
+    </g>
+
+    <path class="line" d="M 946 550 V 602"/>
+    <text class="cardinality" x="956" y="590">(1,1)</text>
+    <path class="line" d="M 1034 641 H 1070"/>
+    <text class="cardinality" x="1038" y="632">(0,N)</text>
+    <path class="line" d="M 1168 550 V 602"/>
+    <text class="cardinality" x="1178" y="590">PROPOSE</text>
+    <path class="line" d="M 1300 524 H 1266"/>
+    <text class="cardinality" x="1268" y="515">AFFECTE</text>
+    <path class="line" d="M 946 670 V 725"/>
+    <text class="cardinality" x="956" y="712">presence</text>
+    <path class="line" d="M 1168 684 V 725"/>
+    <text class="cardinality" x="1178" y="715">NOTE</text>
+    <path class="line-soft" d="M 1256 648 H 1290"/>
+    <text class="cardinality" x="1261" y="638">publie</text>
+    <path class="line-soft" d="M 1256 770 H 1290"/>
+    <text class="cardinality" x="1261" y="760">bulletin</text>
+  </g>
+
+  <!-- Communication -->
+  <g class="message">
+    <rect class="panel panel-message" x="100" y="865" width="1400" height="150"/>
+    <text class="section-label" x="128" y="900">GROUPE 4 - COMMUNICATION ECOLE-FAMILLE</text>
+    <text class="section-note" x="128" y="921">Messages directs, annonces regroupees par diffusion, reponses et etats de lecture.</text>
+
+    <g transform="translate(310 935)">
+      <rect class="card" width="220" height="62"/>
+      <rect class="card-bg" width="220" height="30" rx="12"/>
+      <text class="card-title" x="110" y="20" text-anchor="middle">UTILISATEUR</text>
+      <text class="card-field" x="18" y="48">expediteur ou destinataire</text>
+    </g>
+
+    <g transform="translate(695 935)">
+      <rect class="card" width="230" height="62"/>
+      <rect class="card-bg" width="230" height="30" rx="12"/>
+      <text class="card-title" x="115" y="20" text-anchor="middle">MESSAGE</text>
+      <text class="card-field" x="18" y="48">sujet, corps, annonce, lu_le</text>
+    </g>
+
+    <g transform="translate(1090 935)">
+      <rect class="card" width="230" height="62"/>
+      <rect class="card-bg" width="230" height="30" rx="12"/>
+      <text class="card-title" x="115" y="20" text-anchor="middle">FIL / DIFFUSION</text>
+      <text class="card-field" x="18" y="48">parent_message, broadcast_id</text>
+    </g>
+
+    <path class="line" d="M 530 966 H 685"/>
+    <text class="cardinality" x="580" y="956">ENVOIE / RECOIT</text>
+    <path class="line" d="M 925 966 H 1080"/>
+    <text class="cardinality" x="972" y="956">REPOND_A</text>
+  </g>
+
+  <!-- Liens transverses -->
+  <path class="line-soft" d="M 580 360 C 615 392 650 416 710 454"/>
+  <text class="cardinality" x="620" y="410">ELEVE suit une DIVISION</text>
+  <path class="line-soft" d="M 930 360 C 945 382 970 410 1028 478"/>
+  <text class="cardinality" x="956" y="408">ENSEIGNANT affecte</text>
+  <path class="line-soft" d="M 1238 360 C 1260 520 1290 690 1254 865"/>
+  <text class="cardinality" x="1276" y="608">parents consultent et recoivent</text>
+
+  <g transform="translate(1130 154)">
+    <rect x="0" y="0" width="340" height="66" rx="16" fill="#fbfcfd" stroke="#d9e0e6"/>
+    <text class="legend-title" x="20" y="25">Lecture du schema</text>
+    <text class="legend-text" x="20" y="47">Rectangles = entites. Capsules = associations. Pointilles = liens transverses entre domaines.</text>
+  </g>
+</svg>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ApexOptions } from 'apexcharts'
+import type { ApexOptions, ApexYAxis } from 'apexcharts'
 import { computed, defineAsyncComponent } from 'vue'
 import { baseOptions, chartColors, resolveCountAxisMax } from './theme'
 import type { ChartSeries } from '../../types'
@@ -51,7 +51,7 @@ const options = computed<ApexOptions>(() => ({
     tickAmount: props.yMax !== undefined ? 4 : Math.min(axisMax.value, 5),
     forceNiceScale: props.yMax === undefined ? false : undefined,
     labels: {
-      ...baseOptions(props.height).yaxis?.labels,
+      ...(baseOptions(props.height).yaxis as ApexYAxis | undefined)?.labels,
       formatter: (value: number) => (
         props.yMax !== undefined || Number.isInteger(value) ? `${value}` : ''
       ),

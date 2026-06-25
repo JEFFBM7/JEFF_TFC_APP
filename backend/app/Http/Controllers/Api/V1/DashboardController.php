@@ -545,8 +545,8 @@ class DashboardController extends Controller
 
         return $query->where(function ($classroomQuery) use ($schoolYearId): void {
             $classroomQuery
-                ->whereHas('students', fn ($studentQuery) => $studentQuery
-                    ->where('enrollment_school_year_id', $schoolYearId))
+                ->whereHas('enrollments', fn ($enrollmentQuery) => $enrollmentQuery
+                    ->where('school_year_id', $schoolYearId))
                 ->orWhereHas('teacherAssignments', fn ($assignmentQuery) => $assignmentQuery
                     ->where('school_year_id', $schoolYearId));
         });

@@ -221,9 +221,9 @@ onMounted(load)
 <style scoped>
 .err { display: block; color: var(--danger); font-size: 0.78rem; margin-top: 0.25rem; }
 
-.badge-admin { background: #fee2e2; color: #b91c1c; }
-.badge-secretariat { background: #fef3c7; color: #92400e; }
-.badge-enseignant { background: #dbeafe; color: #1d4ed8; }
-.badge-parent { background: #ede9fe; color: #5b21b6; }
-.badge-eleve { background: #d1fae5; color: #047857; }
+.badge-admin { background: var(--danger-soft); color: var(--danger); }
+.badge-secretariat { background: var(--warn-soft); color: var(--warn); }
+.badge-enseignant { background: var(--primary-soft); color: var(--accent); }
+.badge-parent { background: rgba(192, 160, 240, 0.15); color: #c8a0f0; }
+.badge-eleve { background: var(--success-soft); color: var(--success); }
 </style>

@@ -7,6 +7,8 @@ use App\Http\Resources\Api\V1\AttendanceResource;
 use App\Http\Resources\Api\V1\StudentResource;
 use App\Http\Resources\Api\V1\TimetableSlotResource;
 use App\Models\Attendance;
+use App\Models\ClassRoom;
+use App\Models\Grade;
 use App\Models\Period;
 use App\Models\SchoolYear;
 use App\Models\Term;
@@ -76,6 +78,48 @@ class StudentPortalController extends Controller
 
         $check = $this->alerts->check($student);
 
+        $unjustifiedAbsences = Attendance::query()
+            ->where('student_id', $student->id)
+            ->where('status', Attendance::STATUS_ABSENT)
+            ->where('justified', false)
+            ->count();
+
+        $recentGradeRows = Grade::query()
+            ->where('student_id', $student->id)
+            ->where('absent', false)
+            ->whereHas('evaluation', fn ($q) => $q
+                ->whereNotNull('published_at')
+                ->where('published_at', '>=', now()->subDays(7)))
+            ->with(['evaluation.subject', 'evaluation.teacher.user'])
+            ->get();
+
+        $recentGrades = $recentGradeRows
+            ->sortByDesc(fn (Grade $g) => $g->evaluation?->published_at)
+            ->map(function (Grade $g) {
+                $eval = $g->evaluation;
+                $max = (float) ($eval?->max_value ?: 20);
+                $on20 = static fn (?float $v): ?float => ($v !== null && $max > 0)
+                    ? round($v / $max * 20, 1)
+                    : null;
+
+                $classAvg = Grade::query()
+                    ->where('evaluation_id', $eval?->id)
+                    ->where('absent', false)
+                    ->avg('value');
+
+                return [
+                    'id' => $g->id,
+                    'subject' => $eval?->subject?->name,
+                    'teacher' => $eval?->teacher?->user?->name,
+                    'evaluation_name' => $eval?->name,
+                    'value' => $on20((float) $g->value),
+                    'class_average' => $on20($classAvg !== null ? (float) $classAvg : null),
+                    'max' => 20,
+                    'published_at' => $eval?->published_at?->toIso8601String(),
+                ];
+            })
+            ->values();
+
         return response()->json([
             'data' => [
                 'student_id' => $student->id,
@@ -87,6 +131,9 @@ class StudentPortalController extends Controller
                 'total_absences' => $absences,
                 'total_lates' => $lates,
                 'alert' => $check,
+                'unjustified_absences' => $unjustifiedAbsences,
+                'recent_grades_count' => $recentGrades->count(),
+                'recent_grades' => $recentGrades,
             ],
         ]);
     }
@@ -259,16 +306,49 @@ class StudentPortalController extends Controller
     public function timetable(Request $request): AnonymousResourceCollection
     {
         $student = $this->student($request);
+        $yearId = SchoolYearContext::requestedOrCurrentId($request);
+        $classroomId = $this->resolveClassroomIdForYear($student, $yearId);
 
         $query = TimetableSlot::query()
             ->with(['subject', 'teacher.user'])
-            ->where('classroom_id', $student->classroom_id);
+            ->where('classroom_id', $classroomId);
 
-        SchoolYearContext::applySchoolYearColumn($query, $request);
+        if ($yearId !== null) {
+            $query->where('school_year_id', $yearId);
+        }
 
         $slots = $query->orderBy('day_of_week')->orderBy('starts_at')->get();
 
         return TimetableSlotResource::collection($slots);
+    }
+
+    /**
+     * Résout la division de l'élève POUR l'année demandée.
+     *
+     * students.classroom_id n'est qu'un cache pouvant pointer vers une division
+     * d'une année antérieure. On fait correspondre l'identité (niveau + option +
+     * section) à la division dont la classe appartient à l'année voulue.
+     */
+    private function resolveClassroomIdForYear(Student $student, ?int $yearId): ?int
+    {
+        $base = $student->classroom()->with('schoolClass')->first();
+
+        if ($base === null || $yearId === null) {
+            return $student->classroom_id;
+        }
+
+        if ($base->schoolClass?->school_year_id === $yearId) {
+            return $base->id;
+        }
+
+        $match = ClassRoom::query()
+            ->where('level_id', $base->level_id)
+            ->where('school_option_id', $base->school_option_id)
+            ->where('section', $base->section)
+            ->whereHas('schoolClass', fn ($q) => $q->where('school_year_id', $yearId))
+            ->value('id');
+
+        return $match ?? $base->id;
     }
 
     /** Trimestres disponibles (cycle de la classe de l'élève uniquement). */

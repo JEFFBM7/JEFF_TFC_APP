@@ -28,6 +28,9 @@ export default defineConfig({
       workbox: {
         navigateFallback: '/index.html',
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Les splash iOS sont chargés via <link apple-touch-startup-image>,
+        // inutile de les précacher (sinon +13 Mo dans le service worker).
+        globIgnores: ['**/pwa/splash/**'],
         runtimeCaching: [],
       },
       devOptions: { enabled: false },

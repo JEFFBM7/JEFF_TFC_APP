@@ -283,11 +283,11 @@ onMounted(load)
 
 .summary-card.warn strong,
 .summary-card.danger strong {
-  color: #b45309;
+  color: var(--warn);
 }
 
 .summary-card.ok strong {
-  color: #047857;
+  color: var(--success);
 }
 
 .summary-card.muted strong {
@@ -303,8 +303,8 @@ onMounted(load)
 }
 
 .badge-absence {
-  background: #fff7ed;
-  color: #9a3412;
+  background: var(--warn-soft);
+  color: var(--warn);
 }
 
 .modal-meta {

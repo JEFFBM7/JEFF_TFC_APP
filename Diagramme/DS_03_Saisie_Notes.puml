@@ -1,0 +1,102 @@
+@startuml DS_03_Saisie_Notes
+title Diagramme de séquence — Création d'une évaluation et saisie des notes
+
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam backgroundColor #FFFFFF
+skinparam participant {
+  BackgroundColor #FEF9E7
+  BorderColor #F39C12
+}
+skinparam sequence {
+  ArrowColor #2C3E50
+  LifeLineBorderColor #7F8C8D
+  DividerBackgroundColor #F2F3F4
+}
+
+actor       Enseignant    as ENS
+participant "Frontend\n(Vue 3)"        as FE
+participant "EvaluationController"     as EC
+participant "SchoolYearContext"        as SYC
+database    "Base de données"          as DB
+
+== Création de l'évaluation ==
+
+ENS -> FE : Choisit classe, matière, période\net crée une évaluation (type, date, valeur max)
+FE  -> EC : POST /api/v1/evaluations\n{ classroom_id, subject_id, period_id, type, name, held_on, max_value }
+
+EC  -> DB  : Period::findOrFail(period_id)->load('term')
+DB  --> EC : Periode + Terme associé
+
+EC  -> EC  : assertPeriodIsWritable(period)
+note right
+  Bloque si la période est clôturée
+  (closed_at non null)
+end note
+
+EC  -> SYC : assertTermNotArchived(term)
+SYC -> DB  : SELECT school_years WHERE archived_at IS NOT NULL
+DB  --> SYC : — (vérification OK)
+
+EC  -> DB  : AdminScopeContext::assertClassroomAllowed(user, classroom_id)
+
+alt Rôle "enseignant"
+  EC  -> DB  : Teacher WHERE user_id = auth()->id()
+  DB  --> EC : Enseignant
+  EC  -> DB  : TeacherAssignment WHERE\nteacher_id + classroom_id + subject_id + term_id
+  DB  --> EC : Affectation (ou null)
+  alt Enseignant non affecté à ce contexte
+    EC  --> FE : 403 "Vous ne pouvez créer une évaluation\nque pour vos propres affectations"
+    FE  --> ENS : Erreur d'autorisation
+  else Affectation valide
+    EC  -> DB  : data['teacher_id'] = teacher.id
+  end
+end
+
+EC  -> DB  : Evaluation::create(data)
+note right
+  term_id déduit automatiquement
+  depuis la période sélectionnée
+end note
+DB  --> EC : Evaluation créée (id)
+EC  --> FE : 201 EvaluationResource
+FE  --> ENS : Évaluation créée, formulaire de notes s'ouvre
+
+== Saisie des notes en lot ==
+
+ENS -> FE : Saisit les notes pour chaque élève
+FE  -> EC : POST /api/v1/evaluations/{id}/grades\n{ records: [{ student_id, value, absent }, …] }
+
+EC  -> DB  : Evaluation::findOrFail(id)
+EC  -> EC  : assertPeriodIsWritable(evaluation.period)
+EC  -> SYC : assertTermNotArchived(evaluation.term)
+
+loop Pour chaque enregistrement
+  EC  -> DB  : Grade WHERE evaluation_id + student_id
+  DB  --> EC : Note existante | null
+
+  alt Nouvelle note
+    EC  -> DB  : Grade::create({ evaluation_id, student_id, value, absent })
+  else Mise à jour
+    EC  -> DB  : grade->update({ value, absent })
+    EC  -> DB  : GradeAudit::create({ grade_id, old_value, new_value, changed_by })
+    note right
+      Trace toute modification
+      pour auditabilité
+    end note
+  end
+end
+
+EC  --> FE : 200 { grades: […] }
+FE  --> ENS : Notes enregistrées
+
+== Publication de l'évaluation ==
+
+ENS -> FE : Clique "Publier l'évaluation"
+FE  -> EC : PATCH /api/v1/evaluations/{id}/publish
+EC  -> DB  : evaluation->update({ published_at: now() })
+DB  --> EC : OK
+EC  --> FE : 200 EvaluationResource (published_at renseigné)
+FE  --> ENS : Évaluation visible par les élèves
+
+@enduml

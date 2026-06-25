@@ -45,7 +45,7 @@
   padding: 0.65rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--bg-soft);
   text-align: right;
 }
 
@@ -80,14 +80,14 @@
 
 .portal-child-hero--good {
   background:
-    radial-gradient(ellipse 100% 70% at 100% 0%, rgba(22, 163, 74, 0.08), transparent 55%),
-    linear-gradient(160deg, #ffffff 0%, #f8fafc 48%, #f0fdf4 100%);
+    radial-gradient(ellipse 100% 70% at 100% 0%, rgba(74, 222, 128, 0.1), transparent 55%),
+    linear-gradient(160deg, #0d1f4a 0%, #0a1836 48%, #050d1f 100%);
 }
 
 .portal-child-hero--warn {
   background:
-    radial-gradient(ellipse 100% 70% at 100% 0%, rgba(217, 119, 6, 0.08), transparent 55%),
-    linear-gradient(160deg, #ffffff 0%, #f8fafc 48%, #fffbeb 100%);
+    radial-gradient(ellipse 100% 70% at 100% 0%, rgba(251, 191, 36, 0.1), transparent 55%),
+    linear-gradient(160deg, #0d1f4a 0%, #0a1836 48%, #050d1f 100%);
 }
 
 .portal-child-status {
@@ -105,9 +105,9 @@
   box-shadow: var(--shadow-card);
 }
 
-.portal-child-status__card--good { border-color: #bbf7d0; background: var(--success-soft); }
-.portal-child-status__card--warn { border-color: #fde68a; background: var(--warn-soft); }
-.portal-child-status__card--danger { border-color: #fecaca; background: var(--danger-soft); }
+.portal-child-status__card--good { border-color: rgba(74, 222, 128, 0.25); background: var(--success-soft); }
+.portal-child-status__card--warn { border-color: rgba(251, 191, 36, 0.25); background: var(--warn-soft); }
+.portal-child-status__card--danger { border-color: rgba(248, 113, 113, 0.25); background: var(--danger-soft); }
 
 .portal-child-status__icon {
   display: grid;
@@ -116,7 +116,7 @@
   height: 2.25rem;
   flex-shrink: 0;
   border-radius: 10px;
-  background: #fff;
+  background: var(--bg-soft);
   color: var(--primary);
 }
 
@@ -162,7 +162,7 @@
   margin-top: 0.35rem;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .portal-child-progress span {
@@ -191,7 +191,7 @@
   gap: 0.75rem;
   padding: 1rem 1.05rem;
   border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-soft) 100%);
 }
 
 .portal-child-section__head h2 {
@@ -233,9 +233,9 @@
   white-space: nowrap;
 }
 
-.portal-child-section__chip--good { background: var(--success-soft); color: #15803d; }
-.portal-child-section__chip--warn { background: var(--warn-soft); color: #b45309; }
-.portal-child-section__chip--danger { background: var(--danger-soft); color: #b91c1c; }
+.portal-child-section__chip--good { background: var(--success-soft); color: var(--success); }
+.portal-child-section__chip--warn { background: var(--warn-soft); color: var(--warn); }
+.portal-child-section__chip--danger { background: var(--danger-soft); color: var(--danger); }
 
 .portal-child-section__body {
   padding: 0.85rem 1.05rem 1.05rem;
@@ -262,7 +262,7 @@
   padding: 0.5rem 0.65rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: #fff;
+  background: var(--bg-soft);
   font-size: 1rem;
   color: var(--text);
 }
@@ -348,9 +348,9 @@
 }
 
 .portal-child-attendance-card--action {
-  border-color: #fde68a;
+  border-color: rgba(251, 191, 36, 0.3);
   border-left: 3px solid var(--warn);
-  background: linear-gradient(90deg, var(--warn-soft) 0%, #fff 35%);
+  background: linear-gradient(90deg, var(--warn-soft) 0%, transparent 35%);
 }
 
 .portal-child-attendance-card__head {

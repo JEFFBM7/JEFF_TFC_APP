@@ -123,7 +123,7 @@ onMounted(() => {
             </span>
             <template v-if="alertCount > 0">
               <span aria-hidden="true">·</span>
-              <span class="portal-dash-hero__tag" style="background: var(--danger-soft); color: #b91c1c">
+              <span class="portal-dash-hero__tag" style="background: var(--danger-soft); color: var(--danger)">
                 <AlertTriangle aria-hidden="true" />
                 {{ alertCount }} alerte{{ alertCount > 1 ? 's' : '' }}
               </span>

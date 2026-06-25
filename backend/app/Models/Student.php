@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'user_id',
@@ -41,12 +42,45 @@ class Student extends Model
 {
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        // Tient à jour l'inscription de l'année courante (le cache classroom_id /
+        // enrollment_school_year_id reste la référence pour l'année en cours).
+        static::saved(function (Student $student): void {
+            $student->syncCurrentEnrollment();
+        });
+    }
+
     protected function casts(): array
     {
         return [
             'date_of_birth' => 'date',
             'enrolled_on' => 'date',
         ];
+    }
+
+    /**
+     * Crée/actualise l'inscription correspondant à l'année portée par le cache.
+     * Ne touche ni au statut ni à la décision d'une inscription déjà existante
+     * (préserve les données posées par un passage de classe).
+     */
+    public function syncCurrentEnrollment(): void
+    {
+        $yearId = $this->enrollment_school_year_id;
+
+        if ($yearId === null) {
+            return;
+        }
+
+        $enrollment = $this->enrollments()->firstOrNew(['school_year_id' => $yearId]);
+        $enrollment->classroom_id = $this->classroom_id;
+
+        if (! $enrollment->exists) {
+            $enrollment->enrolled_on = $this->enrolled_on;
+            $enrollment->status = Enrollment::STATUS_ACTIVE;
+        }
+
+        $enrollment->save();
     }
 
     /** @return BelongsTo<User, $this> */
@@ -65,6 +99,12 @@ class Student extends Model
     public function enrollmentSchoolYear(): BelongsTo
     {
         return $this->belongsTo(SchoolYear::class, 'enrollment_school_year_id');
+    }
+
+    /** @return HasMany<Enrollment, $this> */
+    public function enrollments(): HasMany
+    {
+        return $this->hasMany(Enrollment::class);
     }
 
     /** @return BelongsToMany<ParentProfile, $this> */

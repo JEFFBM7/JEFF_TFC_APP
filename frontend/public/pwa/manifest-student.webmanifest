@@ -1,6 +1,6 @@
 {
-  "name": "EduConnect — Élève",
-  "short_name": "EduConnect Élève",
+  "name": "EduConnect",
+  "short_name": "EduConnect",
   "description": "Consultez vos notes, absences et emploi du temps — Complexe MALUNGA",
   "start_url": "/student",
   "scope": "/",

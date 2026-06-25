@@ -1,6 +1,6 @@
 {
-  "name": "EduConnect — Parent",
-  "short_name": "EduConnect Parent",
+  "name": "EduConnect",
+  "short_name": "EduConnect",
   "description": "Suivez la scolarité de vos enfants — Complexe MALUNGA",
   "start_url": "/parent",
   "scope": "/",

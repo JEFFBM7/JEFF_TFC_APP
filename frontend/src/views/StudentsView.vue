@@ -15,9 +15,11 @@ import Modal from '../components/Modal.vue'
 import RowActionMenu from '../components/RowActionMenu.vue'
 import DataTable, { type Column } from '../components/DataTable.vue'
 import { useSchoolYearStore } from '../stores/schoolYear'
+import { useToastStore } from '../stores/toast'
 import { useCycleTabs, type CycleFilter } from '../composables/useCycleTabs'
 
 const schoolYearStore = useSchoolYearStore()
+const toast = useToastStore()
 const router = useRouter()
 const { cycleTabs } = useCycleTabs()
 
@@ -51,7 +53,7 @@ const loading = ref(false)
 const error = ref('')
 
 const columns: Column<Student>[] = [
-  { key: 'name', label: 'Nom complet' },
+  { key: 'name', label: 'Nom' },
   { key: 'classroom', label: 'Classe' },
   { key: 'status', label: 'Statut' },
   { key: 'dob', label: 'Naissance' },
@@ -122,11 +124,21 @@ const form = reactive({
   notes: '',
 })
 
-const allClassrooms = computed<ClassRoom[]>(() =>
-  levels.value.flatMap((l) =>
-    (l.classrooms ?? []).map((cr) => ({ ...cr, level: l })),
-  ),
-)
+const allClassrooms = computed<ClassRoom[]>(() => {
+  const classroomsById = new Map<number, ClassRoom>()
+
+  levels.value.forEach((level) => {
+    const levelClassrooms = level.classrooms ?? []
+
+    levelClassrooms.forEach((classroom) => {
+      if (!classroomsById.has(classroom.id)) {
+        classroomsById.set(classroom.id, { ...classroom, level })
+      }
+    })
+  })
+
+  return [...classroomsById.values()]
+})
 
 watch(cycleTabs, (tabs) => {
   if (!tabs.some((tab) => tab.value === activeCycle.value)) {
@@ -158,6 +170,43 @@ const selectedSchoolYear = computed(() =>
     ?? null,
 )
 
+const formSchoolYearId = computed(() => form.enrollment_school_year_id ?? selectedSchoolYear.value?.id ?? null)
+
+function classroomSchoolYearId(classroom: ClassRoom): number | null {
+  return classroom.current_school_year_id ?? classroom.school_class?.school_year_id ?? null
+}
+
+function classroomOptionKey(classroom: ClassRoom): string {
+  return classroomLabel(classroom)
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+const formClassrooms = computed<ClassRoom[]>(() => {
+  const targetSchoolYearId = formSchoolYearId.value
+  const selectedId = form.classroom_id
+  const classroomsByLabel = new Map<string, ClassRoom>()
+
+  allClassrooms.value.forEach((classroom) => {
+    const schoolYearId = classroomSchoolYearId(classroom)
+    const isSelected = selectedId !== null && classroom.id === selectedId
+
+    if (!isSelected && targetSchoolYearId !== null && schoolYearId !== null && schoolYearId !== targetSchoolYearId) {
+      return
+    }
+
+    const key = classroomOptionKey(classroom)
+    if (!classroomsByLabel.has(key) || isSelected) {
+      classroomsByLabel.set(key, classroom)
+    }
+  })
+
+  return [...classroomsByLabel.values()]
+})
+
 const selectedLevelLabel = computed(() => selectedClassroom.value?.level?.name ?? 'Sélectionner une classe')
 
 const selectedOptionLabel = computed(() => {
@@ -171,15 +220,6 @@ const selectedOptionLabel = computed(() => {
 const visibleStudentIds = computed(() => items.value.map((student) => student.id))
 
 const selectedCount = computed(() => selectedStudentIds.value.length)
-
-const allVisibleSelected = computed(() =>
-  visibleStudentIds.value.length > 0
-  && visibleStudentIds.value.every((id) => selectedStudentIds.value.includes(id)),
-)
-
-const someVisibleSelected = computed(() =>
-  selectedStudentIds.value.length > 0 && !allVisibleSelected.value,
-)
 
 const deleteCandidateNames = computed(() =>
   deleteCandidateIds.value.map((id) =>
@@ -311,15 +351,6 @@ function studentPortalStatusLabel(status?: StudentPortalStatus): string {
   if (status === 'disabled_until_7e') return 'Désactivé avant la 7e'
   if (status === 'not_created_until_7e') return 'Non créé avant la 7e'
   return '—'
-}
-
-function toggleSelectAllVisible(event: Event): void {
-  const checked = (event.target as HTMLInputElement).checked
-  selectedStudentIds.value = checked ? [...visibleStudentIds.value] : []
-}
-
-function toggleStudentSelection(studentId: number, event: Event): void {
-  // handled by DataTable
 }
 
 function clearSelection(): void {
@@ -621,7 +652,7 @@ function printRegistrationSummary(): void {
 
   const printWindow = window.open('', '_blank', 'width=900,height=1200')
   if (!printWindow) {
-    alert("Ouverture de la fenêtre d'impression impossible.")
+    toast.error("Ouverture de la fenêtre d'impression impossible.")
     return
   }
 
@@ -788,6 +819,12 @@ watch(items, () => {
   selectedStudentIds.value = selectedStudentIds.value.filter((id) => visibleIds.has(id))
 })
 
+watch(formClassrooms, (classrooms) => {
+  if (form.classroom_id !== null && !classrooms.some((classroom) => classroom.id === form.classroom_id)) {
+    form.classroom_id = null
+  }
+})
+
 // Recharge la liste quand l'utilisateur bascule d'année via le sélecteur global.
 watch(
   () => schoolYearStore.effectiveId,
@@ -894,7 +931,7 @@ onMounted(async () => {
             @click.stop
             @keydown.stop
           >
-            {{ item.full_name }}
+            {{ item.last_name }}
           </RouterLink>
         </template>
         <template #col-classroom="{ item }">
@@ -989,7 +1026,7 @@ onMounted(async () => {
               <label for="s-class">Classe actuelle</label>
               <select id="s-class" v-model.number="form.classroom_id" required>
                 <option :value="null" disabled>— Sélectionner —</option>
-                <option v-for="c in allClassrooms" :key="c.id" :value="c.id">
+                <option v-for="c in formClassrooms" :key="c.id" :value="c.id">
                   {{ classroomLabel(c) }}
                 </option>
               </select>
@@ -1322,7 +1359,7 @@ onMounted(async () => {
 <style scoped>
 button + button { margin-left: 0.4rem; }
 .err { display: block; color: var(--danger); font-size: 0.78rem; margin-top: 0.25rem; }
-code { font-family: ui-monospace,Consolas,monospace; background:#f1f5f9; padding:.1rem .35rem; border-radius:4px; font-size:.78rem; }
+code { font-family: ui-monospace,Consolas,monospace; background: var(--bg-subtle); padding:.1rem .35rem; border-radius:4px; font-size:.78rem; }
 .student-toolbar {
   display: grid;
   gap: 0.85rem;
@@ -1340,7 +1377,7 @@ code { font-family: ui-monospace,Consolas,monospace; background:#f1f5f9; padding
   padding: 0.45rem 0.8rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--bg-soft);
   color: var(--text-soft);
   font-size: 0.86rem;
   font-weight: 800;
@@ -1375,9 +1412,9 @@ code { font-family: ui-monospace,Consolas,monospace; background:#f1f5f9; padding
   gap: 0.75rem;
   width: fit-content;
   padding: 0.5rem 0.7rem;
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--primary-tint);
   border-radius: 8px;
-  background: #eff6ff;
+  background: var(--primary-soft);
   color: var(--text);
   font-size: 0.86rem;
 }
@@ -1393,10 +1430,10 @@ code { font-family: ui-monospace,Consolas,monospace; background:#f1f5f9; padding
 .selection-strip button {
   min-height: 1.8rem;
   padding: 0.2rem 0.55rem;
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--primary-tint);
   border-radius: 6px;
-  background: #fff;
-  color: var(--primary);
+  background: var(--bg-card);
+  color: var(--accent);
   font-size: 0.8rem;
   font-weight: 800;
 }
@@ -1405,14 +1442,14 @@ code { font-family: ui-monospace,Consolas,monospace; background:#f1f5f9; padding
   opacity: 0.65;
 }
 .selection-strip .bulk-danger {
-  border-color: #fecdd3;
+  border-color: rgba(248, 113, 113, 0.3);
   color: var(--danger);
 }
 .selection-strip .bulk-danger:hover:not(:disabled) {
-  background: #fff1f2;
+  background: var(--danger-soft);
 }
 .is-selected {
-  background: #f8fbff;
+  background: var(--primary-soft);
 }
 .entity-name-link {
   display: inline-flex;
@@ -1434,7 +1471,7 @@ code { font-family: ui-monospace,Consolas,monospace; background:#f1f5f9; padding
   cursor: pointer;
 }
 .clickable-row:hover {
-  background: #f8fbff;
+  background: rgba(59, 130, 246, 0.05);
 }
 .clickable-row:focus-visible {
   outline: 2px solid var(--primary);
@@ -1492,7 +1529,7 @@ code { font-family: ui-monospace,Consolas,monospace; background:#f1f5f9; padding
   padding: 0.55rem 0.7rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--bg-soft);
   color: var(--text);
   font-size: 0.88rem;
   font-weight: 800;
@@ -1501,10 +1538,10 @@ code { font-family: ui-monospace,Consolas,monospace; background:#f1f5f9; padding
   grid-column: 1 / -1;
   margin: 0;
   padding: 0.7rem 0.8rem;
-  border: 1px solid #fecdd3;
+  border: 1px solid rgba(248, 113, 113, 0.3);
   border-radius: 8px;
-  background: #fff1f2;
-  color: #9f1239;
+  background: var(--danger-soft);
+  color: var(--danger);
   font-size: 0.85rem;
   font-weight: 750;
 }
@@ -1555,7 +1592,7 @@ code { font-family: ui-monospace,Consolas,monospace; background:#f1f5f9; padding
   padding: 0.58rem 0.7rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--bg-soft);
   color: var(--text-soft);
   font-size: 0.9rem;
   font-weight: 750;
@@ -1603,7 +1640,7 @@ textarea {
   padding: 0.28rem 0.55rem;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: #f8fafc;
+  background: var(--bg-soft);
   color: var(--text);
   font-size: 0.8rem;
   font-weight: 850;
@@ -1616,7 +1653,7 @@ textarea {
   justify-self: end;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: #f8fafc;
+  background: var(--bg-soft);
   color: var(--text-soft);
   font-size: 0.8rem;
   font-weight: 900;
@@ -1652,7 +1689,7 @@ textarea {
 .summary-row {
   min-width: 0;
   padding-bottom: 0.5rem;
-  border-bottom: 1px dotted #cbd5e1;
+  border-bottom: 1px dotted var(--border-strong);
 }
 .summary-row dt {
   color: var(--text-soft);
@@ -1676,9 +1713,9 @@ textarea {
   display: grid;
   gap: 0.65rem;
   padding: 0.8rem;
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--primary-tint);
   border-radius: 8px;
-  background: #eff6ff;
+  background: var(--primary-soft);
 }
 .credential-card > div:first-child {
   display: grid;

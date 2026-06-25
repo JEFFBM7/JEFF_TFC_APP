@@ -399,7 +399,7 @@ td small {
 
 .detail-list div {
   padding-bottom: 0.65rem;
-  border-bottom: 1px dotted #cbd5e1;
+  border-bottom: 1px dotted var(--border-strong);
 }
 
 .detail-list div:last-child {

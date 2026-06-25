@@ -88,22 +88,6 @@ const timetableDayNumbers = computed(() => {
   return hasSundaySlot ? [1, 2, 3, 4, 5, 6, 7] : [1, 2, 3, 4, 5, 6]
 })
 
-const timetableSlotsByDay = computed<Record<number, ClassDetailTimetableSlot[]>>(() => {
-  const grouped: Record<number, ClassDetailTimetableSlot[]> = {}
-  for (const day of timetableDayNumbers.value) grouped[day] = []
-
-  for (const slot of details.value?.timetable ?? []) {
-    if (!grouped[slot.day_of_week]) grouped[slot.day_of_week] = []
-    grouped[slot.day_of_week].push(slot)
-  }
-
-  for (const day of Object.keys(grouped)) {
-    grouped[Number(day)].sort((a, b) => a.starts_at.localeCompare(b.starts_at))
-  }
-
-  return grouped
-})
-
 const searchPlaceholder = computed(() => {
   switch (activeClassTab.value) {
     case 'people':
@@ -826,7 +810,7 @@ onMounted(load)
   padding: 1.15rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: linear-gradient(135deg, #f8faff, #ffffff);
+  background: linear-gradient(135deg, var(--bg-subtle), var(--bg-card));
   box-shadow: var(--shadow-card);
 }
 
@@ -883,7 +867,7 @@ onMounted(load)
 }
 
 .main-teacher-trigger:hover {
-  background: #f8faff;
+  background: var(--bg-soft);
 }
 
 .main-teacher-trigger:focus-visible {
@@ -954,7 +938,7 @@ onMounted(load)
 }
 
 .principal-action-menu button:hover {
-  background: #f8fafc;
+  background: var(--bg-soft);
 }
 
 .principal-action-menu .danger-action {
@@ -962,7 +946,7 @@ onMounted(load)
 }
 
 .principal-action-menu .danger-action:hover {
-  background: #fff1f2;
+  background: var(--danger-soft);
 }
 
 .assign-main-teacher-button {
@@ -978,7 +962,7 @@ onMounted(load)
 
 .assign-main-teacher-button:hover {
   border-color: rgba(37, 99, 235, 0.42);
-  background: #eaf0ff;
+  background: var(--primary-soft);
 }
 
 .assignment-form {
@@ -1054,7 +1038,7 @@ onMounted(load)
 
 .class-section-tab:hover {
   border-color: var(--border);
-  background: #f8fafc;
+  background: var(--bg-soft);
   color: var(--text);
 }
 
@@ -1072,7 +1056,7 @@ onMounted(load)
   justify-content: center;
   padding: 0.12rem 0.4rem;
   border-radius: 999px;
-  background: #eef2f7;
+  background: var(--bg-soft);
   color: var(--text-soft);
   font-size: 0.72rem;
 }
@@ -1112,7 +1096,7 @@ onMounted(load)
   gap: 0.75rem;
   padding: 0.8rem 0.95rem;
   border-bottom: 1px solid var(--border);
-  background: #f8fafc;
+  background: var(--bg-soft);
 }
 
 .detail-panel-header h2 {
@@ -1211,14 +1195,14 @@ onMounted(load)
   flex-direction: column;
   gap: 0.55rem;
   padding: 0.55rem;
-  border: 1px solid #dbe3f1;
+  border: 1px solid var(--border-strong);
   border-radius: 0.45rem;
-  background: #f5f7fb;
+  background: var(--bg-soft);
 }
 
 .timetable-day h3 {
   margin: 0;
-  color: #64708a;
+  color: var(--text-soft);
   font-size: 0.84rem;
   font-weight: 850;
   text-align: center;
@@ -1229,7 +1213,7 @@ onMounted(load)
   flex: 1;
   place-items: start center;
   padding-top: 0.55rem;
-  color: #8a96aa;
+  color: var(--text-soft);
   font-size: 1rem;
 }
 
@@ -1244,14 +1228,14 @@ onMounted(load)
   align-content: start;
   gap: 0.18rem;
   padding: 0.55rem 0.55rem 0.55rem 0.7rem;
-  border: 1px solid #d9e1ee;
+  border: 1px solid var(--border);
   border-left: 0.18rem solid var(--primary);
   border-radius: 0.35rem;
-  background: #fff;
+  background: var(--bg-soft);
 }
 
 .timetable-time {
-  color: #63708a;
+  color: var(--text-soft);
   font-size: 0.73rem;
   font-weight: 750;
 }
@@ -1273,8 +1257,8 @@ onMounted(load)
   margin-top: 0.18rem;
   padding: 0.14rem 0.4rem;
   border-radius: 999px;
-  background: #eef2f7;
-  color: #64708a;
+  background: var(--bg-soft);
+  color: var(--text-soft);
   font-size: 0.68rem;
   font-weight: 850;
 }
@@ -1337,7 +1321,7 @@ onMounted(load)
   gap: 0.25rem;
   padding: 0.22rem 0.5rem;
   border-radius: 999px;
-  background: #f2f4f7;
+  background: var(--bg-soft);
   color: var(--text-soft);
   font-size: 0.74rem;
   font-weight: 800;
@@ -1354,7 +1338,7 @@ onMounted(load)
 }
 
 .status-late {
-  background: #edf2ff;
+  background: var(--primary-soft);
   color: var(--primary);
 }
 
@@ -1371,7 +1355,7 @@ onMounted(load)
 .skeleton-block {
   min-height: 6rem;
   border-radius: var(--radius);
-  background: linear-gradient(90deg, #f2f4f7, #f8faff, #f2f4f7);
+  background: linear-gradient(90deg, var(--bg-soft), var(--bg-soft), var(--bg-soft));
   background-size: 180% 100%;
   animation: shimmer 1.2s infinite linear;
 }

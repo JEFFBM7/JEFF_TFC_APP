@@ -7,6 +7,7 @@ use App\Http\Requests\Api\V1\SchoolYearRequest;
 use App\Http\Resources\Api\V1\SchoolYearResource;
 use App\Models\Attendance;
 use App\Models\ClassRoom;
+use App\Models\Enrollment;
 use App\Models\Evaluation;
 use App\Models\Grade;
 use App\Models\Period;
@@ -115,10 +116,13 @@ class SchoolYearController extends Controller
             ->whereDate('date', '<=', $schoolYear->ends_on)
             ->get();
 
+        $studentIds = Enrollment::query()
+            ->forYear($schoolYear->id)
+            ->forClassroom($classroom->id)
+            ->pluck('student_id');
         $students = Student::query()
             ->with(['parents.user'])
-            ->where('classroom_id', $classroom->id)
-            ->where('enrollment_school_year_id', $schoolYear->id)
+            ->whereIn('id', $studentIds)
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get();
@@ -408,9 +412,10 @@ class SchoolYearController extends Controller
             ->whereIn('classroom_id', $this->classroomIdsFor($schoolYear, $termIds));
 
         $classroomIds = $this->classroomIdsFor($schoolYear, $termIds);
-        $studentQuery = Student::query()->whereIn('classroom_id', $classroomIds);
-        SchoolYearContext::applyStudentEnrollmentYearId($studentQuery, $schoolYear->id);
-        $studentIds = $studentQuery->pluck('id');
+        $studentIds = Enrollment::query()
+            ->forYear($schoolYear->id)
+            ->whereIn('classroom_id', $classroomIds)
+            ->pluck('student_id');
 
         $gradeAverage = $this->normalizedGradeAverage($evaluationIds);
 
@@ -497,9 +502,11 @@ class SchoolYearController extends Controller
             ->whereHas('schoolClass', fn ($query) => $query->where('school_year_id', $schoolYear->id))
             ->pluck('id');
 
-        $enrolledClassroomQuery = Student::query()->whereNotNull('classroom_id');
-        SchoolYearContext::applyStudentEnrollmentYearId($enrolledClassroomQuery, $schoolYear->id);
-        $enrolledClassroomIds = $enrolledClassroomQuery->distinct()->pluck('classroom_id');
+        $enrolledClassroomIds = Enrollment::query()
+            ->forYear($schoolYear->id)
+            ->whereNotNull('classroom_id')
+            ->distinct()
+            ->pluck('classroom_id');
 
         $ids = $assignmentClassroomIds
             ->merge($evaluationClassroomIds)
@@ -533,9 +540,10 @@ class SchoolYearController extends Controller
             ->get()
             ->sortBy('full_name')
             ->map(function (ClassRoom $classroom) use ($schoolYear, $termIds) {
-                $studentQuery = Student::query()->where('classroom_id', $classroom->id);
-                SchoolYearContext::applyStudentEnrollmentYearId($studentQuery, $schoolYear->id);
-                $studentIds = $studentQuery->pluck('id');
+                $studentIds = Enrollment::query()
+                    ->forYear($schoolYear->id)
+                    ->forClassroom($classroom->id)
+                    ->pluck('student_id');
 
                 $assignmentQuery = TeacherAssignment::query()
                     ->where('school_year_id', $schoolYear->id)
@@ -716,11 +724,18 @@ class SchoolYearController extends Controller
         }
 
         $students = Student::query()
-            ->with(['classroom.level'])
             ->whereIn('id', $studentIds)
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get();
+
+        // Classe occupée par l'élève CETTE année-là (pas le cache courant).
+        $classroomByStudent = Enrollment::query()
+            ->forYear($schoolYear->id)
+            ->whereIn('student_id', $studentIds)
+            ->with('classroom.level')
+            ->get()
+            ->keyBy('student_id');
 
         $gradesByStudent = Grade::query()
             ->join('evaluations', 'evaluations.id', '=', 'grades.evaluation_id')
@@ -742,7 +757,7 @@ class SchoolYearController extends Controller
             ->get(['student_id', 'status', 'justified'])
             ->groupBy('student_id');
 
-        return $students->map(function (Student $student) use ($gradesByStudent, $attendanceByStudent) {
+        return $students->map(function (Student $student) use ($gradesByStudent, $attendanceByStudent, $classroomByStudent) {
             $grades = $gradesByStudent->get($student->id, collect());
             $average = $grades->isEmpty() ? null : round((float) $grades->avg('normalized_value'), 2);
 
@@ -754,14 +769,16 @@ class SchoolYearController extends Controller
                 ->count();
             $lates = $attendance->where('status', Attendance::STATUS_LATE)->count();
 
+            $classroom = $classroomByStudent->get($student->id)?->classroom;
+
             return [
                 'id' => $student->id,
                 'full_name' => $student->full_name,
                 'registration_number' => $student->registration_number,
                 'gender' => $student->gender,
-                'classroom_id' => $student->classroom_id,
-                'classroom' => $student->classroom?->full_name,
-                'level' => $student->classroom?->level?->name,
+                'classroom_id' => $classroom?->id,
+                'classroom' => $classroom?->full_name,
+                'level' => $classroom?->level?->name,
                 'grade_average' => $average,
                 'final_status' => $this->finalStatus($average),
                 'absences' => $absences,

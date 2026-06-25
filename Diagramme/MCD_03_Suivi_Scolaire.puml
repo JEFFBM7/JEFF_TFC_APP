@@ -1,0 +1,142 @@
+@startuml MCD_03_Suivi_Scolaire
+title MCD — Suivi scolaire
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam backgroundColor #FFFFFF
+
+skinparam class {
+  BackgroundColor<<entite>>      #FEF5E7
+  BorderColor<<entite>>          #B7770D
+  FontStyle<<entite>>            Bold
+  BackgroundColor<<association>> #F9EBEA
+  BorderColor<<association>>     #C0392B
+  FontStyle<<association>>       Bold
+  RoundCorner<<association>>     25
+  BackgroundColor<<ref>>         #F2F3F4
+  BorderColor<<ref>>             #7F8C8D
+  FontStyle<<ref>>               Italic
+  FontColor<<ref>>               #7F8C8D
+}
+
+hide <<entite>>      circle
+hide <<association>> circle
+hide <<ref>>         circle
+
+' ══════════════════════════════════════
+'   ENTITÉS PROPRES À CE DOMAINE
+' ══════════════════════════════════════
+
+class "EVALUATION" <<entite>> {
+  <u>id_evaluation</u>
+  nom
+  type
+  date
+  valeur_max
+  est_publiee
+}
+
+' ══════════════════════════════════════
+'   ENTITÉS DE RÉFÉRENCE (autres domaines)
+' ══════════════════════════════════════
+
+class "ELEVE" <<ref>> {
+  <u>id_eleve</u>
+  matricule
+  prenom, nom
+}
+
+class "ENSEIGNANT" <<ref>> {
+  <u>id_enseignant</u>
+  numero_matricule
+}
+
+class "DIVISION" <<ref>> {
+  <u>id_division</u>
+  section
+}
+
+class "MATIERE" <<ref>> {
+  <u>id_matiere</u>
+  nom, code
+}
+
+class "PERIODE" <<ref>> {
+  <u>id_periode</u>
+  nom, position
+}
+
+class "TERME" <<ref>> {
+  <u>id_terme</u>
+  nom, type_terme
+}
+
+' ══════════════════════════════════════
+'   ASSOCIATIONS
+' ══════════════════════════════════════
+
+class "INSCRIT_DANS" <<association>>
+
+class "AFFECTE" <<association>> {
+  heures_hebdo
+  est_principal
+}
+
+class "PROPOSE" <<association>>
+class "PORTE_SUR" <<association>>
+class "PLANIFIEE_EN" <<association>>
+
+class "NOTE" <<association>> {
+  valeur
+  est_absent
+}
+
+class "ABSENCE" <<association>> {
+  date
+  statut
+  justifiee
+  justification
+}
+
+class "APPRECIE" <<association>> {
+  contenu
+}
+
+' ══════════════════════════════════════
+'   LIENS ET CARDINALITÉS
+' ══════════════════════════════════════
+
+' Inscription élève dans une division
+"ELEVE"      "(1,1)"  --  "INSCRIT_DANS"
+"INSCRIT_DANS"        --  "(0,N)"  "DIVISION"
+
+' Affectation ternaire enseignant / division / matière
+"ENSEIGNANT"  "(0,N)"  --  "AFFECTE"
+"AFFECTE"              --  "(1,N)"  "DIVISION"
+"AFFECTE"              --  "(0,N)"  "MATIERE"
+
+' Évaluation reliée à division, matière et période
+"DIVISION"   "(1,N)"  --  "PROPOSE"
+"PROPOSE"             --  "(1,1)"  "EVALUATION"
+
+"MATIERE"    "(1,N)"  --  "PORTE_SUR"
+"PORTE_SUR"           --  "(1,1)"  "EVALUATION"
+
+"PERIODE"    "(1,N)"  --  "PLANIFIEE_EN"
+"PLANIFIEE_EN"        --  "(1,1)"  "EVALUATION"
+
+' Note : association porteuse entre élève et évaluation
+"ELEVE"       "(1,N)"  --  "NOTE"
+"NOTE"                 --  "(1,N)"  "EVALUATION"
+
+' Absence ternaire élève / division / matière
+"ELEVE"      "(1,N)"  --  "ABSENCE"
+"ABSENCE"             --  "(1,N)"  "DIVISION"
+"ABSENCE"             --  "(0,N)"  "MATIERE"
+
+' Appréciation ternaire élève / terme / enseignant
+"ELEVE"       "(1,N)"  --  "APPRECIE"
+"APPRECIE"             --  "(1,N)"  "TERME"
+"APPRECIE"             --  "(0,N)"  "ENSEIGNANT"
+
+@enduml

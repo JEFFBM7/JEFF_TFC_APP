@@ -242,7 +242,7 @@ onMounted(async () => {
       {{ success }}
     </p>
 
-    <div v-if="batchAlerts.length > 0" class="alert" style="background: #fff7ed; color: #9a3412; border: 1px solid #fdba74">
+    <div v-if="batchAlerts.length > 0" class="alert" style="background: var(--warn-soft); color: var(--warn); border: 1px solid rgba(251, 191, 36, 0.3)">
       <strong>Alertes absentéisme (CDC)</strong>
       <ul style="margin: 0.5rem 0 0 1rem">
         <li v-for="a in batchAlerts" :key="a.student_id">
@@ -396,8 +396,8 @@ onMounted(async () => {
   color: var(--text-soft);
 }
 .badge-warn {
-  background: #fff7ed;
-  color: #9a3412;
+  background: var(--warn-soft);
+  color: var(--warn);
 }
 .btn-sm {
   font-size: 0.85rem;

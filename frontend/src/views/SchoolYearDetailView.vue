@@ -22,7 +22,9 @@ import type {
   LevelCycle,
 } from '../types'
 import Modal from '../components/Modal.vue'
+import PromotionPanel from '../components/schoolyear/PromotionPanel.vue'
 import { useConfirmStore } from '../stores/confirm'
+import { useToastStore } from '../stores/toast'
 import { chartPercentFromAverage20, formatAveragePercent } from '../utils/grades'
 
 const props = defineProps<{ id: string | number }>()
@@ -48,6 +50,7 @@ const TABS: ReadonlyArray<{ id: TabId; label: string; description: string }> = [
 
 const auth = useAuthStore()
 const confirmDialog = useConfirmStore()
+const toast = useToastStore()
 const route = useRoute()
 const year = ref<SchoolYear | null>(null)
 const schoolClasses = ref<SchoolClass[]>([])
@@ -144,6 +147,12 @@ function termPositionLabel(term: Term): string {
 
 const termStats = computed<SchoolYearTermStats[]>(() => stats.value?.terms ?? [])
 const classStats = computed<SchoolYearClassStats[]>(() => stats.value?.class_averages ?? [])
+const classStatsWithAbsences = computed(() =>
+  classStats.value.filter((c) => c.absences > 0 || c.lates > 0),
+)
+const studentRowsWithAbsences = computed(() =>
+  studentRows.value.filter((s) => s.absences > 0 || s.lates > 0),
+)
 
 const statsByClassroomId = computed(
   () => new Map(classStats.value.map((row) => [row.classroom_id, row])),
@@ -196,15 +205,15 @@ const classDisplayRows = computed(() => {
 
   return rows
 })
-const totalDivisions = computed(() =>
-  schoolClasses.value.reduce((total, item) => total + (item.divisions?.length ?? item.divisions_count ?? 0), 0),
-)
 const monthlyAttendance = computed(() => stats.value?.monthly_attendance ?? [])
 const studentRows = computed<SchoolYearStudentRow[]>(() => stats.value?.students ?? [])
 const history = computed(() => stats.value?.history ?? null)
 
 const isArchived = computed(() => !!year.value?.is_archived)
 const isAdmin = computed(() => auth.hasRole('admin'))
+const isGlobalAdmin = computed(
+  () => auth.user?.role === 'admin' && (auth.user.admin_scope ?? 'global') === 'global',
+)
 const canWrite = computed(() => isAdmin.value && !isArchived.value)
 
 const termStatsById = computed<Record<number, SchoolYearTermStats>>(() =>
@@ -218,12 +227,6 @@ const closedTermsRatio = computed(() => {
   const total = summary.value?.terms ?? 0
   if (total === 0) return 0
   return Math.round(((summary.value?.closed_terms ?? 0) / total) * 100)
-})
-
-const closedPeriodsRatio = computed(() => {
-  const total = summary.value?.periods ?? 0
-  if (total === 0) return 0
-  return Math.round(((summary.value?.closed_periods ?? 0) / total) * 100)
 })
 
 const yearProgress = computed(() => {
@@ -536,15 +539,6 @@ const tabItems = computed(() =>
   }),
 )
 
-function resetForm(): void {
-  form.name = ''
-  form.position = (terms.value.length ?? 0) + 1
-  form.starts_on = ''
-  form.ends_on = ''
-  formError.value = ''
-  Object.keys(formErrors).forEach((k) => delete formErrors[k])
-}
-
 function formatDate(value: string): string {
   const date = new Date(`${value}T00:00:00`)
   if (Number.isNaN(date.getTime())) return value
@@ -824,13 +818,6 @@ async function generateSchoolClasses(): Promise<void> {
   }
 }
 
-function openCreate(): void {
-  if (!canWrite.value) return
-  editing.value = null
-  resetForm()
-  showForm.value = true
-}
-
 function openEdit(term: Term): void {
   if (!canWrite.value) return
   editing.value = term
@@ -916,7 +903,7 @@ async function closeTerm(term: Term): Promise<void> {
       `/api/v1/terms/${term.id}/close`,
       { method: 'POST' },
     )
-    alert(res.message)
+    toast.success(res.message)
     await load()
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'Clôture impossible.'
@@ -1143,8 +1130,7 @@ onMounted(() => {
             <span v-else-if="isArchived" class="hero-badge warn">Archivée</span>
             <span class="hero-badge">{{ summary?.students ?? 0 }} élèves</span>
             <span class="hero-badge">{{ summary?.classes ?? 0 }} classes</span>
-            <span class="hero-badge">{{ summary?.parents ?? 0 }} parents inscrits</span>
-            <span class="hero-badge">{{ isArchived ? 'Lecture seule' : 'Modifiable' }}</span>
+            <span class="hero-badge">{{ summary?.parents ?? 0 }} parents</span>
           </div>
         </div>
         <div class="hero-side">
@@ -1191,13 +1177,7 @@ onMounted(() => {
       <!-- Read-only banner if archived -->
       <div v-if="isArchived" class="archived-banner" role="status">
         <div class="archived-icon" aria-hidden="true">LS</div>
-        <div>
-          <strong>Année archivée — lecture seule</strong>
-          <p>
-            Les trimestres, notes, présences et bulletins de cette année ne peuvent plus être
-            modifiés. Les données restent consultables et exportables (PDF, CSV).
-          </p>
-        </div>
+        <strong>Année archivée — lecture seule</strong>
       </div>
 
       <!-- Tab navigation -->
@@ -1242,15 +1222,12 @@ onMounted(() => {
               <div class="kpi-card">
                 <span class="kpi-label">Élèves inscrits</span>
                 <strong>{{ summary?.students ?? 0 }}</strong>
-                <span>répartis dans {{ summary?.classes ?? 0 }} classe(s)</span>
+                <span>{{ summary?.classes ?? 0 }} classes</span>
               </div>
               <div class="kpi-card">
                 <span class="kpi-label">Taux de réussite</span>
                 <strong>{{ successRateLabel }}</strong>
-                <span>
-                  {{ summary?.students_passing ?? 0 }} / {{ summary?.students_evaluated ?? 0 }}
-                  élève(s) évalué(s)
-                </span>
+                <span>{{ summary?.students_passing ?? 0 }} / {{ summary?.students_evaluated ?? 0 }} évalués</span>
               </div>
             </div>
           </section>
@@ -1261,22 +1238,22 @@ onMounted(() => {
               <div class="kpi-card">
                 <span class="kpi-label">Évaluations</span>
                 <strong>{{ summary?.evaluations ?? 0 }}</strong>
-                <span>{{ summary?.grades_entered ?? 0 }} note(s) saisie(s)</span>
+                <span>{{ summary?.grades_entered ?? 0 }} notes</span>
               </div>
               <div class="kpi-card">
                 <span class="kpi-label">Moyenne générale</span>
                 <strong>{{ averageLabel(summary?.grade_average) }}</strong>
-                <span>sur 20</span>
+                <span>/20</span>
               </div>
               <div class="kpi-card warn">
                 <span class="kpi-label">Absences</span>
                 <strong>{{ summary?.absences ?? 0 }}</strong>
-                <span>{{ summary?.unjustified_absences ?? 0 }} non justifiée(s)</span>
+                <span>{{ summary?.unjustified_absences ?? 0 }} non justifiées</span>
               </div>
               <div class="kpi-card">
                 <span class="kpi-label">Retards</span>
                 <strong>{{ summary?.lates ?? 0 }}</strong>
-                <span>{{ latesThisMonth }} ce mois-ci</span>
+                <span>{{ latesThisMonth }} ce mois</span>
               </div>
             </div>
           </section>
@@ -1285,10 +1262,7 @@ onMounted(() => {
         <div class="analytics-grid">
           <div class="card progress-card">
             <div class="card-header">
-              <div>
-                <h2>Progression annuelle</h2>
-                <p>{{ yearProgress }}% du calendrier écoulé</p>
-              </div>
+              <h2>Progression annuelle</h2>
             </div>
             <div class="progress-body">
               <div class="term-progress-item global">
@@ -1319,10 +1293,7 @@ onMounted(() => {
 
           <div class="card chart-card">
             <div class="card-header">
-              <div>
-                <h2>Assiduité mensuelle</h2>
-                <p>Absences et retards sur l'année</p>
-              </div>
+              <h2>Assiduité mensuelle</h2>
             </div>
             <div v-if="monthlyAttendance.length" class="chart-surface">
               <LineChart
@@ -1373,13 +1344,7 @@ onMounted(() => {
       <div v-show="activeTab === 'classes'" role="tabpanel" class="tab-panel">
         <section class="classes-section">
           <div class="section-heading class-section-heading">
-            <div>
-              <h2>Classes de l'année</h2>
-              <p>
-                {{ schoolClasses.length }} classe(s) de base · {{ totalDivisions }} division(s) ·
-                {{ classDisplayRows.length }} ligne(s) affichée(s)
-              </p>
-            </div>
+            <h2>Classes de l'année</h2>
             <div class="section-toolbar">
               <div class="view-toggle" aria-label="Affichage des classes">
                 <button
@@ -1572,13 +1537,7 @@ onMounted(() => {
       <div v-show="activeTab === 'students'" role="tabpanel" class="tab-panel students-tab">
         <section class="students-section">
           <div class="section-heading students-heading">
-            <div>
-              <h2>Élèves inscrits</h2>
-              <p>
-                {{ studentRows.length }} élève(s) · classé(s) par classe fréquentée · année
-                {{ year.name.replace('-', '–') }}
-              </p>
-            </div>
+            <h2>Élèves inscrits</h2>
             <div class="section-toolbar students-actions">
               <button type="button" class="btn-secondary" @click="exportStudentsCsv">
                 Exporter
@@ -1646,7 +1605,7 @@ onMounted(() => {
               <span>Niveau</span>
               <select v-model="studentLevelFilter">
                 <option value="all">Tous les niveaux</option>
-                <option v-for="level in studentLevelOptions" :key="level" :value="level">
+                <option v-for="level in studentLevelOptions" :key="String(level)" :value="level">
                   {{ level }}
                 </option>
               </select>
@@ -1786,6 +1745,10 @@ onMounted(() => {
       <!-- ───────── Résultats ───────── -->
       <div v-show="activeTab === 'results'" role="tabpanel" class="tab-panel">
         <section class="results-section">
+          <div v-if="isGlobalAdmin && year" class="card promotion-card">
+            <PromotionPanel :from-year="year" @committed="load" />
+          </div>
+
           <div class="kpi-grid decisions">
             <div class="kpi-card">
               <span class="kpi-label">Décisions — Admis</span>
@@ -1853,14 +1816,7 @@ onMounted(() => {
           </div>
 
 	          <div class="section-heading term-section-heading">
-	            <div>
-	              <h2>Structure pédagogique</h2>
-	              <p>
-	                {{ termsPrimaire.length }} trimestre(s) (primaire) &middot;
-	                {{ termsSecondaire.length }} semestre(s) (secondaire) &middot;
-	                {{ summary?.periods ?? 0 }} période(s) au total
-	              </p>
-	            </div>
+	            <h2>Structure pédagogique</h2>
             <div class="section-toolbar">
               <div class="view-toggle" aria-label="Affichage des termes">
                 <button
@@ -1891,13 +1847,6 @@ onMounted(() => {
           <div v-if="terms.length === 0" class="card empty-action">
             <div class="empty-icon" aria-hidden="true">+</div>
             <h3>Aucun terme défini</h3>
-            <p>
-              {{
-                canWrite
-                  ? 'Les trimestres et semestres sont générés automatiquement à la création de l\'année.'
-                  : 'Aucun terme n\'est enregistré pour cette année.'
-              }}
-            </p>
           </div>
 
           <template v-else>
@@ -2172,7 +2121,6 @@ onMounted(() => {
             <div class="card-header">
               <div>
                 <h2>Statistiques mensuelles</h2>
-                <p>Évolution des absences et retards mois par mois</p>
               </div>
             </div>
             <div v-if="monthlyAttendance.length" class="chart-surface">
@@ -2192,73 +2140,90 @@ onMounted(() => {
 
           <div class="card class-table-card">
             <div class="card-header">
-              <div>
-                <h2>Absences par classe</h2>
-                <p>Cumul annuel par classe</p>
-              </div>
+              <h2>
+                Absences par classe
+                <span v-if="classStatsWithAbsences.length" class="count-pill">
+                  {{ classStatsWithAbsences.length }}
+                </span>
+              </h2>
             </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Classe</th>
-                  <th>Élèves</th>
-                  <th>Absences</th>
-                  <th>Retards</th>
-                  <th>Présences</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="item in classStats" :key="item.classroom_id">
-                  <td>{{ item.classroom }}</td>
-                  <td>{{ item.student_count }}</td>
-                  <td>{{ item.absences }}</td>
-                  <td>{{ item.lates }}</td>
-                  <td>{{ item.attendance_records }}</td>
-                </tr>
-                <tr v-if="classStats.length === 0">
-                  <td colspan="5" class="empty-state">Aucune classe à afficher.</td>
-                </tr>
-              </tbody>
-            </table>
+            <template v-if="classStatsWithAbsences.length">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Classe</th>
+                    <th class="num-col">Élèves</th>
+                    <th class="num-col">Absences</th>
+                    <th class="num-col">Retards</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in classStatsWithAbsences" :key="item.classroom_id">
+                    <td><strong>{{ item.classroom }}</strong></td>
+                    <td class="num-col">{{ item.student_count }}</td>
+                    <td class="num-col">
+                      <span class="abs-val abs-val--warn">{{ item.absences }}</span>
+                    </td>
+                    <td class="num-col">{{ item.lates }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </template>
+            <div v-else class="attendance-empty">
+              <span class="attendance-empty-icon">✓</span>
+              <p>Aucune absence enregistrée pour cette période.</p>
+            </div>
           </div>
 
           <div class="card class-table-card">
             <div class="card-header">
-              <div>
-                <h2>Absences par élève</h2>
-                <p>{{ studentRows.length }} élève(s) au total</p>
-              </div>
+              <h2>
+                Absences par élève
+                <span v-if="studentRowsWithAbsences.length" class="count-pill">
+                  {{ studentRowsWithAbsences.length }}
+                </span>
+              </h2>
             </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Élève</th>
-                  <th>Classe</th>
-                  <th>Absences</th>
-                  <th>Non justifiées</th>
-                  <th>Retards</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="student in studentRows" :key="student.id">
-                  <td>
-                    <RouterLink
-                      class="student-link"
-                      :to="{ name: 'student-detail', params: { id: student.id } }"
-                    >
-                      {{ student.full_name }}
-                    </RouterLink>
-                  </td>
-                  <td>{{ student.classroom ?? '—' }}</td>
-                  <td>{{ student.absences }}</td>
-                  <td>{{ student.unjustified_absences }}</td>
-                  <td>{{ student.lates }}</td>
-                </tr>
-                <tr v-if="studentRows.length === 0">
-                  <td colspan="5" class="empty-state">Aucun élève rattaché.</td>
-                </tr>
-              </tbody>
-            </table>
+            <template v-if="studentRowsWithAbsences.length">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Élève</th>
+                    <th>Classe</th>
+                    <th class="num-col">Absences</th>
+                    <th class="num-col">Non justif.</th>
+                    <th class="num-col">Retards</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="student in studentRowsWithAbsences" :key="student.id">
+                    <td>
+                      <RouterLink
+                        class="student-link"
+                        :to="{ name: 'student-detail', params: { id: student.id } }"
+                      >
+                        {{ student.full_name }}
+                      </RouterLink>
+                    </td>
+                    <td>{{ student.classroom ?? '—' }}</td>
+                    <td class="num-col">
+                      <span class="abs-val abs-val--warn">{{ student.absences }}</span>
+                    </td>
+                    <td class="num-col">
+                      <span v-if="student.unjustified_absences > 0" class="abs-val abs-val--danger">
+                        {{ student.unjustified_absences }}
+                      </span>
+                      <span v-else class="text-muted">—</span>
+                    </td>
+                    <td class="num-col">{{ student.lates || '—' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </template>
+            <div v-else class="attendance-empty">
+              <span class="attendance-empty-icon">✓</span>
+              <p>Aucune absence enregistrée pour cette période.</p>
+            </div>
           </div>
         </section>
       </div>
@@ -2268,10 +2233,7 @@ onMounted(() => {
         <section class="documents-section">
           <div class="card document-card">
             <div class="card-header">
-              <div>
-                <h2>Bulletins PDF</h2>
-                <p>Téléchargez le bulletin officiel d'un élève pour un trimestre.</p>
-              </div>
+              <h2>Bulletins PDF</h2>
             </div>
             <div class="document-form">
               <label>
@@ -2326,10 +2288,7 @@ onMounted(() => {
 
           <div class="card document-card">
             <div class="card-header">
-              <div>
-                <h2>Rapports CSV</h2>
-                <p>Exports officiels pour le pilotage et l'inspection.</p>
-              </div>
+              <h2>Rapports CSV</h2>
             </div>
             <div class="document-form">
               <label>
@@ -2446,7 +2405,6 @@ onMounted(() => {
             <div class="card-header">
               <div>
                 <h2>Historique des trimestres</h2>
-                <p>Statut et date de clôture pour chaque période</p>
               </div>
             </div>
             <table>
@@ -2545,9 +2503,19 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  color: var(--text-soft);
-  font-size: 0.84rem;
-  font-weight: 750;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.detail-breadcrumb a {
+  color: var(--primary);
+  transition: color 0.15s ease;
+}
+
+.detail-breadcrumb a:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
 }
 
 .detail-breadcrumb strong {
@@ -2559,69 +2527,78 @@ onMounted(() => {
   display: flex;
   align-items: stretch;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 1.15rem;
+  gap: 1.25rem;
+  padding: 1.5rem 1.65rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 16px;
   background: var(--bg-card);
   box-shadow: var(--shadow-card);
+  transition: box-shadow 0.2s ease;
 }
 
 .detail-hero-main {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .detail-hero h1,
 .section-heading h2,
 .term-card h3 {
   margin: 0;
-  font-size: 1.45rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-size: 1.75rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--text);
 }
 
 .hero-date-line {
-  margin: 0.35rem 0 0;
+  margin: 0.4rem 0 0;
   color: var(--text-soft);
-  font-size: 0.88rem;
+  font-size: 0.86rem;
+  font-weight: 500;
 }
 
 .hero-badges {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
-  margin-top: 0.85rem;
+  margin-top: 1rem;
 }
 
 .hero-badge {
   display: inline-flex;
   align-items: center;
-  min-height: 1.7rem;
-  padding: 0.2rem 0.65rem;
+  gap: 0.3rem;
+  min-height: 1.75rem;
+  padding: 0.22rem 0.7rem;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--bg-subtle);
   color: var(--text-soft);
-  font-size: 0.76rem;
-  font-weight: 750;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .hero-badge.primary {
-  border-color: #bfdbfe;
+  border-color: var(--primary-tint);
   background: var(--primary-soft);
-  color: var(--primary);
+  color: var(--primary-dark);
   font-weight: 800;
 }
 
 .hero-badge.warn {
-  border-color: #fde68a;
+  border-color: rgba(251, 191, 36, 0.3);
   background: var(--warn-soft);
   color: var(--warn);
 }
 
 .detail-hero.current {
-  border-color: #bfdbfe;
-  background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+  border-color: var(--primary-tint);
+  background: linear-gradient(140deg, var(--bg-card) 0%, var(--bg-subtle) 55%, var(--bg-card) 100%);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15), 0 1px 3px rgba(37, 99, 235, 0.08);
 }
 
 .detail-hero p,
@@ -2692,11 +2669,11 @@ onMounted(() => {
 .hero-status-card {
   width: min(22rem, 100%);
   display: grid;
-  gap: 0.55rem;
-  padding: 0.75rem;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
+  border-radius: 12px;
+  background: linear-gradient(160deg, var(--bg-card) 0%, var(--bg-soft) 100%);
   box-shadow: var(--shadow);
 }
 
@@ -2711,43 +2688,56 @@ onMounted(() => {
 .hero-status-top span,
 .hero-status-row span {
   color: var(--text-soft);
-  font-size: 0.76rem;
-  font-weight: 800;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
 .hero-status-top strong,
 .hero-status-row strong {
   color: var(--text);
-  font-size: 0.86rem;
-  font-weight: 850;
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 .hero-progress {
-  height: 0.46rem;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  overflow: hidden;
+}
+
+.hero-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .kpi-groups {
   display: grid;
-  gap: 0.85rem;
+  gap: 1rem;
 }
 
 .kpi-group {
   display: grid;
-  gap: 0.55rem;
-  padding: 0.75rem;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.56);
+  border-radius: 14px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow);
 }
 
 .kpi-group-title {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  color: var(--text-soft);
-  font-size: 0.74rem;
-  font-weight: 850;
-  letter-spacing: 0.06em;
+  color: var(--primary);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -2755,7 +2745,7 @@ onMounted(() => {
   content: '';
   flex: 1;
   height: 1px;
-  background: var(--border);
+  background: var(--primary-tint);
 }
 
 .kpi-grid {
@@ -2774,66 +2764,81 @@ onMounted(() => {
 }
 
 .kpi-card {
-  min-height: 6.6rem;
+  position: relative;
+  min-height: 6.8rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 0.35rem;
-  padding: 0.9rem;
+  gap: 0.4rem;
+  padding: 1rem 1.05rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-top: 3px solid var(--border);
+  border-radius: 12px;
   background: var(--bg-card);
   box-shadow: var(--shadow);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  overflow: hidden;
+}
+
+.kpi-card:hover {
+  box-shadow: var(--shadow-hover);
 }
 
 .kpi-card.warn {
-  border-color: #fedf89;
+  border-top-color: var(--warn);
 }
 
 .kpi-card.highlight {
-  border-color: #93c5fd;
-  background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+  border-top-color: var(--primary);
+  background: linear-gradient(160deg, var(--bg-card) 0%, var(--bg-subtle) 100%);
 }
 
 .kpi-card.highlight strong {
-  color: var(--primary);
+  color: var(--primary-dark);
 }
 
 .kpi-label {
-  color: var(--text-soft);
-  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-size: 0.67rem;
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 .kpi-card strong {
+  display: block;
   color: var(--text);
-  font-size: 1.55rem;
-  font-weight: 850;
+  font-size: 1.6rem;
+  font-weight: 900;
   line-height: 1;
+  letter-spacing: -0.025em;
 }
 
 .kpi-card span:last-child {
   color: var(--text-muted);
-  font-size: 0.76rem;
-  font-weight: 650;
+  font-size: 0.74rem;
+  font-weight: 600;
 }
 
 .analytics-grid {
   display: grid;
   grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.4fr);
-  align-items: start;
+  align-items: stretch;
   gap: 1rem;
 }
 
 .chart-card {
   overflow: hidden;
-  align-self: start;
+  display: flex;
+  flex-direction: column;
 }
 
 .chart-surface {
   padding: 0 0.35rem 0.85rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .chart-surface :deep(.apexcharts-canvas) {
@@ -2841,43 +2846,84 @@ onMounted(() => {
 }
 
 .chart-empty-compact {
-  margin: 0 0.85rem 0.15rem;
-  padding: 0.9rem 1rem;
-  border: 1px dashed var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-subtle);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 1rem 1.25rem 1.25rem;
+  padding: 2.5rem 1.5rem;
+  border-radius: 14px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(59, 130, 246, 0.07) 0%, transparent 65%),
+    var(--bg-subtle);
   text-align: center;
+}
+
+.chart-empty-compact::before {
+  content: '✓';
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--success-soft);
+  border: 1.5px solid rgba(74, 222, 128, 0.25);
+  color: var(--success);
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .chart-empty-compact p {
   margin: 0;
-  color: var(--text-soft);
-  font-size: 0.88rem;
-  font-weight: 650;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
 .chart-empty-range {
-  display: block;
-  margin-top: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.75rem;
+  border-radius: 999px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   color: var(--text-muted);
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .progress-body {
   display: grid;
-  gap: 0.9rem;
-  padding: 1rem 1.15rem 1.15rem;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem 1.25rem;
 }
 
 .term-progress-item {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.4rem;
 }
 
 .term-progress-item.global {
-  padding-bottom: 0.55rem;
+  padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--border);
+}
+
+.term-progress-item.global .term-progress-head span {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+
+.term-progress-item.global .term-progress-head strong {
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--primary-dark);
 }
 
 .term-progress-head {
@@ -2889,30 +2935,34 @@ onMounted(() => {
 
 .term-progress-head strong {
   display: block;
-  font-size: 0.88rem;
+  font-size: 0.87rem;
+  font-weight: 700;
+  color: var(--text);
 }
 
 .term-progress-head small {
   display: block;
-  margin-top: 0.1rem;
-  color: var(--text-soft);
-  font-size: 0.74rem;
+  margin-top: 0.08rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
 }
 
 .term-progress-meta {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.74rem;
+  font-size: 0.72rem;
 }
 
 .term-status-badge {
   display: inline-flex;
   align-items: center;
-  min-height: 1.45rem;
-  padding: 0.12rem 0.55rem;
+  gap: 0.25rem;
+  min-height: 1.4rem;
+  padding: 0.1rem 0.55rem;
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 800;
+  letter-spacing: 0.02em;
   white-space: nowrap;
 }
 
@@ -2923,7 +2973,7 @@ onMounted(() => {
 
 .term-status-badge.primary {
   background: var(--primary-soft);
-  color: var(--primary);
+  color: var(--primary-dark);
 }
 
 .term-status-badge.warn {
@@ -2937,11 +2987,11 @@ onMounted(() => {
 }
 
 .progress-track span.fill-primary {
-  background: linear-gradient(90deg, var(--primary), #60a5fa);
+  background: linear-gradient(90deg, var(--primary), var(--accent));
 }
 
 .progress-track span.fill-success {
-  background: linear-gradient(90deg, var(--success), #4ade80);
+  background: linear-gradient(90deg, #16a34a, #4ade80);
 }
 
 .progress-track span.fill-warn {
@@ -2949,7 +2999,7 @@ onMounted(() => {
 }
 
 .progress-track span.fill-muted {
-  background: #94a3b8;
+  background: var(--border-strong);
 }
 
 .terms-overview {
@@ -2973,10 +3023,10 @@ onMounted(() => {
 }
 
 .progress-track {
-  height: 0.75rem;
+  height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: #edf2ff;
+  background: var(--bg-subtle);
 }
 
 .progress-track.slim {
@@ -3049,7 +3099,7 @@ onMounted(() => {
   display: flex;
   align-items: end;
   border-radius: 999px;
-  background: #edf2ff;
+  background: var(--bg-subtle);
 }
 
 .column-track span {
@@ -3060,11 +3110,11 @@ onMounted(() => {
 }
 
 .late-fill {
-  background: #c8d7ff;
+  background: rgba(59, 130, 246, 0.35);
 }
 
 .absence-fill {
-  background: linear-gradient(180deg, #fdb022, #f79009);
+  background: linear-gradient(180deg, var(--warn), #fb923c);
 }
 
 .chart-tooltip {
@@ -3078,12 +3128,12 @@ onMounted(() => {
   padding: 0.55rem 0.65rem;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  background: #101828;
-  color: white;
+  background: var(--bg-card);
+  color: var(--text);
   font-size: 0.76rem;
   font-weight: 700;
   text-align: left;
-  box-shadow: 0 12px 24px rgba(16, 24, 40, 0.18);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5);
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, 0.35rem);
@@ -3124,9 +3174,9 @@ onMounted(() => {
 }
 
 .filter-chip.active {
-  border-color: #93c5fd;
+  border-color: var(--primary-tint);
   background: var(--primary-soft);
-  color: var(--primary);
+  color: var(--accent);
 }
 
 .class-filter.compact {
@@ -3304,7 +3354,7 @@ onMounted(() => {
   padding: 0.22rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: #f8fafc;
+  background: var(--bg-soft);
 }
 
 .view-toggle button {
@@ -3399,11 +3449,10 @@ onMounted(() => {
   border-color: var(--primary);
   color: inherit;
   text-decoration: none;
-  transform: translateY(-1px);
 }
 
 .class-data-link:focus-visible {
-  outline: 3px solid rgba(52, 87, 255, 0.18);
+  outline: 3px solid var(--primary-tint);
   outline-offset: 2px;
 }
 
@@ -3457,7 +3506,7 @@ onMounted(() => {
 .class-data-footer span {
   padding: 0.22rem 0.5rem;
   border-radius: 999px;
-  background: #f2f4f7;
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text-soft);
   font-size: 0.72rem;
   font-weight: 750;
@@ -3466,6 +3515,82 @@ onMounted(() => {
 .class-chart-card,
 .class-table-card {
   overflow-x: auto;
+}
+
+.num-col {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.abs-val--warn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 6px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-weight: 800;
+  font-size: 0.88rem;
+}
+
+.abs-val--danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 6px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-weight: 800;
+  font-size: 0.88rem;
+}
+
+.count-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 0.7rem;
+  font-weight: 800;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
+.attendance-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 2.5rem 1rem;
+  text-align: center;
+}
+
+.attendance-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--success-soft);
+  border: 1.5px solid rgba(74, 222, 128, 0.25);
+  color: var(--success);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.attendance-empty p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.87rem;
+  font-weight: 600;
 }
 
 .chart-expand-bar {
@@ -3523,7 +3648,7 @@ onMounted(() => {
   height: 0.64rem;
   overflow: hidden;
   border-radius: 999px;
-  background: #edf2ff;
+  background: var(--bg-subtle);
 }
 
 .bar-fill {
@@ -3531,15 +3656,15 @@ onMounted(() => {
   height: 100%;
   min-width: 0.45rem;
   border-radius: inherit;
-  background: linear-gradient(90deg, #3457ff, #6f8cff);
+  background: linear-gradient(90deg, var(--primary), var(--accent));
 }
 
 .bar-fill.warn {
-  background: linear-gradient(90deg, #f79009, #fdb022);
+  background: linear-gradient(90deg, var(--warn), #fb923c);
 }
 
 .bar-fill.muted {
-  background: #cbd5e1;
+  background: var(--border-strong);
 }
 
 .bar-value {
@@ -3560,10 +3685,10 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-.cycle-maternel { background: #fef3c7; color: #92400e; }
-.cycle-primaire { background: #d1fae5; color: #065f46; }
-.cycle-cteb { background: #e0e7ff; color: #3730a3; }
-.cycle-secondaire { background: #fce7f3; color: #9d174d; }
+.cycle-maternel { background: rgba(251, 191, 36, 0.15); color: var(--warn); }
+.cycle-primaire { background: rgba(74, 222, 128, 0.12); color: var(--success); }
+.cycle-cteb { background: rgba(59, 130, 246, 0.15); color: var(--accent); }
+.cycle-secondaire { background: rgba(192, 132, 252, 0.15); color: #c084fc; }
 
 /* ── Division pills ── */
 .division-badges {
@@ -3579,7 +3704,7 @@ onMounted(() => {
   min-width: 1.6rem;
   padding: 0.15rem 0.45rem;
   border-radius: 999px;
-  background: var(--primary-tint, #edf2ff);
+  background: var(--primary-tint, var(--primary-soft));
   color: var(--primary);
   font-size: 0.7rem;
   font-weight: 800;
@@ -3712,8 +3837,8 @@ onMounted(() => {
 }
 
 .micro-button.danger {
-  border-color: #fecaca;
-  background: #fff5f5;
+  border-color: rgba(248, 113, 113, 0.3);
+  background: var(--danger-soft);
   color: var(--danger);
 }
 
@@ -3736,15 +3861,15 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  border-color: #fedf89;
+  border-color: rgba(251, 191, 36, 0.3);
   background: var(--warn-soft);
   color: var(--warn);
   font-weight: 850;
 }
 
 .close-term-button:hover {
-  border-color: #fdb022;
-  background: #fff4d6;
+  border-color: rgba(251, 191, 36, 0.5);
+  background: rgba(251, 191, 36, 0.15);
 }
 
 .lock-mark {
@@ -3797,7 +3922,7 @@ onMounted(() => {
 .term-menu[open] summary,
 .term-menu summary:hover {
   border-color: var(--border-strong);
-  background: #f8faff;
+  background: var(--bg-subtle);
   color: var(--text);
 }
 
@@ -3810,10 +3935,10 @@ onMounted(() => {
   display: grid;
   gap: 0.3rem;
   padding: 0.4rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--bg-card);
-  box-shadow: 0 16px 32px rgba(16, 24, 40, 0.14);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.5);
 }
 
 .term-menu-list.align-right {
@@ -3899,7 +4024,7 @@ onMounted(() => {
 .skeleton-block {
   min-height: 6rem;
   border-radius: var(--radius);
-  background: linear-gradient(90deg, #f2f4f7, #f8faff, #f2f4f7);
+  background: linear-gradient(90deg, #0a1836, #0f2455, #0a1836);
   background-size: 180% 100%;
   animation: shimmer 1.2s infinite linear;
 }
@@ -3920,8 +4045,8 @@ onMounted(() => {
 
 /* ─── Hero archive state ─── */
 .detail-hero.archived {
-  background: linear-gradient(135deg, #fff7ed 0%, #fffbeb 100%);
-  border-color: #fdba74;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.08) 0%, rgba(251, 191, 36, 0.04) 100%);
+  border-color: rgba(251, 191, 36, 0.3);
 }
 
 .archive-btn {
@@ -3934,25 +4059,16 @@ onMounted(() => {
   align-items: flex-start;
   gap: 0.85rem;
   padding: 0.95rem 1.1rem;
-  border: 1px solid #fdba74;
+  border: 1px solid rgba(251, 191, 36, 0.3);
   border-radius: var(--radius);
-  background: linear-gradient(135deg, #fff7ed 0%, #fff1d6 100%);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(251, 191, 36, 0.05) 100%);
   box-shadow: var(--shadow);
 }
 
 .archived-banner strong {
-  display: block;
-  color: #92400e;
-  font-size: 0.95rem;
-  font-weight: 850;
-}
-
-.archived-banner p {
-  margin: 0.2rem 0 0;
-  color: #b45309;
-  font-size: 0.85rem;
-  font-weight: 600;
-  max-width: 60rem;
+  color: var(--warn);
+  font-size: 0.92rem;
+  font-weight: 800;
 }
 
 .archived-icon {
@@ -3961,8 +4077,8 @@ onMounted(() => {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: #fed7aa;
-  color: #9a3412;
+  background: var(--warn-soft);
+  color: var(--warn);
   font-size: 0.78rem;
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -3972,51 +4088,58 @@ onMounted(() => {
 .year-tabs {
   display: flex;
   flex-wrap: nowrap;
-  gap: 0.35rem;
+  gap: 0.2rem;
   overflow-x: auto;
-  padding: 0 0 0.15rem;
+  padding: 0.35rem 0 0;
   border-bottom: 1px solid var(--border);
   background: transparent;
+  scrollbar-width: none;
 }
+
+.year-tabs::-webkit-scrollbar { display: none; }
 
 .year-tabs button {
   flex: 0 0 auto;
-  min-height: 2.5rem;
+  min-height: 2.45rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  padding: 0.45rem 0.75rem 0.65rem;
+  padding: 0.4rem 0.85rem 0.58rem;
   border: 0;
   border-bottom: 2px solid transparent;
   background: transparent;
   color: var(--text-soft);
   box-shadow: none;
-  font-size: 0.86rem;
-  font-weight: 750;
+  font-size: 0.84rem;
+  font-weight: 700;
   letter-spacing: 0.01em;
   border-radius: 0;
+  transition: color 0.15s ease;
 }
 
 .year-tabs button small {
-  min-width: 1.35rem;
-  padding: 0.04rem 0.35rem;
+  min-width: 1.3rem;
+  padding: 0.04rem 0.38rem;
   border-radius: 999px;
   background: var(--bg-subtle);
-  color: var(--text-soft);
-  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-size: 0.65rem;
   font-weight: 800;
-  line-height: 1.35;
+  line-height: 1.4;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .year-tabs button:hover {
   color: var(--text);
+  background: var(--bg-subtle);
 }
 
 .year-tabs button.active {
   background: transparent;
-  color: var(--text);
+  color: var(--primary-dark);
   border-bottom-color: var(--primary);
+  font-weight: 800;
   box-shadow: none;
 }
 
@@ -4033,7 +4156,7 @@ onMounted(() => {
   padding: 0.95rem 1.1rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-soft) 100%);
   box-shadow: var(--shadow);
 }
 
@@ -4061,9 +4184,9 @@ onMounted(() => {
 
 /* ─── Badge variants ─── */
 .badge-warn {
-  background: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fbbf24;
+  background: var(--warn-soft);
+  color: var(--warn);
+  border: 1px solid rgba(251, 191, 36, 0.3);
 }
 
 /* ─── Students tab ─── */
@@ -4162,15 +4285,15 @@ onMounted(() => {
 }
 
 .student-group-row.danger td {
-  background: #fef2f2;
+  background: var(--danger-soft);
 }
 
 .student-data-row.danger {
-  background: rgba(254, 242, 242, 0.45);
+  background: rgba(248, 113, 113, 0.06);
 }
 
 .student-data-row.warn {
-  background: rgba(255, 251, 235, 0.55);
+  background: rgba(251, 191, 36, 0.06);
 }
 
 .student-cell-link {
@@ -4291,18 +4414,18 @@ onMounted(() => {
 }
 
 .status-pill.status-admis {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--success-soft);
+  color: var(--success);
 }
 
 .status-pill.status-redouble {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .status-pill.status-en_cours {
-  background: #e0e7ff;
-  color: #3730a3;
+  background: var(--primary-soft);
+  color: var(--accent);
 }
 
 .status-hint {
@@ -4371,7 +4494,6 @@ onMounted(() => {
 
 .document-link:hover {
   border-color: var(--primary);
-  transform: translateY(-1px);
   text-decoration: none;
 }
 

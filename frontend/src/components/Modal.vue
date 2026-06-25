@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, ref, useId, watch } from 'vue'
 
 const props = withDefaults(
   defineProps<{
@@ -16,13 +16,83 @@ const props = withDefaults(
   },
 )
 
+const emit = defineEmits<{ (e: 'close'): void }>()
+
+const titleId = useId()
+const dialogRef = ref<HTMLElement | null>(null)
+let previouslyFocused: HTMLElement | null = null
+
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'textarea:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])',
+  'select:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',')
+
+function focusableElements(): HTMLElement[] {
+  if (!dialogRef.value) return []
+  return Array.from(dialogRef.value.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (el) => el.offsetWidth > 0 || el.offsetHeight > 0 || el === document.activeElement,
+  )
+}
+
 function onOverlayClick(): void {
   if (props.closeOnBackdrop) {
     emit('close')
   }
 }
 
-const emit = defineEmits<{ (e: 'close'): void }>()
+function onKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') {
+    event.stopPropagation()
+    emit('close')
+    return
+  }
+
+  if (event.key !== 'Tab') return
+
+  const focusables = focusableElements()
+  if (focusables.length === 0) {
+    event.preventDefault()
+    dialogRef.value?.focus()
+    return
+  }
+
+  const first = focusables[0]
+  const last = focusables[focusables.length - 1]
+  const active = document.activeElement as HTMLElement | null
+  const insideDialog = active ? dialogRef.value?.contains(active) ?? false : false
+
+  if (event.shiftKey && (active === first || !insideDialog)) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+
+watch(
+  () => props.open,
+  async (open) => {
+    if (open) {
+      previouslyFocused = document.activeElement as HTMLElement | null
+      await nextTick()
+      // On cible le 1er champ saisissable s'il existe (formulaires), sinon le conteneur :
+      // on évite ainsi de poser d'emblée le focus sur un bouton destructif.
+      const focusables = focusableElements()
+      const firstField = focusables.find(
+        (el) => el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT',
+      )
+      ;(firstField ?? dialogRef.value)?.focus()
+    } else if (previouslyFocused) {
+      previouslyFocused.focus()
+      previouslyFocused = null
+    }
+  },
+)
 
 const resolvedMaxWidth = computed(() => {
   if (props.maxWidth) {
@@ -49,10 +119,19 @@ const dialogClass = computed(() => ({
 <template>
   <Teleport to="body">
     <Transition name="fade">
-      <div v-if="open" class="overlay" role="dialog" aria-modal="true" @click.self="onOverlayClick">
-        <div class="dialog" :class="dialogClass" :style="{ maxWidth: resolvedMaxWidth }">
+      <div v-if="open" class="overlay" @click.self="onOverlayClick" @keydown="onKeydown">
+        <div
+          ref="dialogRef"
+          class="dialog"
+          :class="dialogClass"
+          :style="{ maxWidth: resolvedMaxWidth }"
+          role="dialog"
+          aria-modal="true"
+          :aria-labelledby="titleId"
+          tabindex="-1"
+        >
           <header class="dialog-header">
-            <h2 style="margin: 0">{{ title }}</h2>
+            <h2 :id="titleId" style="margin: 0">{{ title }}</h2>
             <button type="button" class="close" aria-label="Fermer" @click="emit('close')">×</button>
           </header>
           <div class="dialog-body">
@@ -85,6 +164,10 @@ const dialogClass = computed(() => ({
   display: flex;
   flex-direction: column;
   max-height: min(92vh, 900px);
+}
+.dialog:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 .dialog--large .dialog-header,
 .dialog--large .dialog-footer {

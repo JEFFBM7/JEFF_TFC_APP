@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\V1\MessageController;
 use App\Http\Controllers\Api\V1\ParentController;
 use App\Http\Controllers\Api\V1\ParentPortalController;
 use App\Http\Controllers\Api\V1\PeriodController;
+use App\Http\Controllers\Api\V1\PromotionController;
 use App\Http\Controllers\Api\V1\ReportCardController;
 use App\Http\Controllers\Api\V1\ReportsController;
 use App\Http\Controllers\Api\V1\SchoolOptionController;
@@ -131,6 +132,11 @@ Route::prefix('v1')->group(function (): void {
                 'school-years/{school_year}/unarchive',
                 [SchoolYearController::class, 'unarchive'],
             );
+
+            // Passage de classe (promotion / redoublement) à la clôture/création d'année.
+            Route::get('school-years/{school_year}/promotion/preview', [PromotionController::class, 'preview']);
+            Route::post('school-years/{school_year}/promotion/commit', [PromotionController::class, 'commit']);
+            Route::post('promotion-batches/{promotion_batch}/rollback', [PromotionController::class, 'rollback']);
             Route::apiResource('school-years', SchoolYearController::class)
                 ->parameter('school-years', 'school_year')
                 ->except(['index', 'show']);

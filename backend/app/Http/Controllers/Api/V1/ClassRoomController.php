@@ -33,10 +33,23 @@ class ClassRoomController extends Controller
         AdminScopeContext::applyTeacherClassroomScope($query, $request->user(), $studentYearId);
 
         if ($studentYearId !== null) {
-            $query->whereHas(
-                'schoolClass',
-                fn ($schoolClassQuery) => $schoolClassQuery->where('school_year_id', $studentYearId),
-            );
+            // Une classe rattachée à une SchoolClass est filtrée sur l'année ciblée ;
+            // les classes « globales » (sans SchoolClass) restent visibles.
+            // On inclut aussi les divisions ayant au moins une inscription sur l'année
+            // ciblée, même si leur SchoolClass provient d'une autre année (source de
+            // vérité = enrollments).
+            $query->where(function ($scopeQuery) use ($studentYearId): void {
+                $scopeQuery
+                    ->whereDoesntHave('schoolClass')
+                    ->orWhereHas(
+                        'schoolClass',
+                        fn ($schoolClassQuery) => $schoolClassQuery->where('school_year_id', $studentYearId),
+                    )
+                    ->orWhereHas(
+                        'students',
+                        fn ($studentQuery) => $studentQuery->where('enrollment_school_year_id', $studentYearId),
+                    );
+            });
         }
 
         if ($request->filled('level_id')) {
@@ -49,7 +62,7 @@ class ClassRoomController extends Controller
             ->orderBy('levels.order')
             ->orderBy('classrooms.option')
             ->orderBy('classrooms.section')
-            ->select('classrooms.*')
+            ->addSelect('classrooms.*')
             ->paginate(100);
         $this->attachSummaryFields($paginator->getCollection(), $schoolYear);
 

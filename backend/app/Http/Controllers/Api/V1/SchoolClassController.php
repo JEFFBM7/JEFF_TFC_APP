@@ -23,7 +23,13 @@ class SchoolClassController extends Controller
     public function index(Request $request, SchoolYear $schoolYear): AnonymousResourceCollection
     {
         $query = $schoolYear->schoolClasses()
-            ->with(['level', 'schoolOption', 'divisions.level', 'divisions.schoolOption'])
+            ->with([
+                'level',
+                'schoolOption',
+                'divisions' => fn ($q) => $q
+                    ->with(['level', 'schoolOption'])
+                    ->withCount('students'),
+            ])
             ->withCount('divisions');
 
         $query->whereHas(
@@ -62,7 +68,13 @@ class SchoolClassController extends Controller
             });
 
         $classes = $schoolYear->schoolClasses()
-            ->with(['level', 'schoolOption', 'divisions.level', 'divisions.schoolOption'])
+            ->with([
+                'level',
+                'schoolOption',
+                'divisions' => fn ($q) => $q
+                    ->with(['level', 'schoolOption'])
+                    ->withCount('students'),
+            ])
             ->withCount('divisions')
             ->join('levels', 'levels.id', '=', 'school_classes.level_id')
             ->leftJoin('school_options', 'school_options.id', '=', 'school_classes.school_option_id')

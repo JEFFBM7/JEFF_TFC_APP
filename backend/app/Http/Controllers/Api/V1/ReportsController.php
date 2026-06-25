@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\ClassRoom;
+use App\Models\Enrollment;
 use App\Models\Term;
 use App\Models\Student;
 use App\Services\ReportCardService;
@@ -67,9 +68,9 @@ class ReportsController extends Controller
             fputcsv($out, ['classe', 'effectif', 'present', 'absent', 'absent_non_justifie', 'retard']);
 
             foreach ($classrooms as $classroom) {
-                $studentQuery = Student::query()->where('classroom_id', $classroom->id);
-                SchoolYearContext::applyStudentEnrollmentYearId($studentQuery, $schoolYearId);
-                $studentCount = $studentQuery->count();
+                $studentCount = $schoolYearId !== null
+                    ? Enrollment::query()->forYear($schoolYearId)->forClassroom($classroom->id)->count()
+                    : Student::query()->where('classroom_id', $classroom->id)->count();
 
                 $q = Attendance::query()->where('classroom_id', $classroom->id);
                 SchoolYearContext::applyDateRange($q, $request);

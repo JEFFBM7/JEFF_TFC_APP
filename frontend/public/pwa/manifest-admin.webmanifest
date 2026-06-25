@@ -1,6 +1,6 @@
 {
-  "name": "EduConnect — Administration",
-  "short_name": "EduConnect Admin",
+  "name": "EduConnect",
+  "short_name": "EduConnect",
   "description": "Gestion scolaire du Complexe MALUNGA",
   "start_url": "/",
   "scope": "/",

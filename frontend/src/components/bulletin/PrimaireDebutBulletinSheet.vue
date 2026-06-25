@@ -4,13 +4,23 @@ import {
   PRIMARY_FORM_CODE,
   PRIMARY_SCHOOL_DEFAULTS,
   primaryBulletinMeta,
+  resolvePrimaryTier,
 } from '../../data/primaryBulletinStructure'
+import {
+  PRIMARY_MOYEN_FORM_CODE,
+  primaryMoyenBulletinMeta,
+} from '../../data/primaryMoyenBulletinStructure'
+import {
+  PRIMARY_TERMINAL_FORM_CODE,
+  primaryTerminalBulletinMeta,
+} from '../../data/primaryTerminalBulletinStructure'
 import type { Student } from '../../types'
 import type { ReportCardData } from '../../types'
 import {
   buildPrimaryBulletinRows,
   formatBulletinPercent,
   formatBulletinPoints,
+  primaryAnnualMax,
 } from '../../utils/primaryBulletin'
 
 const props = defineProps<{
@@ -24,8 +34,20 @@ const props = defineProps<{
   appreciation?: string | null
 }>()
 
-const meta = computed(() => primaryBulletinMeta(props.student.classroom?.level))
-const bulletin = computed(() => buildPrimaryBulletinRows(props.trimesterReports))
+const tier = computed(() => resolvePrimaryTier(props.student.classroom?.level) ?? 'debut')
+const meta = computed(() =>
+  tier.value === 'terminal'
+    ? primaryTerminalBulletinMeta(props.student.classroom?.level)
+    : tier.value === 'moyen'
+    ? primaryMoyenBulletinMeta(props.student.classroom?.level)
+    : primaryBulletinMeta(props.student.classroom?.level),
+)
+const formCode = computed(() => {
+  if (tier.value === 'terminal') return PRIMARY_TERMINAL_FORM_CODE
+  return tier.value === 'moyen' ? PRIMARY_MOYEN_FORM_CODE : PRIMARY_FORM_CODE
+})
+const bulletin = computed(() => buildPrimaryBulletinRows(props.trimesterReports, tier.value))
+const isTerminalGradeSix = computed(() => tier.value === 'terminal' && meta.value.gradeYear === 6)
 
 const decisionPassed = computed(() => {
   const pct = bulletin.value.totals.percentage
@@ -53,9 +75,9 @@ function rowClass(kind: string): string {
   return 'is-subject'
 }
 
-type TrimesterKey = 't1' | 't2' | 't3'
-const trimesters: TrimesterKey[] = ['t1', 't2', 't3']
-const trimesterLabels = ['PREMIER TRIMESTRE', 'DEUXIÈME TRIMESTRE', 'TROISIÈME TRIMESTRE']
+function showNumeric(kind: string): boolean {
+  return kind === 'subject' || kind === 'subtotal'
+}
 </script>
 
 <template>
@@ -105,23 +127,34 @@ const trimesterLabels = ['PREMIER TRIMESTRE', 'DEUXIÈME TRIMESTRE', 'TROISIÈME
       <table class="primaire-table">
         <thead>
           <tr class="head-main">
-            <th rowspan="3" class="col-branch">BRANCHES</th>
-            <th v-for="label in trimesterLabels" :key="label" colspan="5">{{ label }}</th>
-            <th rowspan="3" class="col-total">TOTAL<br>GÉNÉRAL</th>
+            <th rowspan="2" class="col-branch">BRANCHES</th>
+            <th colspan="7">PREMIER TRIMESTRE</th>
+            <th colspan="6">DEUXIÈME TRIMESTRE</th>
+            <th colspan="6">TROISIÈME TRIMESTRE</th>
+            <th colspan="2">TOTAL</th>
           </tr>
-          <tr class="head-sub">
-            <template v-for="n in 3" :key="`sub-${n}`">
-              <th rowspan="2">MAX.</th>
-              <th colspan="2">TRAVAUX JOURNAL.</th>
-              <th rowspan="2">MAX.<br>EXAM.</th>
-              <th rowspan="2">TOTAL</th>
-            </template>
-          </tr>
-          <tr class="head-period">
-            <template v-for="n in 3" :key="`period-${n}`">
-              <th>1<sup>ère</sup> P</th>
-              <th>2<sup>ème</sup> P</th>
-            </template>
+          <tr class="head-cols">
+            <th>MAX per</th>
+            <th>1<sup>ère</sup> P.</th>
+            <th>2<sup>e</sup> P.</th>
+            <th>MAX EX.</th>
+            <th>PTS OBT.</th>
+            <th>MAX TRIM.</th>
+            <th>PTS OBT.</th>
+            <th>3<sup>e</sup> P.</th>
+            <th>4<sup>e</sup> P.</th>
+            <th>MAX EX.</th>
+            <th>PTS OBT.</th>
+            <th>MAX TRIM.</th>
+            <th>PTS OBT.</th>
+            <th>5<sup>e</sup> P.</th>
+            <th>6<sup>e</sup> P.</th>
+            <th>MAX EX.</th>
+            <th>PTS OBT.</th>
+            <th>MAX TRIM.</th>
+            <th>PTS OBT.</th>
+            <th>MAX</th>
+            <th>PTS OBT.</th>
           </tr>
         </thead>
         <tbody>
@@ -131,77 +164,97 @@ const trimesterLabels = ['PREMIER TRIMESTRE', 'DEUXIÈME TRIMESTRE', 'TROISIÈME
             :class="rowClass(row.kind)"
           >
             <td class="col-branch">{{ row.label }}</td>
-            <template v-for="tk in trimesters" :key="tk">
-              <td class="num">{{ row.kind === 'subject' || row.kind === 'subtotal' ? formatBulletinPoints(row[tk].max) : '' }}</td>
-              <td class="num">{{ formatBulletinPoints(row[tk].period1) }}</td>
-              <td class="num">{{ formatBulletinPoints(row[tk].period2) }}</td>
-              <td class="num">{{ row.kind === 'subject' || row.kind === 'subtotal' ? formatBulletinPoints(row[tk].examMax) : '' }}</td>
-              <td class="num score">{{ formatBulletinPoints(row[tk].total) }}</td>
-            </template>
+            <!-- 1er trimestre (7 colonnes) -->
+            <td class="num">{{ showNumeric(row.kind) ? formatBulletinPoints(row.periodMax) : '' }}</td>
+            <td class="num">{{ formatBulletinPoints(row.t1.period1) }}</td>
+            <td class="num">{{ formatBulletinPoints(row.t1.period2) }}</td>
+            <td class="num">{{ showNumeric(row.kind) ? formatBulletinPoints(row.t1.examMax) : '' }}</td>
+            <td class="num">{{ formatBulletinPoints(row.t1.exam) }}</td>
+            <td class="num">{{ showNumeric(row.kind) ? formatBulletinPoints(row.t1.max) : '' }}</td>
+            <td class="num score">{{ formatBulletinPoints(row.t1.total) }}</td>
+            <!-- 2e trimestre (6 colonnes) -->
+            <td class="num">{{ formatBulletinPoints(row.t2.period1) }}</td>
+            <td class="num">{{ formatBulletinPoints(row.t2.period2) }}</td>
+            <td class="num">{{ showNumeric(row.kind) ? formatBulletinPoints(row.t2.examMax) : '' }}</td>
+            <td class="num">{{ formatBulletinPoints(row.t2.exam) }}</td>
+            <td class="num">{{ showNumeric(row.kind) ? formatBulletinPoints(row.t2.max) : '' }}</td>
+            <td class="num score">{{ formatBulletinPoints(row.t2.total) }}</td>
+            <!-- 3e trimestre (6 colonnes) -->
+            <td class="num">{{ formatBulletinPoints(row.t3.period1) }}</td>
+            <td class="num">{{ formatBulletinPoints(row.t3.period2) }}</td>
+            <td class="num">{{ showNumeric(row.kind) ? formatBulletinPoints(row.t3.examMax) : '' }}</td>
+            <td class="num">{{ formatBulletinPoints(row.t3.exam) }}</td>
+            <td class="num">{{ showNumeric(row.kind) ? formatBulletinPoints(row.t3.max) : '' }}</td>
+            <td class="num score">{{ formatBulletinPoints(row.t3.total) }}</td>
+            <!-- Total annuel -->
+            <td class="num">{{ showNumeric(row.kind) ? formatBulletinPoints(primaryAnnualMax(row)) : '' }}</td>
             <td class="num score">{{ formatBulletinPoints(row.grandTotal) }}</td>
           </tr>
 
           <tr class="summary-row">
             <td><strong>MAXIMA GÉNÉRAUX</strong></td>
-            <td class="num">{{ formatBulletinPoints(bulletin.totals.maximaT1.max) }}</td>
-            <td class="num">{{ formatBulletinPoints(bulletin.totals.maximaT1.period1) }}</td>
-            <td class="num">{{ formatBulletinPoints(bulletin.totals.maximaT1.period2) }}</td>
+            <td class="num">{{ formatBulletinPoints(bulletin.totals.maxPerPeriod) }}</td>
+            <td colspan="2" />
             <td class="num">{{ formatBulletinPoints(bulletin.totals.maximaT1.examMax) }}</td>
-            <td class="num">{{ formatBulletinPoints(bulletin.totals.maximaT1.total) }}</td>
-            <td class="num">{{ formatBulletinPoints(bulletin.totals.maximaT2.max) }}</td>
-            <td class="num">{{ formatBulletinPoints(bulletin.totals.maximaT2.period1) }}</td>
-            <td class="num">{{ formatBulletinPoints(bulletin.totals.maximaT2.period2) }}</td>
+            <td />
+            <td class="num">{{ formatBulletinPoints(bulletin.totals.maximaT1.max) }}</td>
+            <td />
+            <td colspan="2" />
             <td class="num">{{ formatBulletinPoints(bulletin.totals.maximaT2.examMax) }}</td>
-            <td class="num">{{ formatBulletinPoints(bulletin.totals.maximaT2.total) }}</td>
-            <td class="num">{{ formatBulletinPoints(bulletin.totals.maximaT3.max) }}</td>
-            <td class="num">{{ formatBulletinPoints(bulletin.totals.maximaT3.period1) }}</td>
-            <td class="num">{{ formatBulletinPoints(bulletin.totals.maximaT3.period2) }}</td>
+            <td />
+            <td class="num">{{ formatBulletinPoints(bulletin.totals.maximaT2.max) }}</td>
+            <td />
+            <td colspan="2" />
             <td class="num">{{ formatBulletinPoints(bulletin.totals.maximaT3.examMax) }}</td>
-            <td class="num">{{ formatBulletinPoints(bulletin.totals.maximaT3.total) }}</td>
+            <td />
+            <td class="num">{{ formatBulletinPoints(bulletin.totals.maximaT3.max) }}</td>
+            <td />
             <td class="num">{{ formatBulletinPoints(bulletin.totals.maxGrandTotal) }}</td>
+            <td />
           </tr>
           <tr class="summary-row">
             <td><strong>TOTAUX</strong></td>
-            <td class="num" colspan="4" />
+            <td colspan="6" />
             <td class="num score">{{ formatBulletinPoints(bulletin.totals.totalsT1.total) }}</td>
-            <td class="num" colspan="4" />
+            <td colspan="5" />
             <td class="num score">{{ formatBulletinPoints(bulletin.totals.totalsT2.total) }}</td>
-            <td class="num" colspan="4" />
+            <td colspan="5" />
             <td class="num score">{{ formatBulletinPoints(bulletin.totals.totalsT3.total) }}</td>
+            <td />
             <td class="num score">{{ formatBulletinPoints(bulletin.totals.grandTotal) }}</td>
           </tr>
           <tr class="summary-row">
             <td><strong>POURCENTAGE</strong></td>
-            <td colspan="15" />
-            <td class="num score"><strong>{{ formatBulletinPercent(bulletin.totals.percentage) }}</strong></td>
+            <td colspan="19" />
+            <td colspan="2" class="num score"><strong>{{ formatBulletinPercent(bulletin.totals.percentage) }}</strong></td>
           </tr>
           <tr class="summary-row">
             <td><strong>PLACE</strong></td>
-            <td colspan="15" />
-            <td class="num">{{ rank ?? '' }}</td>
+            <td colspan="19" />
+            <td colspan="2" class="num">{{ rank ?? '' }}</td>
           </tr>
           <tr class="summary-row">
             <td><strong>NBRE D'ÉLÈVES</strong></td>
-            <td colspan="15" />
-            <td class="num">{{ classSize ?? '' }}</td>
+            <td colspan="19" />
+            <td colspan="2" class="num">{{ classSize ?? '' }}</td>
           </tr>
           <tr class="summary-row">
             <td><strong>APPLICATION</strong></td>
-            <td colspan="15" />
-            <td>{{ application ?? '' }}</td>
+            <td colspan="19" />
+            <td colspan="2">{{ application ?? '' }}</td>
           </tr>
           <tr class="summary-row">
             <td><strong>CONDUITE</strong></td>
-            <td colspan="15" />
-            <td>{{ conduct ?? '' }}</td>
+            <td colspan="19" />
+            <td colspan="2">{{ conduct ?? '' }}</td>
           </tr>
           <tr class="summary-row">
             <td><strong>SIGNAT. DE L'INST.</strong></td>
-            <td colspan="16" class="sign-line" />
+            <td colspan="21" class="sign-line" />
           </tr>
           <tr class="summary-row">
             <td><strong>SIGNAT. DU RESP.</strong></td>
-            <td colspan="16" class="sign-line" />
+            <td colspan="21" class="sign-line" />
           </tr>
         </tbody>
       </table>
@@ -209,6 +262,21 @@ const trimesterLabels = ['PREMIER TRIMESTRE', 'DEUXIÈME TRIMESTRE', 'TROISIÈME
 
     <footer class="primaire-footer">
       <div class="primaire-footer-col">
+        <table v-if="isTerminalGradeSix" class="primaire-results-table">
+          <caption>RÉSULTATS</caption>
+          <thead>
+            <tr>
+              <th>Épreuve</th>
+              <th>Point</th>
+              <th>Sur</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Moyenne école</td><td /><td>50</td></tr>
+            <tr><td>ENAFEP</td><td /><td>50</td></tr>
+            <tr><td>Total</td><td /><td>100</td></tr>
+          </tbody>
+        </table>
         <div class="primaire-decision">
           <strong>DÉCISION</strong>
           <label><input type="checkbox" :checked="decisionPassed === true" disabled> Passe en classe supérieure</label>
@@ -234,7 +302,7 @@ const trimesterLabels = ['PREMIER TRIMESTRE', 'DEUXIÈME TRIMESTRE', 'TROISIÈME
 
     <p class="primaire-note">
       <strong>NOTE IMPORTANTE :</strong> Il est formellement interdit de reproduire ce bulletin. Le bulletin est sans valeur s'il est raturé ou surchargé.
-      <span class="primaire-form-code">{{ PRIMARY_FORM_CODE }}</span>
+      <span class="primaire-form-code">{{ formCode }}</span>
     </p>
   </article>
 </template>
@@ -326,7 +394,12 @@ const trimesterLabels = ['PREMIER TRIMESTRE', 'DEUXIÈME TRIMESTRE', 'TROISIÈME
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  font-size: 0.55rem;
+  font-size: 0.5rem;
+}
+.primaire-table .head-cols th {
+  font-size: 0.46rem;
+  padding: 0.1rem 0.12rem;
+  white-space: nowrap;
 }
 .primaire-table th,
 .primaire-table td {
@@ -367,6 +440,31 @@ const trimesterLabels = ['PREMIER TRIMESTRE', 'DEUXIÈME TRIMESTRE', 'TROISIÈME
 .primaire-decision label {
   display: block;
   margin-top: 0.25rem;
+}
+
+.primaire-results-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0.5rem;
+  font-size: 0.52rem;
+}
+.primaire-results-table caption {
+  border: 1px solid var(--primaire-border);
+  border-bottom: none;
+  font-weight: 700;
+  text-align: left;
+  padding: 0.12rem 0.2rem;
+  text-transform: uppercase;
+}
+.primaire-results-table th,
+.primaire-results-table td {
+  border: 1px solid var(--primaire-border);
+  padding: 0.12rem 0.2rem;
+  text-align: center;
+}
+.primaire-results-table th:first-child,
+.primaire-results-table td:first-child {
+  text-align: left;
 }
 
 .primaire-appreciation {

@@ -664,7 +664,7 @@ onMounted(async () => {
 }
 
 .portal-bulletin .mobile-total-card {
-  border-color: #d5e0ff;
+  border-color: var(--primary-tint);
   background: var(--primary-tint);
 }
 
@@ -709,7 +709,7 @@ onMounted(async () => {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.95rem;
-  border: 1px solid #dbe5ff;
+  border: 1px solid var(--primary-soft);
   border-radius: var(--radius);
   background:
     linear-gradient(135deg, rgba(52, 87, 255, 0.1), rgba(255, 255, 255, 0.92)),
@@ -817,7 +817,7 @@ onMounted(async () => {
   padding: 0.85rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--bg-soft);
 }
 
 .average-block {
@@ -845,8 +845,8 @@ onMounted(async () => {
 }
 
 .average-block.tone-success {
-  border-color: #bbf7d0;
-  background: #f0fdf4;
+  border-color: rgba(74, 222, 128, 0.3);
+  background: var(--success-soft);
 }
 
 .average-block.tone-success strong {
@@ -854,8 +854,8 @@ onMounted(async () => {
 }
 
 .average-block.tone-warning {
-  border-color: #fed7aa;
-  background: #fff7ed;
+  border-color: rgba(251, 191, 36, 0.3);
+  background: var(--warn-soft);
 }
 
 .average-block.tone-warning strong {
@@ -863,8 +863,8 @@ onMounted(async () => {
 }
 
 .average-block.tone-danger {
-  border-color: #fecdd3;
-  background: #fff1f2;
+  border-color: rgba(248, 113, 113, 0.3);
+  background: var(--danger-soft);
 }
 
 .average-block.tone-danger strong {
@@ -1023,7 +1023,7 @@ onMounted(async () => {
 }
 
 .report-table tfoot td {
-  background: #f8fafc;
+  background: var(--bg-soft);
   color: var(--text);
   font-weight: 900;
 }
@@ -1090,7 +1090,7 @@ onMounted(async () => {
 }
 
 .evaluation-nested-table thead th {
-  background: #eef2ff;
+  background: var(--primary-soft);
   color: var(--text-soft);
   font-size: 0.72rem;
   font-weight: 850;
@@ -1107,7 +1107,7 @@ onMounted(async () => {
   justify-content: center;
   padding: 0.18rem 0.45rem;
   border-radius: 999px;
-  background: #f2f4f7;
+  background: var(--bg-soft);
   color: var(--text-soft);
   font-weight: 900;
 }
@@ -1131,7 +1131,7 @@ onMounted(async () => {
   width: 100%;
   min-height: 2.75rem;
   padding: 0.65rem 0.85rem;
-  border: 1px solid #d5e0ff;
+  border: 1px solid var(--primary-tint);
   border-radius: 10px;
   background: var(--primary-soft);
   color: var(--primary);
@@ -1333,9 +1333,9 @@ onMounted(async () => {
   margin: 0;
   padding: 0.75rem 0.9rem;
   border-radius: var(--radius);
-  border: 1px solid #bfdbfe;
-  background: #eff6ff;
-  color: #1e40af;
+  border: 1px solid var(--primary-tint);
+  background: var(--primary-soft);
+  color: var(--accent);
   font-size: 0.86rem;
   font-weight: 600;
 }

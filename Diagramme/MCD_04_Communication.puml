@@ -1,0 +1,105 @@
+@startuml MCD_04_Communication
+title MCD — Communication (messagerie interne)
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam backgroundColor #FFFFFF
+
+skinparam class {
+  BackgroundColor<<entite>>      #F4ECF7
+  BorderColor<<entite>>          #7D3C98
+  FontStyle<<entite>>            Bold
+  BackgroundColor<<association>> #FEF9E7
+  BorderColor<<association>>     #D4AC0D
+  FontStyle<<association>>       Bold
+  RoundCorner<<association>>     25
+  BackgroundColor<<ref>>         #F2F3F4
+  BorderColor<<ref>>             #7F8C8D
+  FontStyle<<ref>>               Italic
+  FontColor<<ref>>               #7F8C8D
+}
+
+hide <<entite>>      circle
+hide <<association>> circle
+hide <<ref>>         circle
+
+' ══════════════════════════════════════
+'   ENTITÉS
+' ══════════════════════════════════════
+
+class "MESSAGE" <<entite>> {
+  <u>id_message</u>
+  sujet
+  corps
+  est_annonce
+  id_diffusion
+  lu_le
+  supprime_expedi
+  supprime_destin
+}
+
+class "UTILISATEUR" <<ref>> {
+  <u>id_utilisateur</u>
+  identifiant
+  role
+}
+
+' ══════════════════════════════════════
+'   ASSOCIATIONS
+' ══════════════════════════════════════
+
+class "ENVOIE" <<association>>
+
+class "RECOIT" <<association>>
+
+class "REPOND_A" <<association>>
+
+' ══════════════════════════════════════
+'   LIENS ET CARDINALITÉS
+' ══════════════════════════════════════
+
+' Un utilisateur envoie des messages
+"UTILISATEUR"  "(1,N)"  --  "ENVOIE"
+"ENVOIE"                --  "(1,1)"  "MESSAGE"
+
+note on link
+  Un message a
+  exactement un expéditeur
+end note
+
+' Un message est reçu par un utilisateur
+"MESSAGE"      "(1,N)"  --  "RECOIT"
+"RECOIT"                --  "(0,N)"  "UTILISATEUR"
+
+note on link
+  Un destinataire reçoit
+  0 à N messages
+end note
+
+' Auto-référence : fil de discussion (thread)
+"MESSAGE"  "(0,N)"  --  "REPOND_A"
+"REPOND_A"          --  "(0,1)"  "MESSAGE"
+
+note on link
+  Un message peut être
+  la réponse à un autre
+  (parent_message_id)
+end note
+
+' ══════════════════════════════════════
+'   LÉGENDE
+' ══════════════════════════════════════
+legend bottom right
+  <b>Types de messages</b>
+  ─────────────────────────────
+  <b>Message direct</b>
+  Un expéditeur → un destinataire
+  <b>Annonce (is_annonce = true)</b>
+  Diffusion à un groupe
+  (broadcast_id regroupe les copies)
+  <b>Réponse</b>
+  parent_message_id référence le
+  message parent du fil
+endlegend
+
+@enduml

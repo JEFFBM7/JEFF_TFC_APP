@@ -90,7 +90,7 @@ class ReportCardController extends Controller
             return $pdf->download($filename);
         }
 
-        if ($this->primaireBulletins->isPrimaireDebutStudent($student)) {
+        if ($this->primaireBulletins->isOfficialPrimaireStudent($student)) {
             $presentation = $this->primaireBulletins->buildAnnualPresentation($student, $term);
 
             $pdf = Pdf::loadView('report_cards.primaire_debut_pdf', [
@@ -100,6 +100,8 @@ class ReportCardController extends Controller
                 'rows' => $presentation['rows'],
                 'percentage' => $presentation['percentage'],
                 'appreciation' => $presentation['appreciation'],
+                'formCode' => $presentation['form_code'],
+                'gradeYear' => $presentation['grade_year'],
             ])->setPaper('a4', 'landscape');
 
             $filename = sprintf(

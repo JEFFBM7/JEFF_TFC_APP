@@ -347,7 +347,7 @@ onMounted(load)
 .alert-success {
   padding: 0.65rem 0.85rem;
   border-radius: var(--radius);
-  background: var(--success-soft, #ecfdf5);
+  background: var(--success-soft, var(--success-soft));
   color: var(--success, #039855);
   font-size: 0.9rem;
 }
@@ -413,15 +413,15 @@ onMounted(load)
 }
 
 .role-hint.exam {
-  background: #eff6ff;
-  color: #1e40af;
-  border: 1px solid #bfdbfe;
+  background: var(--primary-soft);
+  color: var(--accent);
+  border: 1px solid var(--primary-tint);
 }
 
 .role-hint.continuous {
-  background: #f0fdf4;
-  color: #166534;
-  border: 1px solid #bbf7d0;
+  background: var(--success-soft);
+  color: var(--success);
+  border: 1px solid rgba(74, 222, 128, 0.3);
 }
 
 .stats-row {
@@ -462,8 +462,8 @@ onMounted(load)
 }
 
 .stat-card.warn {
-  border-color: #fde68a;
-  background: #fffbeb;
+  border-color: rgba(251, 191, 36, 0.3);
+  background: var(--warn-soft);
 }
 
 .progress-bar {
@@ -527,11 +527,11 @@ onMounted(load)
 }
 
 .grades-table tr.filled {
-  background: rgba(236, 253, 245, 0.45);
+  background: var(--success-soft);
 }
 
 .grades-table tr.absent {
-  background: rgba(254, 243, 199, 0.35);
+  background: var(--warn-soft);
 }
 
 .grades-table input[type='number'] {
@@ -567,10 +567,10 @@ onMounted(load)
   font-weight: 700;
 }
 
-.badge-published { background: #dcfce7; color: #166534; }
-.badge-draft { background: #fef9c3; color: #854d0e; }
-.badge-exam { background: #dbeafe; color: #1d4ed8; }
-.badge-continuous { background: #dcfce7; color: #166534; }
+.badge-published { background: var(--success-soft); color: var(--success); }
+.badge-draft { background: var(--warn-soft); color: var(--warn); }
+.badge-exam { background: var(--primary-soft); color: var(--accent); }
+.badge-continuous { background: var(--success-soft); color: var(--success); }
 
 .badge-published :deep(svg) {
   width: 0.85rem;
@@ -581,9 +581,9 @@ onMounted(load)
   margin-bottom: 0.85rem;
   padding: 0.75rem 0.9rem;
   border-radius: var(--radius);
-  border: 1px solid #fde68a;
-  background: #fffbeb;
-  color: #854d0e;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  background: var(--warn-soft);
+  color: var(--warn);
 }
 
 .publish-notice strong {

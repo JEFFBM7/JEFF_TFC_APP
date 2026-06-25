@@ -398,7 +398,7 @@ onMounted(load)
 <style scoped>
 button + button { margin-left: 0.4rem; }
 .err { display: block; color: var(--danger); font-size: 0.78rem; margin-top: 0.25rem; }
-code { font-family: ui-monospace,Consolas,monospace; background:#f1f5f9; padding:.1rem .35rem; border-radius:4px; font-size:.78rem; }
+code { font-family: ui-monospace,Consolas,monospace; background:var(--bg-soft); padding:.1rem .35rem; border-radius:4px; font-size:.78rem; }
 .entity-name-link {
   display: inline-flex;
   max-width: 100%;
@@ -419,14 +419,14 @@ code { font-family: ui-monospace,Consolas,monospace; background:#f1f5f9; padding
   cursor: pointer;
 }
 .clickable-row:hover {
-  background: #f8fbff;
+  background: var(--primary-soft);
 }
 .clickable-row:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: -2px;
 }
 .is-selected {
-  background: #f8fbff;
+  background: var(--primary-soft);
 }
 .select-col {
   width: 2.6rem;
@@ -454,7 +454,7 @@ code { font-family: ui-monospace,Consolas,monospace; background:#f1f5f9; padding
   padding: 0.45rem 0.8rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--bg-card);
   color: var(--text-soft);
   font-size: 0.86rem;
   font-weight: 800;
@@ -475,9 +475,9 @@ code { font-family: ui-monospace,Consolas,monospace; background:#f1f5f9; padding
   gap: 0.75rem;
   width: fit-content;
   padding: 0.5rem 0.7rem;
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--primary-tint);
   border-radius: 8px;
-  background: #eff6ff;
+  background: var(--primary-soft);
   color: var(--text);
   font-size: 0.86rem;
 }
@@ -493,9 +493,9 @@ code { font-family: ui-monospace,Consolas,monospace; background:#f1f5f9; padding
 .selection-strip button {
   min-height: 1.8rem;
   padding: 0.2rem 0.55rem;
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--primary-tint);
   border-radius: 6px;
-  background: #fff;
+  background: var(--bg-soft);
   color: var(--primary);
   font-size: 0.8rem;
   font-weight: 800;
@@ -505,11 +505,11 @@ code { font-family: ui-monospace,Consolas,monospace; background:#f1f5f9; padding
   opacity: 0.65;
 }
 .selection-strip .bulk-danger {
-  border-color: #fecdd3;
+  border-color: rgba(248, 113, 113, 0.35);
   color: var(--danger);
 }
 .selection-strip .bulk-danger:hover:not(:disabled) {
-  background: #fff1f2;
+  background: var(--danger-soft);
 }
 @media (max-width: 720px) {
   .cycle-tabs {

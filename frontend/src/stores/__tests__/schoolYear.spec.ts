@@ -7,7 +7,7 @@ import { api } from '../../api/client'
 vi.mock('../../api/client', () => {
   class ApiError extends Error {
     status: number
-    constructor(message: string, status: number) {
+    constructor(status: number, message: string) {
       super(message)
       this.status = status
     }
@@ -50,7 +50,7 @@ describe('School Year Store', () => {
   it('handles API errors during fetchAll by keeping current if 401', async () => {
     // Import ApiError dynamically from the mocked module for the test
     const { ApiError } = await import('../../api/client')
-    vi.mocked(api).mockRejectedValueOnce(new ApiError('Unauthorized', 401))
+    vi.mocked(api).mockRejectedValueOnce(new ApiError(401, 'Unauthorized'))
 
     const store = useSchoolYearStore()
     store.current = { id: 1, name: '2023-2024', is_current: true } as any

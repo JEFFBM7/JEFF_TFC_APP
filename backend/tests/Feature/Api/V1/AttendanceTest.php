@@ -319,80 +319,92 @@ class AttendanceTest extends TestCase
 
     public function test_parents_receive_email_when_attendance_threshold_reached(): void
     {
-        Notification::fake();
+        Carbon::setTestNow('2026-04-04 09:00:00');
 
-        $ctx = $this->setupClass();
-        $s = $ctx['student'];
+        try {
+            Notification::fake();
 
-        $parentUser = User::factory()->create([
-            'role' => UserRole::Parent,
-            'email' => 'parent.alert@example.test',
-            'name' => 'Parent Alerte',
-        ]);
-        $profile = ParentProfile::factory()->create(['user_id' => $parentUser->id]);
-        $s->parents()->attach($profile->id, ['relation' => 'mere']);
+            $ctx = $this->setupClass();
+            $s = $ctx['student'];
 
-        foreach (['2026-04-01', '2026-04-02', '2026-04-03'] as $day) {
-            Attendance::factory()->create([
-                'student_id' => $s->id,
-                'classroom_id' => $ctx['classroom']->id,
-                'subject_id' => null,
-                'date' => $day,
-                'status' => Attendance::STATUS_ABSENT,
-                'justified' => false,
+            $parentUser = User::factory()->create([
+                'role' => UserRole::Parent,
+                'email' => 'parent.alert@example.test',
+                'name' => 'Parent Alerte',
             ]);
-        }
+            $profile = ParentProfile::factory()->create(['user_id' => $parentUser->id]);
+            $s->parents()->attach($profile->id, ['relation' => 'mere']);
 
-        $this->actingAs($this->admin(), 'sanctum')
-            ->postJson('/api/v1/attendances/batch', [
+            foreach (['2026-04-01', '2026-04-02', '2026-04-03'] as $day) {
+                Attendance::factory()->create([
+                    'student_id' => $s->id,
+                    'classroom_id' => $ctx['classroom']->id,
+                    'subject_id' => null,
+                    'date' => $day,
+                    'status' => Attendance::STATUS_ABSENT,
+                    'justified' => false,
+                ]);
+            }
+
+            $this->actingAs($this->admin(), 'sanctum')
+                ->postJson('/api/v1/attendances/batch', [
+                    'classroom_id' => $ctx['classroom']->id,
+                    'date' => '2026-04-04',
+                    'records' => [
+                        ['student_id' => $s->id, 'status' => 'absent'],
+                    ],
+                ])
+                ->assertOk();
+
+            Notification::assertSentTo($parentUser, AttendanceThresholdNotification::class);
+            $this->assertDatabaseHas('attendance_alert_notification_logs', ['student_id' => $s->id]);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_second_batch_same_day_does_not_resend_attendance_alert_email(): void
+    {
+        Carbon::setTestNow('2026-04-04 09:00:00');
+
+        try {
+            Notification::fake();
+
+            $ctx = $this->setupClass();
+            $s = $ctx['student'];
+
+            $parentUser = User::factory()->create([
+                'role' => UserRole::Parent,
+                'email' => 'parent2@example.test',
+            ]);
+            $profile = ParentProfile::factory()->create(['user_id' => $parentUser->id]);
+            $s->parents()->attach($profile->id, ['relation' => 'pere']);
+
+            foreach (['2026-04-01', '2026-04-02', '2026-04-03'] as $day) {
+                Attendance::factory()->create([
+                    'student_id' => $s->id,
+                    'classroom_id' => $ctx['classroom']->id,
+                    'subject_id' => null,
+                    'date' => $day,
+                    'status' => Attendance::STATUS_ABSENT,
+                    'justified' => false,
+                ]);
+            }
+
+            $payload = [
                 'classroom_id' => $ctx['classroom']->id,
                 'date' => '2026-04-04',
                 'records' => [
                     ['student_id' => $s->id, 'status' => 'absent'],
                 ],
-            ])
-            ->assertOk();
+            ];
 
-        Notification::assertSentTo($parentUser, AttendanceThresholdNotification::class);
-        $this->assertDatabaseHas('attendance_alert_notification_logs', ['student_id' => $s->id]);
-    }
+            $this->actingAs($this->admin(), 'sanctum')->postJson('/api/v1/attendances/batch', $payload)->assertOk();
+            $this->actingAs($this->admin(), 'sanctum')->postJson('/api/v1/attendances/batch', $payload)->assertOk();
 
-    public function test_second_batch_same_day_does_not_resend_attendance_alert_email(): void
-    {
-        Notification::fake();
-
-        $ctx = $this->setupClass();
-        $s = $ctx['student'];
-
-        $parentUser = User::factory()->create([
-            'role' => UserRole::Parent,
-            'email' => 'parent2@example.test',
-        ]);
-        $profile = ParentProfile::factory()->create(['user_id' => $parentUser->id]);
-        $s->parents()->attach($profile->id, ['relation' => 'pere']);
-
-        foreach (['2026-04-01', '2026-04-02', '2026-04-03'] as $day) {
-            Attendance::factory()->create([
-                'student_id' => $s->id,
-                'classroom_id' => $ctx['classroom']->id,
-                'subject_id' => null,
-                'date' => $day,
-                'status' => Attendance::STATUS_ABSENT,
-                'justified' => false,
-            ]);
+            Notification::assertSentTimes(AttendanceThresholdNotification::class, 1);
+        } finally {
+            Carbon::setTestNow();
         }
-
-        $payload = [
-            'classroom_id' => $ctx['classroom']->id,
-            'date' => '2026-04-04',
-            'records' => [
-                ['student_id' => $s->id, 'status' => 'absent'],
-            ],
-        ];
-
-        $this->actingAs($this->admin(), 'sanctum')->postJson('/api/v1/attendances/batch', $payload)->assertOk();
-        $this->actingAs($this->admin(), 'sanctum')->postJson('/api/v1/attendances/batch', $payload)->assertOk();
-
-        Notification::assertSentTimes(AttendanceThresholdNotification::class, 1);
     }
 }

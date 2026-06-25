@@ -81,6 +81,13 @@ class AppSetting extends Model
             'type' => 'boolean',
             'description' => 'Envoyer une notification aux parents à la clôture d\'un trimestre lorsque la moyenne est sous le seuil.',
         ],
+        'promotion.pass_average_threshold' => [
+            'default' => 10.0,
+            'type' => 'float',
+            'min' => 0,
+            'max' => 20,
+            'description' => 'Moyenne minimale (sur 20) pour valider l\'année et passer en classe supérieure ; en dessous, l\'élève redouble.',
+        ],
     ];
 
     public static function get(string $key, mixed $fallback = null): mixed

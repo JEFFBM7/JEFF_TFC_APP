@@ -246,10 +246,15 @@ watch(() => [props.isReply, props.recipientId], () => {
 <style scoped>
 .wa-compose {
   position: fixed;
-  inset: 0;
+  /* Teleporté dans <body> : suit la zone visible réelle (clavier mobile, iOS) */
+  top: var(--vvt, 0px);
+  left: 0;
+  right: 0;
+  height: var(--vvh, 100dvh);
   z-index: 200;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   max-width: 36rem;
   margin: 0 auto;
 }
@@ -281,6 +286,8 @@ watch(() => [props.isReply, props.recipientId], () => {
 .wa-compose__error {
   margin: 0;
   padding: 0.55rem 0.85rem;
+  background: var(--danger-soft);
+  color: var(--danger);
   font-size: 0.82rem;
   font-weight: 700;
 }
@@ -305,6 +312,7 @@ watch(() => [props.isReply, props.recipientId], () => {
   flex: 1;
   border: 0;
   background: transparent;
+  color: var(--text);
   font-size: 0.95rem;
   outline: none;
 }
@@ -321,14 +329,26 @@ watch(() => [props.isReply, props.recipientId], () => {
 
 .wa-chip {
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-soft);
+  color: var(--text-soft);
+  border: 1px solid var(--border);
   font-size: 0.76rem;
   font-weight: 750;
   cursor: pointer;
 }
 
+.wa-chip.active {
+  background: var(--primary-soft);
+  color: var(--accent);
+  border-color: var(--primary-tint);
+}
+
 .wa-filter-select {
   padding: 0.35rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+  color: var(--text);
   font-size: 0.84rem;
 }
 
@@ -343,10 +363,16 @@ watch(() => [props.isReply, props.recipientId], () => {
   align-items: center;
   width: 100%;
   border: 0;
-  border-bottom: 1px solid var(--wa-border, var(--border));
-  background: var(--wa-surface, #fff);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
   text-align: left;
   cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.wa-compose__contact:hover {
+  background: var(--bg-subtle);
 }
 
 .wa-compose__avatar {
@@ -372,6 +398,7 @@ watch(() => [props.isReply, props.recipientId], () => {
 }
 
 .wa-compose__contact-text small {
+  color: var(--text-soft);
   font-size: 0.84rem;
 }
 
@@ -389,8 +416,10 @@ watch(() => [props.isReply, props.recipientId], () => {
   border: 0;
   border-radius: 999px;
   padding: 0.5rem 1.1rem;
+  background: var(--primary);
   color: #fff;
   font-weight: 800;
+  cursor: pointer;
 }
 
 .wa-compose__write {
@@ -406,8 +435,10 @@ watch(() => [props.isReply, props.recipientId], () => {
   min-height: 2.75rem;
   padding: 0 0.85rem;
   border: 0;
-  background: var(--wa-surface, #fff);
+  background: var(--bg-soft);
+  color: var(--text);
   font-size: 0.94rem;
+  outline: none;
 }
 
 .wa-compose__message {
@@ -423,7 +454,8 @@ watch(() => [props.isReply, props.recipientId], () => {
   flex: 1;
   padding: 0.85rem 0.95rem 2.1rem;
   border: 0;
-  background: var(--wa-surface, #fff);
+  background: var(--bg-card);
+  color: var(--text);
   font-size: 1.05rem;
   line-height: 1.45;
   resize: none;
@@ -434,11 +466,17 @@ watch(() => [props.isReply, props.recipientId], () => {
   position: absolute;
   right: 0.75rem;
   bottom: 0.55rem;
+  color: var(--text-muted);
   font-size: 0.72rem;
   font-weight: 700;
 }
 
+.wa-compose__count.low {
+  color: var(--warn);
+}
+
 .wa-field-err {
+  color: var(--danger);
   font-size: 0.78rem;
   font-weight: 700;
 }
@@ -503,6 +541,7 @@ watch(() => [props.isReply, props.recipientId], () => {
     top: 50%;
     left: 50%;
     width: min(26rem, 92vw);
+    height: auto;
     max-height: 88dvh;
     border-radius: 12px;
     box-shadow: 0 16px 48px rgba(11, 20, 26, 0.22);

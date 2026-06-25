@@ -64,8 +64,9 @@
   width: 100%;
   max-width: 36rem;
   margin-inline: auto;
-  height: calc(100dvh - 7.5rem - env(safe-area-inset-bottom));
-  max-height: calc(100dvh - 7.5rem - env(safe-area-inset-bottom));
+  /* --vvh = hauteur réellement visible : rétrécit quand le clavier s'ouvre (iOS) */
+  height: calc(var(--vvh, 100dvh) - 7.5rem - env(safe-area-inset-bottom));
+  max-height: calc(var(--vvh, 100dvh) - 7.5rem - env(safe-area-inset-bottom));
   min-height: 0;
   overflow: hidden;
 }
@@ -83,8 +84,10 @@
 }
 
 .messages-page.is-portal.show-thread {
-  height: calc(100dvh - 4rem - 1rem);
-  max-height: calc(100dvh - 4rem - 1rem);
+  /* En fil ouvert : pas de bottom-nav ni d'onglets, on remplit la zone visible
+     moins la topbar (4rem) et le padding du conteneur. --vvh suit le clavier. */
+  height: calc(var(--vvh, 100dvh) - 4rem - 1rem);
+  max-height: calc(var(--vvh, 100dvh) - 4rem - 1rem);
 }
 
 .messages-page.is-portal.show-thread .msg-portal-tabs {
@@ -682,9 +685,9 @@
 }
 
 .announcements-panel.is-portal .announcement-card.is-unread {
-  border-color: #c7d5ff;
-  background: linear-gradient(180deg, #f8faff 0%, var(--bg-card) 100%);
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.08);
+  border-color: rgba(59, 130, 246, 0.3);
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.08) 0%, var(--bg-card) 100%);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.12);
 }
 
 .announcements-panel.is-portal .announcement-card.is-unread h3 {
@@ -869,8 +872,8 @@
 
 /* ── Vue détail annonce (portail) ────────────────────── */
 .messages-page.is-portal.show-announcement {
-  height: calc(100dvh - 3.25rem);
-  max-height: calc(100dvh - 3.25rem);
+  height: calc(var(--vvh, 100dvh) - 3.25rem);
+  max-height: calc(var(--vvh, 100dvh) - 3.25rem);
 }
 
 .messages-page.is-portal.show-announcement .announcements-panel.is-detail {
@@ -884,9 +887,12 @@
 
 body.portal-thread-open .app-shell.is-portal .topbar--close-only {
   border-bottom-color: transparent;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(5, 13, 31, 0.95);
 }
 
+/* La topbar reste visible quand le clavier s'ouvre car #app est ancré à la zone
+   visible réelle (var(--vvh)/var(--vvt)) : la topbar est le 1er enfant flex de
+   .main, donc toujours en haut de la zone visible. Pas de position:fixed requis. */
 body.portal-thread-open .app-shell.is-portal .content--messages {
   padding-top: 0.35rem;
 }

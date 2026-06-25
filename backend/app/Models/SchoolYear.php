@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\EnrollmentService;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -27,6 +28,13 @@ class SchoolYear extends Model
                     ->where('is_current', true)
                     ->update(['is_current' => false]);
             });
+
+            // L'année vient de devenir courante : on recale le cache des élèves
+            // (classe + année) sur les inscriptions de cette année — c'est ainsi
+            // qu'un passage de classe « prend effet » sur les écrans courants.
+            if ($year->wasChanged('is_current')) {
+                app(EnrollmentService::class)->syncStudentPointersForYear($year);
+            }
         });
     }
 
@@ -55,6 +63,12 @@ class SchoolYear extends Model
     public function schoolClasses(): HasMany
     {
         return $this->hasMany(SchoolClass::class);
+    }
+
+    /** @return HasMany<Enrollment, $this> */
+    public function enrollments(): HasMany
+    {
+        return $this->hasMany(Enrollment::class);
     }
 
     /**

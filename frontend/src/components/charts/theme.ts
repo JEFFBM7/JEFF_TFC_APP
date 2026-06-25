@@ -13,8 +13,8 @@ export const chartColors = {
 }
 
 export function peakSeriesValue(series: ChartSeries[]): number {
-  return series.reduce((peak, serie) => {
-    const rowPeak = serie.data.reduce((max, value) => {
+  return series.reduce<number>((peak, serie) => {
+    const rowPeak = serie.data.reduce<number>((max, value) => {
       if (value === null || !Number.isFinite(value)) return max
       return Math.max(max, value)
     }, 0)

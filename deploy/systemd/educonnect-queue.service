@@ -1,0 +1,19 @@
+# /etc/systemd/system/educonnect-queue.service
+# Worker de file d'attente (envois de messages, mails, broadcasts).
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now educonnect-queue
+[Unit]
+Description=EduConnect Queue Worker
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/educonnect/backend
+ExecStart=/usr/bin/php artisan queue:work --tries=3 --timeout=90 --sleep=3 --max-time=3600
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

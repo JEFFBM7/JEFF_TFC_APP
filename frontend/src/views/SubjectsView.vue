@@ -912,17 +912,17 @@ button + button { margin-left: 0.4rem; }
   flex: 1 1 16rem;
 }
 .alert-success {
-  color: #166534;
-  background: #ecfdf5;
-  border: 1px solid #bbf7d0;
+  color: var(--success);
+  background: var(--success-soft);
+  border: 1px solid rgba(74, 222, 128, 0.3);
 }
 .alert-info {
-  color: #1e40af;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  color: var(--accent);
+  background: var(--primary-soft);
+  border: 1px solid var(--primary-tint);
 }
 .err { display: block; color: var(--danger); font-size: 0.78rem; margin-top: 0.25rem; }
-code { font-family: ui-monospace,Consolas,monospace; background:#f1f5f9; padding:.1rem .35rem; border-radius:4px; font-size:.78rem; }
+code { font-family: ui-monospace,Consolas,monospace; background:var(--bg-soft); padding:.1rem .35rem; border-radius:4px; font-size:.78rem; }
 td small {
   display: block;
   margin-top: 0.16rem;
@@ -946,7 +946,7 @@ td small {
   padding: 0.45rem 0.8rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--bg-card);
   color: var(--text-soft);
   font-size: 0.86rem;
   font-weight: 800;
@@ -1007,7 +1007,7 @@ td small {
   padding: 0.58rem 0.7rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--bg-soft);
   color: var(--text-soft);
   font-size: 0.9rem;
   font-weight: 750;

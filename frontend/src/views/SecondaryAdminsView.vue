@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { api, ApiError } from '../api/client'
 import type { AdminScope, AuthUser } from '../types'
 import Modal from '../components/Modal.vue'
+import { useConfirmStore } from '../stores/confirm'
 
 interface SecondaryAdmin extends AuthUser {
   is_active?: boolean
@@ -16,6 +17,8 @@ const SECONDARY_SCOPES: { value: AdminScope; label: string }[] = [
   { value: 'primary_maternal', label: 'Cycle Primaire & Maternel' },
   { value: 'secondary_technical', label: 'Cycle Secondaire & Technique' },
 ]
+
+const confirmDialog = useConfirmStore()
 
 const items = ref<SecondaryAdmin[]>([])
 const loading = ref(false)
@@ -168,7 +171,14 @@ async function toggleActive(user: SecondaryAdmin): Promise<void> {
 }
 
 async function remove(user: SecondaryAdmin): Promise<void> {
-  if (!window.confirm(`Supprimer définitivement « ${user.name} » ?`)) return
+  const ok = await confirmDialog.ask({
+    title: "Supprimer l'administrateur",
+    message: `Supprimer définitivement « ${user.name} » ?`,
+    note: 'Cette action est irréversible.',
+    confirmLabel: 'Supprimer',
+    variant: 'danger',
+  })
+  if (!ok) return
   try {
     await api(`/api/v1/admin/users/${user.id}`, { method: 'DELETE' })
     await load()

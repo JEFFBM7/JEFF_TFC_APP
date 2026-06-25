@@ -930,7 +930,7 @@ onMounted(async () => {
   padding: 0.45rem 0.8rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--bg-card);
   color: var(--text-soft);
   font-size: 0.86rem;
   font-weight: 800;
@@ -1019,9 +1019,9 @@ onMounted(async () => {
   height: 1.85rem;
   min-height: 1.85rem;
   padding: 0;
-  border: 1px solid #c7d7fe;
+  border: 1px solid var(--primary-tint);
   border-radius: 999px;
-  background: #eef3ff;
+  background: var(--primary-soft);
   color: var(--primary);
   box-shadow: none;
   cursor: pointer;
@@ -1059,9 +1059,9 @@ onMounted(async () => {
   gap: 0.35rem;
   min-height: 6.5rem;
   margin-top: 0.15rem;
-  border: 1px dashed #c7d7fe;
+  border: 1px dashed var(--primary-tint);
   border-radius: 8px;
-  background: #f8faff;
+  background: var(--bg-soft);
   color: var(--primary);
   font-size: 0.78rem;
   font-weight: 750;
@@ -1072,7 +1072,7 @@ onMounted(async () => {
   height: 1.1rem;
 }
 .day-empty-add:hover:not(:disabled) {
-  background: #eef3ff;
+  background: var(--primary-soft);
 }
 .slot {
   background: var(--bg-card);
@@ -1157,15 +1157,14 @@ onMounted(async () => {
   padding: 0.75rem 0.85rem;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--bg-card);
   text-align: left;
   cursor: pointer;
   transition: border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 .course-pick-item:hover:not(:disabled) {
-  border-color: #c7d7fe;
+  border-color: var(--primary-tint);
   box-shadow: 0 8px 20px rgb(37 99 235 / 8%);
-  transform: translateY(-1px);
 }
 .course-pick-item:disabled {
   cursor: not-allowed;
@@ -1173,7 +1172,7 @@ onMounted(async () => {
 }
 .course-pick-item.blocked {
   border-style: dashed;
-  background: #fffafa;
+  background: var(--danger-soft);
 }
 .course-pick-main {
   display: grid;
@@ -1192,15 +1191,15 @@ onMounted(async () => {
   flex-shrink: 0;
   padding: 0.2rem 0.5rem;
   border-radius: 999px;
-  background: #eef3ff;
+  background: var(--primary-soft);
   color: var(--primary);
   font-size: 0.68rem;
   font-weight: 800;
   white-space: nowrap;
 }
 .course-pick-badge.warn {
-  background: #fef2f2;
-  color: #b42318;
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 .quick-add-error {
   margin: 0;
@@ -1235,23 +1234,23 @@ onMounted(async () => {
   font-size: 0.76rem;
 }
 .field-readonly-warn {
-  border-color: #fecaca;
-  background: #fef2f2;
-  color: #b42318;
+  border-color: rgba(248, 113, 113, 0.3);
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 .subject-teacher-alert {
   margin: 0 0 0.65rem;
   padding: 0.75rem 0.85rem;
-  border: 1px solid #fecaca;
+  border: 1px solid rgba(248, 113, 113, 0.3);
   border-radius: var(--radius);
-  background: #fef2f2;
-  color: #7f1d1d;
+  background: var(--danger-soft);
+  color: var(--danger);
   font-size: 0.84rem;
 }
 .subject-teacher-alert strong {
   display: block;
   margin-bottom: 0.25rem;
-  color: #b42318;
+  color: var(--danger);
 }
 .subject-teacher-alert p {
   margin: 0;
