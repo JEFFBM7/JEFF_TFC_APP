@@ -13,15 +13,18 @@ export class ApiError extends Error {
 
 const TOKEN_KEY = 'educonnect_token'
 
+// localStorage (et non sessionStorage) pour que la session survive à la fermeture
+// de l'app (PWA installée) : on reste connecté après un kill/réouverture.
 export function getToken(): string | null {
-  return sessionStorage.getItem(TOKEN_KEY)
+  return localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY)
 }
 
 export function setToken(token: string | null): void {
   if (token === null) {
+    localStorage.removeItem(TOKEN_KEY)
     sessionStorage.removeItem(TOKEN_KEY)
   } else {
-    sessionStorage.setItem(TOKEN_KEY, token)
+    localStorage.setItem(TOKEN_KEY, token)
   }
 }
 
