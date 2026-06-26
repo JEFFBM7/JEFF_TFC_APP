@@ -59,6 +59,46 @@
   background: var(--bg);
   font-synthesis-weight: none;
   text-rendering: optimizeLegibility;
+  color-scheme: dark;
+}
+
+/* ── Mode clair (palette crème / encre / navy+or de styles.css) ──────────
+   Réaffecte les mêmes variables que le thème sombre. Activé via
+   <html data-theme="light"> par le toggle (persistant). ───────────────── */
+:root[data-theme='light'] {
+  --text:       #1d2840;
+  --text-soft:  #46506a;
+  --text-muted: #6b7491;
+
+  --bg:         #f6f2ea;
+  --bg-card:    #ffffff;
+  --bg-subtle:  #fbf9f4;
+  --bg-soft:    #f1ece2;
+
+  --border:        #e7e0d3;
+  --border-strong: #d8cdba;
+
+  --primary:       #2f62d4;
+  --primary-hover: #1d4ed8;
+  --primary-soft:  rgba(47, 98, 212, 0.10);
+  --primary-tint:  rgba(47, 98, 212, 0.18);
+  --primary-dark:  #1b3f9e;
+
+  --accent:       #3a6ea5;
+  --accent-hover: #2f62d4;
+
+  --danger:       #cf5247;
+  --danger-soft:  #f7e2df;
+  --success:      #2f9166;
+  --success-soft: #e3f0e9;
+  --warn:         #b8801f;
+  --warn-soft:    #f6ecd5;
+
+  --shadow:       0 1px 2px rgba(28, 42, 74, 0.06);
+  --shadow-card:  0 4px 16px rgba(28, 42, 74, 0.08), 0 1px 4px rgba(28, 42, 74, 0.05);
+  --shadow-hover: 0 12px 32px rgba(28, 42, 74, 0.16);
+
+  color-scheme: light;
 }
 
 * {

@@ -2,8 +2,9 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
-import { AlertTriangle, Bell, CalendarDays, ChevronLeft, FileText, Home, MessageSquare, User, Users, X } from 'lucide-vue-next'
+import { AlertTriangle, Bell, CalendarDays, ChevronLeft, FileText, Home, MessageSquare, Moon, Sun, User, Users, X } from 'lucide-vue-next'
 import { enablePushNotifications, isPushSupported, pushPermission } from '../composables/usePushNotifications'
+import { useTheme } from '../composables/useTheme'
 import { api } from '../api/client'
 import { MESSAGES_UNREAD_EVENT, subscribeToMessageUpdates, type MessageRealtimeEvent } from '../api/realtime'
 import PortalBottomNav, { type PortalTab } from '../components/portal/PortalBottomNav.vue'
@@ -42,6 +43,7 @@ const auth = useAuthStore()
 const schoolYear = useSchoolYearStore()
 const router = useRouter()
 const route = useRoute()
+const { theme, toggle: toggleTheme } = useTheme()
 const unreadCount = ref(0)
 const mobileNavOpen = ref(false)
 const portalTopbar = providePortalTopbarOverride()
@@ -597,6 +599,16 @@ async function onEnableNotifications(): Promise<void> {
           </button>
           <SchoolYearSwitcher v-if="showSchoolYearSwitcher" />
           <button
+            type="button"
+            class="theme-toggle-btn"
+            :title="theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'"
+            :aria-label="theme === 'dark' ? 'Mode clair' : 'Mode sombre'"
+            @click="toggleTheme"
+          >
+            <Sun v-if="theme === 'dark'" :size="18" aria-hidden="true" />
+            <Moon v-else :size="18" aria-hidden="true" />
+          </button>
+          <button
             v-if="showEnableNotifications"
             type="button"
             class="notif-enable-btn"
@@ -1084,7 +1096,8 @@ async function onEnableNotifications(): Promise<void> {
   text-decoration: none;
 }
 
-.notif-enable-btn {
+.notif-enable-btn,
+.theme-toggle-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1096,7 +1109,8 @@ async function onEnableNotifications(): Promise<void> {
   cursor: pointer;
 }
 
-.notif-enable-btn:hover {
+.notif-enable-btn:hover,
+.theme-toggle-btn:hover {
   border-color: var(--border-strong);
   background: var(--bg-subtle);
 }
