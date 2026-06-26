@@ -935,6 +935,21 @@ watch(
   gap: 1.75rem;
 }
 
+/* Mode clair : surcharge de la palette locale du dashboard admin */
+:root[data-theme='light'] .dashboard-page--admin {
+  --admin-ink:    #1d2840;
+  --admin-cream:  #ffffff;
+  --admin-gold:   #2f62d4;
+  --admin-gold-2: #2f62d4;
+  --admin-sage:   #2f9166;
+  --admin-terra:  #d97742;
+  --admin-wine:   #cf5247;
+  --admin-muted:  #6b7491;
+  --admin-border: rgba(28, 42, 74, 0.12);
+  --admin-shadow: 0 4px 16px rgba(28, 42, 74, 0.08), 0 1px 4px rgba(28, 42, 74, 0.05);
+}
+:root[data-theme='light'] .admin-section-num { color: #2f62d4; }
+
 /* ── Hero ── */
 .admin-hero {
   position: relative;
