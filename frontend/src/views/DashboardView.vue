@@ -1803,6 +1803,12 @@ watch(
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
+/* Mode clair : bandeau « Bonjour » en surface claire (titre foncé lisible) */
+:root[data-theme='light'] .dashboard-hero {
+  background: linear-gradient(135deg, #ffffff 0%, #f4eee3 100%);
+  box-shadow: var(--shadow-card);
+}
+
 .hero-identity { display: flex; align-items: center; gap: 1rem; min-width: 0; }
 
 .hero-avatar {
@@ -1917,6 +1923,12 @@ watch(
   position: sticky;
   top: 0.6rem;
   z-index: 10;
+}
+
+/* Mode clair : barre de filtres en surface claire */
+:root[data-theme='light'] .toolbar {
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
 }
 
 .period-filter {

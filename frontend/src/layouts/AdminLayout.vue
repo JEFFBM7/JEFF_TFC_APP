@@ -1271,6 +1271,11 @@ async function onEnableNotifications(): Promise<void> {
   backdrop-filter: blur(14px);
 }
 
+/* Mode clair : barre d'onglets en crème (l'onglet actif blanc ressort) */
+:root[data-theme='light'] .section-nav-shell {
+  background: rgba(246, 242, 234, 0.9);
+}
+
 .section-nav {
   display: flex;
   gap: 0.35rem;
