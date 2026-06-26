@@ -974,17 +974,17 @@ onMounted(async () => {
           <div class="form-grid">
             <div class="field">
               <label for="s-last">Nom</label>
-              <input id="s-last" v-model="form.last_name" type="text" required maxlength="100" />
+              <input id="s-last" v-model="form.last_name" type="text" required maxlength="100" placeholder="Ex. KABONGO" />
               <small v-if="formErrors.last_name" class="err">{{ formErrors.last_name[0] }}</small>
             </div>
             <div class="field">
               <label for="s-middle">Postnom</label>
-              <input id="s-middle" v-model="form.middle_name" type="text" required maxlength="100" />
+              <input id="s-middle" v-model="form.middle_name" type="text" required maxlength="100" placeholder="Ex. MUKENDI" />
               <small v-if="formErrors.middle_name" class="err">{{ formErrors.middle_name[0] }}</small>
             </div>
             <div class="field">
               <label for="s-first">Prénom(s)</label>
-              <input id="s-first" v-model="form.first_name" type="text" required maxlength="100" />
+              <input id="s-first" v-model="form.first_name" type="text" required maxlength="100" placeholder="Ex. Grâce" />
               <small v-if="formErrors.first_name" class="err">{{ formErrors.first_name[0] }}</small>
             </div>
             <div class="field">
@@ -994,7 +994,7 @@ onMounted(async () => {
             </div>
             <div class="field">
               <label for="s-pob">Lieu de naissance</label>
-              <input id="s-pob" v-model="form.place_of_birth" type="text" required maxlength="100" />
+              <input id="s-pob" v-model="form.place_of_birth" type="text" required maxlength="100" placeholder="Ex. Lubumbashi" />
               <small v-if="formErrors.place_of_birth" class="err">{{ formErrors.place_of_birth[0] }}</small>
             </div>
             <div class="field">

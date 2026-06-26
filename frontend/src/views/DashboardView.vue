@@ -962,6 +962,13 @@ watch(
     0 32px 56px rgba(15, 28, 53, 0.22);
 }
 
+/* Mode clair : hero en bleu moyen (texte blanc lisible, harmonisé au fond crème) */
+:root[data-theme='light'] .admin-hero {
+  background: linear-gradient(130deg, #2f62d4 0%, #3a6ea5 50%, #284f9e 100%);
+  border-color: rgba(28, 42, 74, 0.10);
+  box-shadow: 0 4px 16px rgba(28, 42, 74, 0.12), 0 18px 40px rgba(28, 42, 74, 0.10);
+}
+
 .admin-hero__grain {
   position: absolute;
   inset: 0;

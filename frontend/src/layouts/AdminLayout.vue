@@ -920,6 +920,11 @@ async function onEnableNotifications(): Promise<void> {
   backdrop-filter: blur(18px);
 }
 
+/* Mode clair : barre du haut claire (sinon le titre foncé devient invisible) */
+:root[data-theme='light'] .topbar {
+  background: rgba(255, 255, 255, 0.82);
+}
+
 .topbar-title-block,
 .topbar-actions,
 .topbar-user {
