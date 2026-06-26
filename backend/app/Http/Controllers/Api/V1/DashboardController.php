@@ -107,42 +107,58 @@ class DashboardController extends Controller
             ? round(($totalAbsences / max($totalStudents, 1)) * 100, 1)
             : 0;
 
-        $classroomStats = [];
         $classrooms = $this->classroomsQueryForSchoolYear($schoolYearId)->with('level')->get();
+        $classroomIds = $classrooms->pluck('id');
+
+        // Effectifs par classe (année en cours) — 1 requête agrégée.
+        $countQuery = Student::query()->whereIn('classroom_id', $classroomIds);
+        SchoolYearContext::applyStudentEnrollmentYearId($countQuery, $schoolYearId);
+        $studentCounts = $countQuery
+            ->selectRaw('classroom_id, count(*) as aggregate')
+            ->groupBy('classroom_id')
+            ->pluck('aggregate', 'classroom_id');
+
+        // Moyenne par classe (notes normalisées sur 20, filtrées période + année) — 1 requête.
+        $averageQuery = Grade::query()
+            ->join('evaluations', 'evaluations.id', '=', 'grades.evaluation_id')
+            ->whereIn('evaluations.classroom_id', $classroomIds)
+            ->where('grades.absent', false)
+            ->whereNotNull('grades.value')
+            ->where('evaluations.max_value', '>', 0);
+        if ($schoolYearId !== null) {
+            $averageQuery
+                ->join('terms', 'terms.id', '=', 'evaluations.term_id')
+                ->where('terms.school_year_id', $schoolYearId);
+        }
+        $this->applyPeriod($averageQuery, 'evaluations.held_on', $period);
+        $classAverages = $averageQuery
+            ->selectRaw('evaluations.classroom_id as classroom_id, AVG((grades.value * 20.0) / evaluations.max_value) as aggregate')
+            ->groupBy('evaluations.classroom_id')
+            ->pluck('aggregate', 'classroom_id');
+
+        // Absences par classe (période) — 1 requête agrégée.
+        $absenceQuery = Attendance::query()
+            ->whereIn('classroom_id', $classroomIds)
+            ->where('status', Attendance::STATUS_ABSENT);
+        $this->applyPeriod($absenceQuery, 'date', $period);
+        $absencesByClass = $absenceQuery
+            ->selectRaw('classroom_id, count(*) as aggregate')
+            ->groupBy('classroom_id')
+            ->pluck('aggregate', 'classroom_id');
+
+        $classroomStats = [];
         foreach ($classrooms as $classroom) {
-            $studentsQuery = Student::query()->where('classroom_id', $classroom->id);
-            SchoolYearContext::applyStudentEnrollmentYearId($studentsQuery, $schoolYearId);
-            $students = $studentsQuery->get();
-            if ($students->isEmpty()) {
+            $studentCount = (int) ($studentCounts[$classroom->id] ?? 0);
+            if ($studentCount === 0) {
                 continue;
             }
-
-            $evaluationQuery = Evaluation::query()->where('classroom_id', $classroom->id);
-            if ($schoolYearId !== null) {
-                $evaluationQuery->whereHas('term', fn ($query) => $query->where('school_year_id', $schoolYearId));
-            }
-            $evaluationIds = $this->applyPeriod(
-                $evaluationQuery,
-                'held_on',
-                $period,
-            )->pluck('id');
-
-            $grades = $this->normalizedGradeValues($evaluationIds);
-
-            $absCount = $this->applyPeriod(
-                Attendance::query()
-                    ->where('classroom_id', $classroom->id)
-                    ->where('status', Attendance::STATUS_ABSENT),
-                'date',
-                $period,
-            )->count();
-
+            $average = $classAverages[$classroom->id] ?? null;
             $classroomStats[] = [
                 'classroom_id' => $classroom->id,
                 'full_name' => $classroom->full_name,
-                'student_count' => $students->count(),
-                'class_average' => $grades->isNotEmpty() ? round($grades->avg(), 2) : null,
-                'absences' => $absCount,
+                'student_count' => $studentCount,
+                'class_average' => $average !== null ? round((float) $average, 2) : null,
+                'absences' => (int) ($absencesByClass[$classroom->id] ?? 0),
             ];
         }
 
