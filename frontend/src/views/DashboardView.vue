@@ -260,6 +260,11 @@ const teacherAverageChartCategories = computed(() =>
   teacherAverageBars.value.map((bar) => bar.label),
 )
 
+// Hauteur adaptative : ~26px par barre (lisible même avec beaucoup d'affectations).
+const teacherAverageChartHeight = computed(() =>
+  Math.max(320, teacherAverageBars.value.length * 26 + 60),
+)
+
 const teacherGradeBars = computed<ChartBar[]>(() => {
   const assignments = teacherData.value?.assignments ?? []
   const maxGrades = Math.max(1, ...assignments.map((a) => a.grades_entered))
@@ -829,9 +834,9 @@ watch(
             <BarChart
               :series="teacherAverageChartSeries"
               :categories="teacherAverageChartCategories"
-              :height="320"
+              :height="teacherAverageChartHeight"
               :horizontal="true"
-              :y-max="20"
+              :y-max="100"
               tooltip-suffix="%"
             />
           </div>
