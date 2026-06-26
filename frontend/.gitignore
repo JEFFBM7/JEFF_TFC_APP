@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Env de prod (généré sur le serveur depuis backend/.env via scripts/setup-realtime.sh)
+.env.production
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
