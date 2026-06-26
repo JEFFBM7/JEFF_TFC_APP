@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    // Web Push (notifications navigateur). Clés générées via VAPID::createVapidKeys().
+    'webpush' => [
+        'public_key' => env('VAPID_PUBLIC_KEY'),
+        'private_key' => env('VAPID_PRIVATE_KEY'),
+        'subject' => env('VAPID_SUBJECT', 'mailto:admin@educonnect.school'),
+    ],
+
 ];

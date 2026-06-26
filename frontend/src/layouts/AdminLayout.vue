@@ -2,7 +2,8 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
-import { AlertTriangle, CalendarDays, ChevronLeft, FileText, Home, MessageSquare, User, Users, X } from 'lucide-vue-next'
+import { AlertTriangle, Bell, CalendarDays, ChevronLeft, FileText, Home, MessageSquare, User, Users, X } from 'lucide-vue-next'
+import { enablePushNotifications, isPushSupported, pushPermission } from '../composables/usePushNotifications'
 import { api } from '../api/client'
 import { MESSAGES_UNREAD_EVENT, subscribeToMessageUpdates, type MessageRealtimeEvent } from '../api/realtime'
 import PortalBottomNav, { type PortalTab } from '../components/portal/PortalBottomNav.vue'
@@ -452,6 +453,22 @@ async function onLogout(): Promise<void> {
   await auth.logout()
   await router.push({ name: 'login' })
 }
+
+// Notifications Web Push : le bouton n'apparaît que si supporté et pas encore décidé/accordé.
+const notifPermission = ref(pushPermission())
+const showEnableNotifications = computed(
+  () => isPushSupported() && (notifPermission.value === 'default' || notifPermission.value === 'denied'),
+)
+
+async function onEnableNotifications(): Promise<void> {
+  const result = await enablePushNotifications()
+  notifPermission.value = pushPermission()
+  if (!result.ok && result.reason === 'denied') {
+    window.alert(
+      'Notifications bloquées. Autorise-les dans les réglages du site/navigateur pour recevoir les messages.',
+    )
+  }
+}
 </script>
 
 <template>
@@ -579,6 +596,16 @@ async function onLogout(): Promise<void> {
             <X :size="22" aria-hidden="true" />
           </button>
           <SchoolYearSwitcher v-if="showSchoolYearSwitcher" />
+          <button
+            v-if="showEnableNotifications"
+            type="button"
+            class="notif-enable-btn"
+            title="Activer les notifications"
+            aria-label="Activer les notifications"
+            @click="onEnableNotifications"
+          >
+            <Bell :size="18" aria-hidden="true" />
+          </button>
           <RouterLink v-if="!isPortalUser" :to="{ name: 'messages' }" class="message-link">
             Messagerie
             <span v-if="unreadCount > 0" class="topbar-badge">{{ unreadCount }}</span>
@@ -1055,6 +1082,23 @@ async function onLogout(): Promise<void> {
   background: var(--bg-card);
   color: var(--text);
   text-decoration: none;
+}
+
+.notif-enable-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.notif-enable-btn:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-subtle);
 }
 
 .message-link:hover {

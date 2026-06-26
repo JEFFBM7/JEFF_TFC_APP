@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\UserRole;
 use App\Events\MessageRealtimeUpdated;
+use App\Jobs\SendWebPush;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\MessageRequest;
 use App\Http\Resources\Api\V1\MessageResource;
@@ -21,6 +22,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class MessageController extends Controller
@@ -688,6 +690,20 @@ class MessageController extends Controller
                     'type' => $type,
                     'section' => $section,
                     'error' => $exception->getMessage(),
+                ]);
+            }
+
+            // Notification Web Push (uniquement nouveau contenu, jamais à l'expéditeur).
+            if (in_array($type, ['message.created', 'announcement.created'], true)
+                && (! $message || $userId !== $message->sender_id)) {
+                $isAnnouncement = $type === 'announcement.created' || $section === 'announcements';
+                SendWebPush::dispatch($userId, [
+                    'title' => $isAnnouncement
+                        ? 'Nouvelle annonce'
+                        : 'Message de '.($message?->sender?->name ?? 'EduConnect'),
+                    'body' => Str::limit((string) ($message?->subject ?: 'Vous avez reçu un nouveau message.'), 120),
+                    'url' => '/messages',
+                    'tag' => 'message-'.($message?->id ?? $userId),
                 ]);
             }
         }

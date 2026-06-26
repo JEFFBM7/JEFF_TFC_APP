@@ -1,6 +1,11 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { api, getToken, setToken, setUnauthenticatedHandler } from '../api/client'
+import {
+  disablePushNotifications,
+  enablePushNotifications,
+  pushPermission,
+} from '../composables/usePushNotifications'
 import { disconnectRealtime } from '../api/realtime'
 import { getPortalDeviceName } from '../utils/portalPwa'
 import type { AuthUser, LoginResponse, UserRole } from '../types'
@@ -40,6 +45,8 @@ export const useAuthStore = defineStore('auth', () => {
       setToken(res.token)
       user.value = res.user
       disconnectRealtime()
+      // Re-sync silencieux de la souscription push si déjà autorisée (pas de prompt).
+      if (pushPermission() === 'granted') void enablePushNotifications()
     } finally {
       loading.value = false
     }
@@ -53,6 +60,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch {
       // si le serveur refuse, on déconnecte tout de même côté client
     } finally {
+      await disablePushNotifications().catch(() => {})
       setToken(null)
       user.value = null
       disconnectRealtime()
@@ -68,6 +76,8 @@ export const useAuthStore = defineStore('auth', () => {
     })
     await fetchMe()
     initialized.value = true
+    // Souscription déjà autorisée : on rafraîchit côté serveur sans re-prompter.
+    if (user.value && pushPermission() === 'granted') void enablePushNotifications()
   }
 
   return {

@@ -30,7 +30,9 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         // Les splash iOS sont chargés via <link apple-touch-startup-image>,
         // inutile de les précacher (sinon +13 Mo dans le service worker).
-        globIgnores: ['**/pwa/splash/**'],
+        globIgnores: ['**/pwa/splash/**', '**/sw-push.js'],
+        // Handlers Web Push (push + notificationclick) injectés dans le SW Workbox.
+        importScripts: ['/sw-push.js'],
         runtimeCaching: [],
       },
       devOptions: { enabled: false },

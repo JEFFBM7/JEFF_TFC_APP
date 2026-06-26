@@ -97,6 +97,19 @@ systemctl enable --now educonnect-reverb educonnect-queue
 systemctl status educonnect-reverb --no-pager
 ```
 
+## 8 bis. Notifications Web Push (messages)
+Génère des clés VAPID uniques et mets-les dans `backend/.env` :
+```bash
+cd /var/www/educonnect/backend
+php artisan tinker --execute='print_r(Minishlink\WebPush\VAPID::createVapidKeys());'
+# -> copie publicKey/privateKey dans VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY de .env
+php artisan migrate --force   # crée la table push_subscriptions
+```
+- Le **worker de queue** (étape 8) envoie les pushs : il doit tourner.
+- Côté navigateur, l'utilisateur active via le bouton 🔔 (topbar). **iOS** : uniquement
+  en **PWA installée** (iOS 16.4+), et l'activation doit venir d'un **geste** (le bouton).
+- Le frontend récupère la clé publique via `/api/v1/push/public-key` (aucune variable VITE).
+
 ## 9. Caches Laravel (perf prod)
 ```bash
 cd /var/www/educonnect/backend

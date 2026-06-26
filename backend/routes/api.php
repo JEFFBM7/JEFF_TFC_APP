@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\V1\ReportsController;
 use App\Http\Controllers\Api\V1\SchoolOptionController;
 use App\Http\Controllers\Api\V1\SchoolClassController;
 use App\Http\Controllers\Api\V1\SchoolCalendarController;
+use App\Http\Controllers\Api\V1\PushController;
 use App\Http\Controllers\Api\V1\SchoolYearController;
 use App\Http\Controllers\Api\V1\TermController;
 use App\Http\Controllers\Api\V1\SettingsController;
@@ -67,6 +68,11 @@ Route::prefix('v1')->group(function (): void {
         // Année scolaire courante : nécessaire à tous les rôles pour le contexte global UI
         // (filtrage automatique dans le client API + indicateur dans la topbar).
         Route::get('/school-years/current', [SchoolYearController::class, 'current']);
+
+        // Notifications Web Push (tous rôles).
+        Route::get('/push/public-key', [PushController::class, 'publicKey']);
+        Route::post('/push/subscribe', [PushController::class, 'subscribe']);
+        Route::post('/push/unsubscribe', [PushController::class, 'unsubscribe']);
     });
 
     Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function (): void {
