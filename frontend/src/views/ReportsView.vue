@@ -211,7 +211,7 @@ onMounted(loadRefs)
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  max-width: 940px;
+  max-width: 860px;
 }
 
 .reports-head h1 { margin: 0 0 0.2rem; }
@@ -257,11 +257,12 @@ onMounted(loadRefs)
 .report-text p { margin: 0.2rem 0 0; color: var(--text-soft); font-size: 0.86rem; }
 .report-text small { color: var(--text-muted); font-weight: 400; }
 
+/* Grille : 2 filtres qui remplissent la largeur + bouton calé au bout (pas de vide) */
 .report-controls {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
   gap: 0.85rem;
-  align-items: flex-end;
-  flex-wrap: wrap;
+  align-items: end;
 }
 
 .report-controls label {
@@ -269,25 +270,22 @@ onMounted(loadRefs)
   flex-direction: column;
   gap: 0.3rem;
   font-size: 0.84rem;
-  min-width: 12rem;
-  flex: 1 1 12rem;
   margin: 0;
+  min-width: 0;
 }
 
 .report-controls label span { color: var(--text-soft); font-weight: 650; }
 
-/* Le bouton d'export se cale à droite quand la place le permet */
 .report-export {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  margin-left: auto;
   white-space: nowrap;
 }
 
 @media (max-width: 560px) {
   .report-card { flex-direction: column; }
-  .report-controls label { flex-basis: 100%; min-width: 0; }
-  .report-export { margin-left: 0; width: 100%; justify-content: center; }
+  .report-controls { grid-template-columns: 1fr; }
+  .report-export { width: 100%; justify-content: center; }
 }
 </style>
