@@ -236,7 +236,8 @@ onMounted(loadRefs)
 .reports-page {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
+  min-height: 100%;
 }
 
 .reports-head h1 { margin: 0 0 0.2rem; }
@@ -245,15 +246,18 @@ onMounted(loadRefs)
 /* ── Grille 3 colonnes ── */
 .reports-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
+  width: min(100%, 1350px);
+  align-self: center;
+  align-items: start; /* cartes à la hauteur de leur contenu */
 }
 
 .report-card {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 1.25rem;
+  gap: 0.85rem;
+  padding: 1rem 1.15rem 1.1rem;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -284,8 +288,7 @@ onMounted(loadRefs)
 .report-controls {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
-  flex: 1;
+  gap: 0.6rem;
 }
 
 .report-controls label {
@@ -305,7 +308,6 @@ onMounted(loadRefs)
   justify-content: center;
   gap: 0.4rem;
   width: 100%;
-  margin-top: auto;
 }
 
 /* ── Bandeau info ── */
@@ -313,6 +315,9 @@ onMounted(loadRefs)
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
+  width: min(100%, 1350px);
+  margin-top: auto;
+  align-self: center;
   padding: 1rem 1.25rem;
   background: var(--bg-card);
   border: 1px solid var(--border);

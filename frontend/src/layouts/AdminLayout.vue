@@ -2,7 +2,32 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
-import { AlertTriangle, Bell, CalendarDays, ChevronLeft, FileText, Home, MessageSquare, Moon, Sun, User, Users, X } from 'lucide-vue-next'
+import {
+  AlertTriangle,
+  Bell,
+  BookOpen,
+  CalendarDays,
+  CalendarRange,
+  ChevronLeft,
+  ClipboardCheck,
+  ClipboardList,
+  Contact,
+  FileChartColumn,
+  FileText,
+  GraduationCap,
+  Home,
+  MessageSquare,
+  Moon,
+  School,
+  Settings,
+  ShieldCheck,
+  Sun,
+  User,
+  UserCog,
+  Users,
+  UsersRound,
+  X,
+} from 'lucide-vue-next'
 import { enablePushNotifications, isPushSupported, pushPermission } from '../composables/usePushNotifications'
 import { useTheme } from '../composables/useTheme'
 import { api } from '../api/client'
@@ -235,15 +260,17 @@ const navigationGroups = computed<NavGroup[]>(() => {
 
   if (auth.hasRole('admin')) {
     const schoolingItems: NavItem[] = [
-      ...(isGlobalAdmin.value ? [{ label: 'Années scolaires', to: { name: 'school-years' } }] : []),
-      { label: 'Classes', to: { name: 'levels' } },
-      { label: 'Cours', to: { name: 'subjects' } },
-      { label: 'Emploi du temps', to: { name: 'timetable' } },
+      ...(isGlobalAdmin.value
+        ? [{ label: 'Années scolaires', to: { name: 'school-years' }, icon: CalendarRange }]
+        : []),
+      { label: 'Classes', to: { name: 'levels' }, icon: School },
+      { label: 'Cours', to: { name: 'subjects' }, icon: BookOpen },
+      { label: 'Emploi du temps', to: { name: 'timetable' }, icon: CalendarDays },
     ]
     const groups: NavGroup[] = [
       {
         label: 'Vue générale',
-        items: [{ label: 'Tableau de bord', to: { name: 'dashboard' } }],
+        items: [{ label: 'Tableau de bord', to: { name: 'dashboard' }, icon: Home }],
       },
       {
         label: 'Scolarité',
@@ -252,18 +279,18 @@ const navigationGroups = computed<NavGroup[]>(() => {
       {
         label: 'Personnes',
         items: [
-          { label: 'Élèves', to: { name: 'students' } },
-          { label: 'Parents', to: { name: 'parents' } },
-          { label: 'Enseignants', to: { name: 'teachers' } },
+          { label: 'Élèves', to: { name: 'students' }, icon: GraduationCap },
+          { label: 'Parents', to: { name: 'parents' }, icon: Contact },
+          { label: 'Enseignants', to: { name: 'teachers' }, icon: UsersRound },
         ],
       },
       {
         label: 'Pédagogie',
         items: [
-          { label: 'Évaluations', to: { name: 'evaluations' } },
-          { label: 'Présences', to: { name: 'attendances' } },
-          { label: 'Rapports', to: { name: 'reports' } },
-          { label: 'Élèves en difficulté', to: { name: 'students-at-risk' } },
+          { label: 'Évaluations', to: { name: 'evaluations' }, icon: ClipboardList },
+          { label: 'Présences', to: { name: 'attendances' }, icon: ClipboardCheck },
+          { label: 'Rapports', to: { name: 'reports' }, icon: FileChartColumn },
+          { label: 'Élèves en difficulté', to: { name: 'students-at-risk' }, icon: AlertTriangle },
         ],
       },
       {
@@ -276,9 +303,9 @@ const navigationGroups = computed<NavGroup[]>(() => {
       groups.push({
         label: 'Administration',
         items: [
-          { label: 'Utilisateurs', to: { name: 'users' } },
-          { label: 'Admins secondaires', to: { name: 'secondary-admins' } },
-          { label: 'Paramètres & seuils', to: { name: 'settings' } },
+          { label: 'Utilisateurs', to: { name: 'users' }, icon: UserCog },
+          { label: 'Admins secondaires', to: { name: 'secondary-admins' }, icon: ShieldCheck },
+          { label: 'Paramètres & seuils', to: { name: 'settings' }, icon: Settings },
         ],
       })
     }
@@ -290,16 +317,16 @@ const navigationGroups = computed<NavGroup[]>(() => {
     return [
       {
         label: 'Vue générale',
-        items: [{ label: 'Tableau de bord', to: { name: 'dashboard' } }],
+        items: [{ label: 'Tableau de bord', to: { name: 'dashboard' }, icon: Home }],
       },
       {
         label: 'Pédagogie',
         items: [
-          { label: 'Évaluations', to: { name: 'evaluations' } },
-          { label: 'Présences', to: { name: 'attendances' } },
-          { label: 'Emploi du temps', to: { name: 'timetable' } },
-          { label: 'Rapports', to: { name: 'reports' } },
-          { label: 'Élèves en difficulté', to: { name: 'students-at-risk' } },
+          { label: 'Évaluations', to: { name: 'evaluations' }, icon: ClipboardList },
+          { label: 'Présences', to: { name: 'attendances' }, icon: ClipboardCheck },
+          { label: 'Emploi du temps', to: { name: 'timetable' }, icon: CalendarDays },
+          { label: 'Rapports', to: { name: 'reports' }, icon: FileChartColumn },
+          { label: 'Élèves en difficulté', to: { name: 'students-at-risk' }, icon: AlertTriangle },
         ],
       },
       {
@@ -313,13 +340,13 @@ const navigationGroups = computed<NavGroup[]>(() => {
     return [
       {
         label: 'Vue générale',
-        items: [{ label: 'Tableau de bord', to: { name: 'dashboard' } }],
+        items: [{ label: 'Tableau de bord', to: { name: 'dashboard' }, icon: Home }],
       },
       {
         label: 'Vie scolaire',
         items: [
-          { label: 'Présences', to: { name: 'attendances' } },
-          { label: 'Emploi du temps', to: { name: 'timetable' } },
+          { label: 'Présences', to: { name: 'attendances' }, icon: ClipboardCheck },
+          { label: 'Emploi du temps', to: { name: 'timetable' }, icon: CalendarDays },
         ],
       },
       {
@@ -332,7 +359,7 @@ const navigationGroups = computed<NavGroup[]>(() => {
   return [
     {
       label: 'Navigation',
-      items: [{ label: 'Tableau de bord', to: { name: 'dashboard' } }, messagesItem],
+      items: [{ label: 'Tableau de bord', to: { name: 'dashboard' }, icon: Home }, messagesItem],
     },
   ]
 })
