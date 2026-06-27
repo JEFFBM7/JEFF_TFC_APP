@@ -1046,10 +1046,11 @@ watch(
 }
 
 .admin-hero__title-main {
-  font-size: clamp(1.6rem, 3.2vw, 2.25rem);
-  font-weight: 900;
-  line-height: 1.06;
-  letter-spacing: -0.025em;
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 3.4vw, 2.4rem);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.015em;
   color: #f1f6ff;
 }
 
@@ -1202,24 +1203,17 @@ watch(
   margin-bottom: 1.15rem;
 }
 
+/* Repère de section : filet or (et non une fausse séquence 01/02/03). */
 .admin-section-num-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.1rem;
-  height: 2.1rem;
-  border-radius: 10px;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  width: 4px;
+  height: 1.7rem;
+  border-radius: 2px;
+  background: var(--gold);
   flex-shrink: 0;
 }
 
 .admin-section-num {
-  font-size: 0.82rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  color: #60a5fa;
-  user-select: none;
+  display: none;
 }
 
 .admin-section-copy h2 {
