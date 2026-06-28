@@ -1,5 +1,5 @@
 @startuml diagramme_classes_jeff_tfc
-title Diagramme de classes — JEFF_TFC_APP
+title Diagramme de classes — EduConnect
 
 skinparam classAttributeIconSize 0
 skinparam classFontStyle Bold

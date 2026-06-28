@@ -1,0 +1,236 @@
+@startuml UC_00_Global
+!theme plain
+left to right direction
+
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam ArrowColor #555555
+skinparam ActorBorderColor #2C3E50
+skinparam ActorBackgroundColor #ECF0F1
+skinparam UsecaseBorderColor #2980B9
+skinparam UsecaseBackgroundColor #EBF5FB
+skinparam PackageBorderColor #7F8C8D
+skinparam PackageBackgroundColor #F8F9FA
+skinparam defaultFontSize 11
+skinparam TitleFontSize 14
+skinparam TitleFontStyle bold
+
+title Diagramme Global de Cas d'Utilisation — EduConnect 
+
+' ─── ACTEURS ────────────────────────────────────────────────
+actor "Admin Global"   as AdminGlobal #LightSteelBlue
+actor "Admin /\n Cycle" as Admin #LightSteelBlue
+actor "Enseignant"     as Teacher #LightGoldenRodYellow
+actor "Élève"          as Student #PaleGreen
+actor "Parent"         as Parent  #LightSalmon
+
+Admin <|-- AdminGlobal
+
+' ═══════════════════════════════════════════════════════════
+package "Authentification" {
+  usecase "Se connecter"                     as UC_LOGIN
+  usecase "Se déconnecter"                  as UC_LOGOUT
+  usecase "Réinitialiser le mot de passe"   as UC_RESET_PWD
+  usecase "Gérer les notifications push"    as UC_PUSH
+}
+
+package "Administration système\n[Admin Global seulement]" {
+  usecase "Gérer les utilisateurs (CRUD)"   as UC_USERS
+  usecase "Consulter les logs de connexion" as UC_LOGS
+  usecase "Configurer les paramètres"       as UC_SETTINGS
+  usecase "Tableau de bord admin"           as UC_DASH_ADMIN
+}
+
+package "Structure académique\n[Admin]" {
+  usecase "Gérer les années scolaires"           as UC_SCHOOL_YEAR
+  usecase "Archiver / désarchiver une année"     as UC_ARCHIVE
+  usecase "Gérer les niveaux"                    as UC_LEVELS
+  usecase "Gérer les classes"                    as UC_CLASSROOMS
+  usecase "Générer classes d'une année"          as UC_GEN_CLASSES
+  usecase "Gérer les trimestres et périodes"     as UC_TERMS
+  usecase "Clôturer un trimestre"                as UC_CLOSE_TERM
+  usecase "Passage de classe\n(promotion / redoublement)" as UC_PROMOTION
+}
+
+package "Ressources pédagogiques\n[Admin]" {
+  usecase "Gérer les enseignants"             as UC_TEACHERS
+  usecase "Affecter enseignant / matière"     as UC_ASSIGN
+  usecase "Gérer les matières"               as UC_SUBJECTS
+  usecase "Gérer l'emploi du temps"          as UC_TIMETABLE
+}
+
+package "Gestion élèves & parents\n[Admin]" {
+  usecase "Gérer les élèves (CRUD + import)" as UC_STUDENTS
+  usecase "Gérer les parents"                as UC_PARENTS
+  usecase "Lier / délier parent–élève"       as UC_LINK_PARENT
+}
+
+package "Évaluations & Notes\n[Admin + Enseignant]" {
+  usecase "Créer / modifier une évaluation"  as UC_EVAL_CRUD
+  usecase "Saisir les notes"                 as UC_GRADES
+  usecase "Publier / dépublier évaluation"   as UC_PUBLISH
+  usecase "Consulter élèves en difficulté"   as UC_AT_RISK
+  usecase "Tableau de bord enseignant"       as UC_DASH_TEACHER
+}
+
+package "Bulletins & Classements\n[Admin + Enseignant]" {
+  usecase "Consulter le bulletin d'un élève" as UC_REPORT_VIEW
+  usecase "Télécharger bulletin en PDF"      as UC_REPORT_PDF
+  usecase "Saisir des appréciations"         as UC_APPRECIATIONS
+  usecase "Consulter le classement de classe" as UC_RANKING
+}
+
+package "Présences & Absences\n[Admin + Enseignant ]" {
+  usecase "Faire l'appel"                        as UC_ROLLCALL
+  usecase "Enregistrer les absences"             as UC_ATT_SAVE
+  usecase "Justifier une absence"                as UC_ATT_JUSTIFY
+  usecase "Récapitulatif des absences"           as UC_ATT_SUMMARY
+}
+
+package "Rapports & Exports CSV\n[Admin + Enseignant]" {
+  usecase "Exporter classement CSV"         as UC_CSV_RANK
+  usecase "Exporter présences CSV"          as UC_CSV_ATT
+  usecase "Exporter évolution élève CSV"    as UC_CSV_EVO
+}
+
+package "Messagerie interne\n[Tous les rôles]" {
+  usecase "Envoyer un message"              as UC_MSG_SEND
+  usecase "Consulter boîte de réception"   as UC_MSG_READ
+  usecase "Supprimer un message"            as UC_MSG_DEL
+  usecase "Diffuser une annonce"            as UC_BROADCAST
+}
+
+package "Portail Élève" {
+  usecase "Tableau de bord élève"          as UC_STU_DASH
+  usecase "Consulter notes et bulletin"    as UC_STU_GRADES
+  usecase "Télécharger bulletin PDF"       as UC_STU_PDF
+  usecase "Consulter emploi du temps"      as UC_STU_TT
+  usecase "Consulter ses absences"         as UC_STU_ABS
+  usecase "Justifier une absence"          as UC_STU_JUSTIFY
+}
+
+package "Portail Parent" {
+  usecase "Tableau de bord parent"         as UC_PAR_DASH
+  usecase "Consulter ses enfants"          as UC_PAR_CHILDREN
+  usecase "Bulletins d'un enfant"          as UC_PAR_REPORT
+  usecase "Télécharger bulletin PDF enfant" as UC_PAR_PDF
+  usecase "Absences d'un enfant"           as UC_PAR_ABS
+  usecase "Justifier absence d'un enfant"  as UC_PAR_JUSTIFY
+}
+
+' ─── AUTHENTIFICATION (tous) ────────────────────────────────
+Admin   --> UC_LOGIN
+Teacher --> UC_LOGIN
+Student --> UC_LOGIN
+Parent  --> UC_LOGIN
+Admin   --> UC_LOGOUT
+Teacher --> UC_LOGOUT
+Student --> UC_LOGOUT
+Parent  --> UC_LOGOUT
+Admin   --> UC_RESET_PWD
+Teacher --> UC_RESET_PWD
+Student --> UC_RESET_PWD
+Parent  --> UC_RESET_PWD
+Admin   --> UC_PUSH
+Teacher --> UC_PUSH
+Student --> UC_PUSH
+Parent  --> UC_PUSH
+
+' ─── ADMINISTRATION SYSTÈME ─────────────────────────────────
+AdminGlobal --> UC_USERS
+AdminGlobal --> UC_LOGS
+AdminGlobal --> UC_SETTINGS
+Admin       --> UC_DASH_ADMIN
+
+' ─── STRUCTURE ACADÉMIQUE ───────────────────────────────────
+Admin       --> UC_SCHOOL_YEAR
+AdminGlobal --> UC_ARCHIVE
+Admin       --> UC_LEVELS
+Admin       --> UC_CLASSROOMS
+AdminGlobal --> UC_GEN_CLASSES
+Admin       --> UC_TERMS
+AdminGlobal --> UC_CLOSE_TERM
+AdminGlobal --> UC_PROMOTION
+
+' ─── RESSOURCES PÉDAGOGIQUES ────────────────────────────────
+Admin --> UC_TEACHERS
+Admin --> UC_ASSIGN
+Admin --> UC_SUBJECTS
+Admin --> UC_TIMETABLE
+
+' ─── GESTION ÉLÈVES & PARENTS ───────────────────────────────
+Admin --> UC_STUDENTS
+Admin --> UC_PARENTS
+Admin --> UC_LINK_PARENT
+
+' ─── ÉVALUATIONS & NOTES ────────────────────────────────────
+Admin   --> UC_EVAL_CRUD
+Teacher --> UC_EVAL_CRUD
+Admin   --> UC_GRADES
+Teacher --> UC_GRADES
+Admin   --> UC_PUBLISH
+Teacher --> UC_PUBLISH
+Admin   --> UC_AT_RISK
+Teacher --> UC_AT_RISK
+Teacher --> UC_DASH_TEACHER
+
+' ─── BULLETINS & CLASSEMENTS ────────────────────────────────
+Admin   --> UC_REPORT_VIEW
+Teacher --> UC_REPORT_VIEW
+Admin   --> UC_REPORT_PDF
+Teacher --> UC_REPORT_PDF
+Admin   --> UC_APPRECIATIONS
+Teacher --> UC_APPRECIATIONS
+Admin   --> UC_RANKING
+Teacher --> UC_RANKING
+
+' ─── PRÉSENCES & ABSENCES ───────────────────────────────────
+Admin   --> UC_ROLLCALL
+Teacher --> UC_ROLLCALL
+Admin   --> UC_ATT_SAVE
+Teacher --> UC_ATT_SAVE
+Admin   --> UC_ATT_JUSTIFY
+Teacher --> UC_ATT_JUSTIFY
+Admin   --> UC_ATT_SUMMARY
+Teacher --> UC_ATT_SUMMARY
+
+' ─── RAPPORTS & EXPORTS ─────────────────────────────────────
+Admin   --> UC_CSV_RANK
+Teacher --> UC_CSV_RANK
+Admin   --> UC_CSV_ATT
+Teacher --> UC_CSV_ATT
+Admin   --> UC_CSV_EVO
+Teacher --> UC_CSV_EVO
+
+' ─── MESSAGERIE ─────────────────────────────────────────────
+Admin   --> UC_MSG_SEND
+Teacher --> UC_MSG_SEND
+Student --> UC_MSG_SEND
+Parent  --> UC_MSG_SEND
+Admin   --> UC_MSG_READ
+Teacher --> UC_MSG_READ
+Student --> UC_MSG_READ
+Parent  --> UC_MSG_READ
+Admin   --> UC_MSG_DEL
+Teacher --> UC_MSG_DEL
+Student --> UC_MSG_DEL
+Parent  --> UC_MSG_DEL
+Admin   --> UC_BROADCAST
+
+' ─── PORTAIL ÉLÈVE ──────────────────────────────────────────
+Student --> UC_STU_DASH
+Student --> UC_STU_GRADES
+Student --> UC_STU_PDF
+Student --> UC_STU_TT
+Student --> UC_STU_ABS
+Student --> UC_STU_JUSTIFY
+
+' ─── PORTAIL PARENT ─────────────────────────────────────────
+Parent --> UC_PAR_DASH
+Parent --> UC_PAR_CHILDREN
+Parent --> UC_PAR_REPORT
+Parent --> UC_PAR_PDF
+Parent --> UC_PAR_ABS
+Parent --> UC_PAR_JUSTIFY
+
+@enduml
