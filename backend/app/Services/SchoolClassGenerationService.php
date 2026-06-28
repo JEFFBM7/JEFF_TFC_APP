@@ -76,7 +76,15 @@ class SchoolClassGenerationService
         });
     }
 
-    public function generateBaseClasses(SchoolYear $schoolYear): Collection
+    /**
+     * Génère les classes de base de l'année.
+     *
+     * @param  array<int, int>|null  $optionIds  Si fourni, seules ces options secondaires
+     *                                           sont générées (les cycles sans option — M1
+     *                                           à 8e CTEB — le sont toujours automatiquement).
+     *                                           null = toutes les options (comportement legacy).
+     */
+    public function generateBaseClasses(SchoolYear $schoolYear, ?array $optionIds = null): Collection
     {
         $this->ensureFixedStructure();
 
@@ -84,7 +92,7 @@ class SchoolClassGenerationService
             return collect();
         }
 
-        return DB::transaction(function () use ($schoolYear): Collection {
+        return DB::transaction(function () use ($schoolYear, $optionIds): Collection {
             $created = collect();
             $levels = Level::query()->orderBy('order')->orderBy('name')->get();
             $secondaryOptionsQuery = SchoolOption::query()->orderBy('name');
@@ -96,6 +104,12 @@ class SchoolClassGenerationService
             }
 
             $secondaryOptions = $secondaryOptionsQuery->get();
+
+            if ($optionIds !== null) {
+                $secondaryOptions = $secondaryOptions
+                    ->whereIn('id', array_map('intval', $optionIds))
+                    ->values();
+            }
 
             foreach ($levels as $level) {
                 if (! $level->has_options) {
@@ -110,6 +124,32 @@ class SchoolClassGenerationService
             }
 
             return $created->values();
+        });
+    }
+
+    /**
+     * Crée (ou réutilise) une classe pour un niveau (+ option si secondaire),
+     * puis y ajoute le nombre de divisions demandé.
+     */
+    public function createClass(
+        SchoolYear $schoolYear,
+        Level $level,
+        ?SchoolOption $option,
+        int $divisions = 1,
+        int $capacity = 40,
+    ): SchoolClass {
+        return DB::transaction(function () use ($schoolYear, $level, $option, $divisions, $capacity): SchoolClass {
+            $schoolClass = $this->upsertSchoolClass(
+                $schoolYear,
+                $level,
+                $level->has_options ? $option : null,
+            );
+
+            for ($i = 0, $n = max(1, $divisions); $i < $n; $i++) {
+                $this->addNextDivision($schoolClass, $capacity);
+            }
+
+            return $schoolClass->fresh(['level', 'schoolOption']);
         });
     }
 

@@ -52,11 +52,17 @@ class SchoolClassController extends Controller
         );
     }
 
-    public function generate(SchoolYear $schoolYear, SchoolClassGenerationService $service): JsonResponse
+    public function generate(Request $request, SchoolYear $schoolYear, SchoolClassGenerationService $service): JsonResponse
     {
         SchoolYearContext::assertNotArchivedById($schoolYear->id);
 
-        $service->generateBaseClasses($schoolYear);
+        // option_ids fourni => génération sélective des options secondaires
+        // (les cycles sans option sont toujours générés). Absent => tout générer.
+        $optionIds = $request->has('option_ids')
+            ? array_map('intval', (array) $request->input('option_ids', []))
+            : null;
+
+        $service->generateBaseClasses($schoolYear, $optionIds);
 
         $schoolYear->schoolClasses()
             ->with(['level', 'schoolOption'])
@@ -89,6 +95,53 @@ class SchoolClassController extends Controller
                 'count' => $classes->count(),
             ],
         ], 201);
+    }
+
+    /** Crée une classe (niveau + option si secondaire) avec ses premières divisions. */
+    public function store(
+        Request $request,
+        SchoolYear $schoolYear,
+        SchoolClassGenerationService $service,
+    ): JsonResponse {
+        SchoolYearContext::assertNotArchivedById($schoolYear->id);
+
+        $data = $request->validate([
+            'level_id' => ['required', 'integer', 'exists:levels,id'],
+            'school_option_id' => ['nullable', 'integer', 'exists:school_options,id'],
+            'divisions' => ['sometimes', 'integer', 'min:1', 'max:26'],
+            'capacity' => ['sometimes', 'integer', 'min:1', 'max:200'],
+        ]);
+
+        $level = \App\Models\Level::query()->findOrFail($data['level_id']);
+        AdminScopeContext::assertCycleAllowed($request->user(), $level->cycle);
+
+        $option = isset($data['school_option_id'])
+            ? \App\Models\SchoolOption::query()->find($data['school_option_id'])
+            : null;
+
+        if ($level->has_options && ! $option) {
+            return response()->json(['message' => 'Option / filière requise pour ce niveau.'], 422);
+        }
+
+        try {
+            $schoolClass = $service->createClass(
+                $schoolYear,
+                $level,
+                $option,
+                $data['divisions'] ?? 1,
+                $data['capacity'] ?? 40,
+            );
+        } catch (InvalidArgumentException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        $schoolClass->loadCount('divisions')->load([
+            'level',
+            'schoolOption',
+            'divisions' => fn ($q) => $q->with(['level', 'schoolOption'])->withCount('students'),
+        ]);
+
+        return SchoolClassResource::make($schoolClass)->response()->setStatusCode(201);
     }
 
     public function addDivisions(

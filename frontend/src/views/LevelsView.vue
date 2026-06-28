@@ -96,6 +96,55 @@ const formError = ref('')
 const formErrors = reactive<Record<string, string[]>>({})
 const submitting = ref(false)
 
+// ── Créer une classe (cycle → formulaire) ──
+const showCreateClass = ref(false)
+const createStep = ref<1 | 2>(1)
+const createError = ref('')
+const creatingClass = ref(false)
+const createForm = reactive<{ cycle: LevelCycle | ''; level_id: number | ''; school_option_id: number | ''; divisions: number }>({
+  cycle: '',
+  level_id: '',
+  school_option_id: '',
+  divisions: 1,
+})
+
+// ── Générer les classes de base (sélection des options secondaires) ──
+const showGenerateModal = ref(false)
+const selectedGenerateOptionIds = ref<number[]>([])
+
+const FILIERE_LABELS: Record<SchoolOptionFiliere, string> = {
+  generale: 'Filière générale',
+  technique: 'Filière technique',
+  professionnelle: 'Filière professionnelle',
+}
+
+const secondaryOptions = computed(() =>
+  schoolOptions.value.filter((o) => !o.cycle || o.cycle === 'secondaire'),
+)
+
+const optionsByFiliere = computed<Record<string, SchoolOption[]>>(() => {
+  const groups: Record<string, SchoolOption[]> = {}
+  for (const fil of ['generale', 'technique', 'professionnelle'] as SchoolOptionFiliere[]) {
+    const list = secondaryOptions.value.filter((o) => (o.filiere ?? 'generale') === fil)
+    if (list.length) groups[fil] = list
+  }
+  return groups
+})
+
+const createCycleLevels = computed(() =>
+  createForm.cycle
+    ? [...levels.value].filter((l) => l.cycle === createForm.cycle).sort((a, b) => a.order - b.order)
+    : [],
+)
+
+const createLevelHasOptions = computed(
+  () => !!levels.value.find((l) => l.id === createForm.level_id)?.has_options,
+)
+
+function cycleLabel(cycle: LevelCycle | ''): string {
+  return CYCLE_OPTIONS.find((c) => c.value === cycle)?.label ?? '—'
+}
+
 const isGlobalAdmin = computed(() =>
   auth.user?.role === 'admin' && (auth.user.admin_scope ?? 'global') === 'global',
 )
@@ -528,19 +577,90 @@ async function load(): Promise<void> {
   }
 }
 
-async function generateSchoolClasses(): Promise<void> {
+function openGenerateModal(): void {
+  closeMenu()
+  // Pré-coche les options déjà générées dans l'année (sinon aucune).
+  const existing = new Set(
+    schoolClasses.value
+      .filter((sc) => sc.school_option_id != null)
+      .map((sc) => sc.school_option_id as number),
+  )
+  selectedGenerateOptionIds.value = secondaryOptions.value
+    .filter((o) => existing.has(o.id))
+    .map((o) => o.id)
+  showGenerateModal.value = true
+}
+
+function toggleFiliere(opts: SchoolOption[]): void {
+  const ids = opts.map((o) => o.id)
+  const allChecked = ids.every((id) => selectedGenerateOptionIds.value.includes(id))
+  if (allChecked) {
+    selectedGenerateOptionIds.value = selectedGenerateOptionIds.value.filter((id) => !ids.includes(id))
+  } else {
+    selectedGenerateOptionIds.value = [...new Set([...selectedGenerateOptionIds.value, ...ids])]
+  }
+}
+
+async function confirmGenerate(): Promise<void> {
   const yearId = schoolYearStore.effectiveId ?? activeSchoolYear.value?.id
   if (!yearId || !canManageStructure.value) return
 
   generatingClasses.value = true
   error.value = ''
   try {
-    await api(`/api/v1/school-years/${yearId}/generate-classes`, { method: 'POST' })
+    await api(`/api/v1/school-years/${yearId}/generate-classes`, {
+      method: 'POST',
+      body: { option_ids: selectedGenerateOptionIds.value },
+    })
+    showGenerateModal.value = false
     await load()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Génération des classes impossible.'
   } finally {
     generatingClasses.value = false
+  }
+}
+
+function openCreateClass(): void {
+  closeMenu()
+  createStep.value = 1
+  createError.value = ''
+  createForm.cycle = ''
+  createForm.level_id = ''
+  createForm.school_option_id = ''
+  createForm.divisions = 1
+  showCreateClass.value = true
+}
+
+function chooseCreateCycle(cycle: LevelCycle): void {
+  createForm.cycle = cycle
+  createForm.level_id = ''
+  createForm.school_option_id = ''
+  createStep.value = 2
+}
+
+async function submitCreateClass(): Promise<void> {
+  const yearId = schoolYearStore.effectiveId ?? activeSchoolYear.value?.id
+  if (!yearId || !createForm.level_id) return
+
+  creatingClass.value = true
+  createError.value = ''
+  try {
+    await api(`/api/v1/school-years/${yearId}/school-classes`, {
+      method: 'POST',
+      body: {
+        level_id: createForm.level_id,
+        school_option_id: createLevelHasOptions.value ? createForm.school_option_id || null : null,
+        divisions: createForm.divisions,
+        capacity: DEFAULT_DIVISION_CAPACITY,
+      },
+    })
+    showCreateClass.value = false
+    await load()
+  } catch (e) {
+    createError.value = e instanceof ApiError ? e.message : 'Création de la classe impossible.'
+  } finally {
+    creatingClass.value = false
   }
 }
 
@@ -779,11 +899,19 @@ onUnmounted(() => {
         </div>
         <div class="header-actions">
           <button
-            v-if="canManageStructure && isGlobalAdmin"
+            v-if="canManageStructure"
+            type="button"
+            class="btn-primary"
+            @click="openCreateClass"
+          >
+            + Créer une classe
+          </button>
+          <button
+            v-if="canManageStructure && isGlobalAdmin && isStructureView"
             type="button"
             class="btn-secondary"
             :disabled="generatingClasses"
-            @click="generateSchoolClasses"
+            @click="openGenerateModal"
           >
             {{ generatingClasses ? 'Génération…' : 'Générer les classes de base' }}
           </button>
@@ -1013,6 +1141,99 @@ onUnmounted(() => {
         <button type="button" @click="showForm = false">Annuler</button>
         <button type="submit" form="level-form" class="btn-primary" :disabled="submitting">
           {{ submitting ? 'Enregistrement…' : editing ? 'Enregistrer' : 'Créer' }}
+        </button>
+      </template>
+    </Modal>
+
+    <!-- ── Créer une classe (cycle → formulaire) ── -->
+    <Modal
+      :open="showCreateClass"
+      :title="createStep === 1 ? 'Créer une classe — choisir le cycle' : 'Créer une classe'"
+      @close="showCreateClass = false"
+    >
+      <div v-if="createStep === 1" class="cycle-choice">
+        <p class="cc-hint">Choisissez le cycle de la classe à créer.</p>
+        <div class="cycle-choice-grid">
+          <button
+            v-for="c in cycleOptions"
+            :key="c.value"
+            type="button"
+            class="cycle-choice-btn"
+            @click="chooseCreateCycle(c.value)"
+          >
+            <span>{{ c.label }}</span>
+          </button>
+        </div>
+      </div>
+
+      <form v-else id="create-class-form" class="create-class-form" @submit.prevent="submitCreateClass">
+        <p class="cc-hint">
+          Cycle : <strong>{{ cycleLabel(createForm.cycle) }}</strong>
+          <button type="button" class="link-btn" @click="createStep = 1">changer</button>
+        </p>
+
+        <div class="field">
+          <label for="cc-level">Niveau</label>
+          <select id="cc-level" v-model.number="createForm.level_id" required>
+            <option value="">— Choisir —</option>
+            <option v-for="l in createCycleLevels" :key="l.id" :value="l.id" translate="no">{{ l.name }}</option>
+          </select>
+        </div>
+
+        <div v-if="createLevelHasOptions" class="field">
+          <label for="cc-option">Option / filière</label>
+          <select id="cc-option" v-model.number="createForm.school_option_id" required>
+            <option value="">— Choisir —</option>
+            <optgroup v-for="(opts, fil) in optionsByFiliere" :key="fil" :label="FILIERE_LABELS[fil as SchoolOptionFiliere]">
+              <option v-for="o in opts" :key="o.id" :value="o.id" translate="no">{{ o.name }}</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="cc-div">Nombre de divisions (A, B, …)</label>
+          <input id="cc-div" v-model.number="createForm.divisions" type="number" min="1" max="26" />
+        </div>
+
+        <p v-if="createError" class="alert alert-error">{{ createError }}</p>
+      </form>
+
+      <template #footer>
+        <button type="button" @click="showCreateClass = false">Annuler</button>
+        <button
+          v-if="createStep === 2"
+          type="submit"
+          form="create-class-form"
+          class="btn-primary"
+          :disabled="creatingClass || !createForm.level_id || (createLevelHasOptions && !createForm.school_option_id)"
+        >
+          {{ creatingClass ? 'Création…' : 'Créer la classe' }}
+        </button>
+      </template>
+    </Modal>
+
+    <!-- ── Générer les classes de base (sélection des options secondaires) ── -->
+    <Modal :open="showGenerateModal" title="Générer les classes de base" @close="showGenerateModal = false">
+      <p class="cc-hint">
+        Les classes de <strong>1ère maternelle à 8e CTEB</strong> sont générées automatiquement.
+        Sélectionnez les <strong>options / filières du secondaire</strong> à générer.
+      </p>
+      <div class="gen-options">
+        <div v-for="(opts, fil) in optionsByFiliere" :key="fil" class="gen-filiere">
+          <div class="gen-filiere-head">
+            <strong>{{ FILIERE_LABELS[fil as SchoolOptionFiliere] }}</strong>
+            <button type="button" class="link-btn" @click="toggleFiliere(opts)">Tout</button>
+          </div>
+          <label v-for="o in opts" :key="o.id" class="gen-option">
+            <input type="checkbox" :value="o.id" v-model="selectedGenerateOptionIds" />
+            <span translate="no">{{ o.name }}</span>
+          </label>
+        </div>
+      </div>
+      <template #footer>
+        <button type="button" @click="showGenerateModal = false">Annuler</button>
+        <button type="button" class="btn-primary" :disabled="generatingClasses" @click="confirmGenerate">
+          {{ generatingClasses ? 'Génération…' : `Générer (${selectedGenerateOptionIds.length} option(s))` }}
         </button>
       </template>
     </Modal>
@@ -1320,5 +1541,79 @@ button + button { margin-left: 0.4rem; }
   font-weight: 700;
   vertical-align: middle;
 }
+
+/* ── Modales Créer une classe / Générer ── */
+.cc-hint { margin: 0 0 1rem; color: var(--text-soft); font-size: 0.9rem; }
+.cc-hint strong { color: var(--text); }
+
+.link-btn {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0 0 0 0.4rem;
+  min-height: auto;
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.link-btn:hover { background: none; box-shadow: none; }
+
+.cycle-choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+.cycle-choice-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.1rem 1rem;
+  font-weight: 700;
+  font-size: 1rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--bg-soft);
+  color: var(--text);
+}
+.cycle-choice-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.create-class-form .field { margin-bottom: 0.85rem; }
+
+.gen-options {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.gen-filiere {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+  background: var(--bg-soft);
+}
+.gen-filiere-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-size: 0.92rem;
+}
+.gen-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  font-size: 0.9rem;
+  margin: 0;
+  cursor: pointer;
+}
+.gen-option input { width: auto; }
 
 </style>

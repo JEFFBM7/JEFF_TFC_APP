@@ -156,6 +156,7 @@ Route::prefix('v1')->group(function (): void {
             ->parameter('school-years', 'school_year')
             ->only(['index', 'show']);
         Route::get('school-years/{school_year}/school-classes', [SchoolClassController::class, 'index']);
+        Route::post('school-years/{school_year}/school-classes', [SchoolClassController::class, 'store']);
         Route::post(
             'school-years/{school_year}/generate-curriculum',
             [SchoolClassController::class, 'generateCurriculum'],
