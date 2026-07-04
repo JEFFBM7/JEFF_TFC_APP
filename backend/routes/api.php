@@ -157,10 +157,6 @@ Route::prefix('v1')->group(function (): void {
             ->only(['index', 'show']);
         Route::get('school-years/{school_year}/school-classes', [SchoolClassController::class, 'index']);
         Route::post('school-years/{school_year}/school-classes', [SchoolClassController::class, 'store']);
-        Route::post(
-            'school-years/{school_year}/generate-curriculum',
-            [SchoolClassController::class, 'generateCurriculum'],
-        );
         Route::post('school-classes/{school_class}/divisions', [SchoolClassController::class, 'addDivisions']);
         Route::post('school-classes/{school_class}/divisions/next', [SchoolClassController::class, 'addNextDivision']);
         Route::apiResource('levels', LevelController::class)->only(['index', 'show']);
@@ -254,6 +250,10 @@ Route::prefix('v1')->group(function (): void {
         Route::get('attendances', [StudentPortalController::class, 'attendances']);
         Route::patch('attendances/{attendance}/justify', [StudentPortalController::class, 'justifyAttendance']);
         Route::get('timetable', [StudentPortalController::class, 'timetable']);
+        // Choix d'option d'entrée au secondaire (8e CTEB) — fenêtre ouverte
+        // une semaine avant la clôture de l'année, consommé par le passage.
+        Route::get('option-choice', [StudentPortalController::class, 'optionChoice']);
+        Route::put('option-choice', [StudentPortalController::class, 'submitOptionChoice']);
     });
 
     // Portail parent (CDC UC-05)

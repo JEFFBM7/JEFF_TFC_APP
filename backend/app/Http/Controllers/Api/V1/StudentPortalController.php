@@ -9,8 +9,11 @@ use App\Http\Resources\Api\V1\TimetableSlotResource;
 use App\Models\Attendance;
 use App\Models\ClassRoom;
 use App\Models\Grade;
+use App\Models\Level;
 use App\Models\Period;
+use App\Models\SchoolOption;
 use App\Models\SchoolYear;
+use App\Models\StudentOptionChoice;
 use App\Models\Term;
 use App\Models\Student;
 use App\Models\TimetableSlot;
@@ -482,5 +485,136 @@ class StudentPortalController extends Controller
         $student = StudentProfileResolver::forCurrentSchoolYear($student, $request);
 
         return $student;
+    }
+
+    /**
+     * Formulaire de choix d'option (fin de 8e CTEB → entrée au secondaire).
+     * Ouvert automatiquement, selon le calendrier, une semaine avant la fin
+     * de l'année scolaire ; le choix est consommé par le passage de classe.
+     */
+    public function optionChoice(Request $request): JsonResponse
+    {
+        $student = $this->student($request)->loadMissing('classroom.level');
+        $context = $this->optionChoiceContext($student);
+
+        $choice = $context['year'] !== null
+            ? StudentOptionChoice::query()
+                ->where('student_id', $student->id)
+                ->where('school_year_id', $context['year']->id)
+                ->with('schoolOption')
+                ->first()
+            : null;
+
+        $options = $context['eligible']
+            ? SchoolOption::query()
+                ->where(fn ($query) => $query
+                    ->where('cycle', Level::CYCLE_SECONDAIRE)
+                    ->orWhereNull('cycle'))
+                ->orderBy('filiere')
+                ->orderBy('name')
+                ->get()
+                ->map(fn (SchoolOption $option) => [
+                    'id' => $option->id,
+                    'name' => $option->name,
+                    'abbreviation' => $option->abbreviation,
+                    'filiere' => $option->filiere,
+                ])
+                ->values()
+            : collect();
+
+        return response()->json([
+            'data' => [
+                'eligible' => $context['eligible'],
+                'open' => $context['open'],
+                'opens_on' => $context['opens_on']?->toDateString(),
+                'year_ends_on' => $context['year']?->ends_on?->toDateString(),
+                'school_year' => $context['year'] ? ['id' => $context['year']->id, 'name' => $context['year']->name] : null,
+                'target_level' => $context['target_level']?->name,
+                'options' => $options,
+                'choice' => $choice ? [
+                    'school_option_id' => $choice->school_option_id,
+                    'option_name' => $choice->schoolOption?->name,
+                    'submitted_at' => $choice->submitted_at?->toIso8601String(),
+                ] : null,
+            ],
+        ]);
+    }
+
+    /** Dépôt / modification du choix d'option pendant la fenêtre ouverte. */
+    public function submitOptionChoice(Request $request): JsonResponse
+    {
+        $student = $this->student($request)->loadMissing('classroom.level');
+        $context = $this->optionChoiceContext($student);
+
+        if (! $context['eligible']) {
+            abort(403, 'Le choix d’option ne concerne que les élèves en fin de cycle CTEB.');
+        }
+
+        if (! $context['open']) {
+            abort(403, sprintf(
+                'Le formulaire de choix d’option ouvre le %s (une semaine avant la clôture de l’année).',
+                $context['opens_on']?->format('d/m/Y') ?? '—',
+            ));
+        }
+
+        $data = $request->validate([
+            'school_option_id' => ['required', 'integer', 'exists:school_options,id'],
+        ]);
+
+        $option = SchoolOption::query()->findOrFail($data['school_option_id']);
+        if ($option->cycle !== null && $option->cycle !== Level::CYCLE_SECONDAIRE) {
+            abort(422, 'Cette option n’appartient pas au cycle secondaire.');
+        }
+
+        $choice = StudentOptionChoice::query()->updateOrCreate(
+            ['student_id' => $student->id, 'school_year_id' => $context['year']->id],
+            ['school_option_id' => $option->id, 'submitted_at' => now()],
+        );
+
+        return response()->json([
+            'data' => [
+                'school_option_id' => $choice->school_option_id,
+                'option_name' => $option->name,
+                'submitted_at' => $choice->submitted_at?->toIso8601String(),
+            ],
+        ], 201);
+    }
+
+    /**
+     * Éligibilité et fenêtre d'ouverture du formulaire : élève dont le niveau
+     * suivant est à options (8e CTEB → 1ère secondaire), à partir de 7 jours
+     * avant la fin de l'année scolaire courante (non archivée).
+     *
+     * @return array{eligible: bool, open: bool, opens_on: ?\Carbon\CarbonInterface, year: ?SchoolYear, target_level: ?Level}
+     */
+    private function optionChoiceContext(Student $student): array
+    {
+        $level = $student->classroom?->level;
+        $year = $student->enrollment_school_year_id !== null
+            ? SchoolYear::query()->find($student->enrollment_school_year_id)
+            : SchoolYear::query()->current()->first();
+
+        $targetLevel = $level !== null
+            ? Level::query()->where('order', '>', $level->order)->orderBy('order')->first()
+            : null;
+
+        $eligible = $year !== null
+            && ! $year->isArchived()
+            && $targetLevel !== null
+            && (bool) $targetLevel->has_options
+            && ! (bool) $level->has_options;
+
+        $opensOn = $year?->ends_on?->copy()->subDays(StudentOptionChoice::OPEN_DAYS_BEFORE_YEAR_END);
+        $open = $eligible
+            && $opensOn !== null
+            && DevCalendarContext::today()->toDateString() >= $opensOn->toDateString();
+
+        return [
+            'eligible' => $eligible,
+            'open' => $open,
+            'opens_on' => $opensOn,
+            'year' => $year,
+            'target_level' => $targetLevel,
+        ];
     }
 }

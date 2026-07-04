@@ -2,6 +2,7 @@
 import { computed, reactive, ref } from 'vue'
 import { api, ApiError } from '../../api/client'
 import { useConfirmStore } from '../../stores/confirm'
+import { useToastStore } from '../../stores/toast'
 import type { ApiResource, Paginated, SchoolYear } from '../../types'
 
 const props = defineProps<{ fromYear: SchoolYear; lockTo?: SchoolYear }>()
@@ -48,6 +49,7 @@ interface CommittedBatch {
 }
 
 const confirmDialog = useConfirmStore()
+const toast = useToastStore()
 
 const targetYears = ref<SchoolYear[]>([])
 const toYearId = ref<number | null>(props.lockTo?.id ?? null)
@@ -136,11 +138,22 @@ function classroomsForRow(row: PromotionStudentRow): PromotionClassroom[] {
   return all
 }
 
+/** Lignes qui seront ignorées au commit : promotion/redoublement sans classe cible. */
+const unresolvedCount = computed(() =>
+  Object.values(decisions).filter(
+    (choice) => (choice.decision === 'promu' || choice.decision === 'redouble')
+      && choice.target_classroom_id === null,
+  ).length,
+)
+
 async function commit(): Promise<void> {
   if (!canCommit.value || toYearId.value === null) return
   const ok = await confirmDialog.ask({
     title: 'Confirmer le passage de classe',
     message: `Les élèves seront inscrits dans « ${toYear.value?.name} » selon les décisions affichées. Les comptes existants sont réutilisés.`,
+    note: unresolvedCount.value > 0
+      ? `⚠ ${unresolvedCount.value} élève(s) n'ont pas de classe cible et seront IGNORÉS par ce passage. Choisissez leur classe dans la colonne « Classe cible » avant de confirmer.`
+      : undefined,
     confirmLabel: 'Confirmer le passage',
     variant: 'warning',
   })
@@ -164,6 +177,10 @@ async function commit(): Promise<void> {
       { method: 'POST', body: payload },
     )
     committedBatch.value = res.data
+    toast.success(
+      `Passage effectué : ${res.data.promoted_count} promu(s), ${res.data.repeated_count} redoublant(s), ${res.data.graduated_count} diplômé(s).`,
+      6000,
+    )
     emit('committed')
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Passage impossible.'
@@ -187,6 +204,7 @@ async function rollback(): Promise<void> {
   try {
     await api(`/api/v1/promotion-batches/${committedBatch.value.id}/rollback`, { method: 'POST' })
     committedBatch.value = null
+    toast.info('Passage annulé : les inscriptions créées ont été supprimées.')
     await runPreview()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Annulation impossible.'
@@ -230,6 +248,15 @@ const STATUS_HINT: Record<PromotionStudentRow['resolution_status'], string> = {
         {{ loadingPreview ? 'Calcul…' : 'Prévisualiser le passage' }}
       </button>
       <button v-if="!lockTo && !targetYears.length && !loadingYears" class="btn-ghost" @click="ensureYears">Charger les années</button>
+      <!-- À côté de « Prévisualiser » pour confirmer sans devoir défiler le tableau. -->
+      <button
+        v-if="preview && !committedBatch"
+        class="btn-primary"
+        :disabled="committing || !canCommit"
+        @click="commit"
+      >
+        {{ committing ? 'Passage en cours…' : `Confirmer le passage vers ${toYear?.name ?? ''}` }}
+      </button>
     </div>
 
     <!-- Résultat d'un passage confirmé -->
@@ -253,6 +280,7 @@ const STATUS_HINT: Record<PromotionStudentRow['resolution_status'], string> = {
         <span class="chip">{{ preview.summary.graduate }} diplômés</span>
         <span v-if="preview.summary.to_review" class="chip chip-review">{{ preview.summary.to_review }} à vérifier</span>
         <span v-if="preview.summary.already_promoted" class="chip">{{ preview.summary.already_promoted }} déjà inscrits</span>
+        <span v-if="unresolvedCount > 0" class="chip chip-review">{{ unresolvedCount }} sans classe cible (ignorés au passage)</span>
       </div>
 
       <div class="promotion-table-wrap">
@@ -302,12 +330,6 @@ const STATUS_HINT: Record<PromotionStudentRow['resolution_status'], string> = {
           </tbody>
         </table>
       </div>
-
-      <div class="promotion-actions">
-        <button class="btn-primary" :disabled="committing || !canCommit" @click="commit">
-          {{ committing ? 'Passage en cours…' : `Confirmer le passage vers ${toYear?.name ?? ''}` }}
-        </button>
-      </div>
     </template>
   </section>
 </template>
@@ -327,12 +349,29 @@ const STATUS_HINT: Record<PromotionStudentRow['resolution_status'], string> = {
 .chip-ok { background: #dcfce7; color: #166534; }
 .chip-warn { background: #fef3c7; color: #92400e; }
 .chip-review { background: #fee2e2; color: #991b1b; }
-.promotion-table-wrap { overflow-x: auto; }
+/*
+ * Le tableau (jusqu'à ~150 élèves) défile dans SA PROPRE zone bornée. Les
+ * contrôles (année cible, Prévisualiser, Confirmer) restent au-dessus, en
+ * flux normal, toujours visibles sans dépendre du défilement du tableau.
+ */
+.promotion-table-wrap {
+  overflow: auto;
+  max-height: min(48vh, 30rem);
+  border: 1px solid var(--border, #eef0f3);
+  border-radius: 0.6rem;
+}
 .promotion-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.promotion-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-card, #fff);
+  box-shadow: 0 1px 0 #eef0f3;
+  z-index: 1;
+}
 .promotion-table th, .promotion-table td { text-align: left; padding: 0.7rem 0.9rem; border-bottom: 1px solid #eef0f3; vertical-align: top; }
+.promotion-table tbody tr:last-child td { border-bottom: 0; }
 .promotion-table select { width: 100%; padding: 0.3rem 0.4rem; }
 .student-name { display: block; font-weight: 600; }
 .avg-fail { color: #b91c1c; font-weight: 600; }
 .hint-warn { display: block; color: #92400e; margin-top: 0.2rem; }
-.promotion-actions { display: flex; justify-content: flex-end; }
 </style>

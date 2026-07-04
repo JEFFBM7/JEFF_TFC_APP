@@ -9,7 +9,9 @@ use App\Models\Grade;
 use App\Models\Level;
 use App\Models\PromotionBatch;
 use App\Models\SchoolClass;
+use App\Models\SchoolOption;
 use App\Models\SchoolYear;
+use App\Models\StudentOptionChoice;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -43,6 +45,9 @@ class PromotionService
     {
         $threshold = $this->threshold();
         $termIds = $from->terms()->pluck('id');
+
+        $this->ensureTargetClasses($from, $to);
+
         $toSchoolClasses = SchoolClass::query()
             ->where('school_year_id', $to->id)
             ->with('divisions')
@@ -51,6 +56,8 @@ class PromotionService
         $alreadyByStudent = Enrollment::query()
             ->where('school_year_id', $to->id)
             ->pluck('classroom_id', 'student_id');
+
+        $optionChoices = $this->optionChoicesForYear($from);
 
         $sources = Enrollment::query()
             ->where('school_year_id', $from->id)
@@ -77,6 +84,7 @@ class PromotionService
                 $suggestedDecision ?? self::DECISION_PROMOTED,
                 $toSchoolClasses,
                 $tally,
+                $optionChoices,
             );
 
             if ($resolution['status'] === 'graduate') {
@@ -137,6 +145,8 @@ class PromotionService
     public function commit(SchoolYear $from, SchoolYear $to, array $decisions, ?int $userId): PromotionBatch
     {
         return DB::transaction(function () use ($from, $to, $decisions, $userId): PromotionBatch {
+            $this->ensureTargetClasses($from, $to);
+
             $batch = PromotionBatch::query()->create([
                 'from_school_year_id' => $from->id,
                 'to_school_year_id' => $to->id,
@@ -211,6 +221,13 @@ class PromotionService
                 'graduated_count' => $graduated,
             ]);
 
+            // Passage vers une année DÉJÀ courante (ex. activée avant le
+            // passage) : le cache élèves (classe + année) est recalé tout de
+            // suite — sinon il ne le serait qu'à la prochaine activation.
+            if ($to->is_current) {
+                app(EnrollmentService::class)->syncStudentPointersForYear($to);
+            }
+
             return $batch->fresh();
         });
     }
@@ -256,14 +273,33 @@ class PromotionService
     }
 
     /**
+     * Choix d'option (entrée au secondaire) déposés par les élèves via le
+     * portail pendant l'année source, indexés par student_id.
+     *
+     * @return Collection<int, int>
+     */
+    private function optionChoicesForYear(SchoolYear $from): Collection
+    {
+        return StudentOptionChoice::query()
+            ->where('school_year_id', $from->id)
+            ->pluck('school_option_id', 'student_id');
+    }
+
+    /**
      * Détermine la classe cible d'un élève selon la décision.
      *
      * @param  Collection<int, SchoolClass>  $toSchoolClasses
      * @param  array<int, int>  $tally  Charge en cours par division (répartition)
+     * @param  Collection<int, int>|null  $optionChoices  school_option_id choisi, par student_id
      * @return array{status:string, level:?Level, classroom_id:?int, warnings:array<int, string>}
      */
-    private function resolveTarget(Enrollment $source, string $decision, Collection $toSchoolClasses, array &$tally): array
-    {
+    private function resolveTarget(
+        Enrollment $source,
+        string $decision,
+        Collection $toSchoolClasses,
+        array &$tally,
+        ?Collection $optionChoices = null,
+    ): array {
         $sourceClassroom = $source->classroom;
         $sourceLevel = $sourceClassroom?->level;
 
@@ -282,14 +318,23 @@ class PromotionService
         }
 
         $optionId = $targetLevel->has_options ? $sourceClassroom->school_option_id : null;
+        $warnings = [];
 
         if ($targetLevel->has_options && $optionId === null) {
-            return [
-                'status' => 'needs_option',
-                'level' => $targetLevel,
-                'classroom_id' => null,
-                'warnings' => ['Entrée au secondaire : choisir l’option/section manuellement.'],
-            ];
+            // Entrée au secondaire : le choix déposé par l'élève via le portail
+            // (formulaire ouvert avant la clôture de l'année) fait foi.
+            $optionId = $optionChoices?->get($source->student_id);
+
+            if ($optionId === null) {
+                return [
+                    'status' => 'needs_option',
+                    'level' => $targetLevel,
+                    'classroom_id' => null,
+                    'warnings' => ['Entrée au secondaire : aucun choix d’option déposé par l’élève — choisir manuellement.'],
+                ];
+            }
+
+            $warnings[] = 'Option choisie par l’élève via le portail.';
         }
 
         $schoolClass = $toSchoolClasses->first(
@@ -317,7 +362,85 @@ class PromotionService
             ];
         }
 
-        return ['status' => 'ok', 'level' => $targetLevel, 'classroom_id' => $division->id, 'warnings' => []];
+        return ['status' => 'ok', 'level' => $targetLevel, 'classroom_id' => $division->id, 'warnings' => $warnings];
+    }
+
+    /**
+     * Garantit que chaque classe cible du passage existe dans l'année
+     * destination (classe + division A), au lieu d'exiger une génération
+     * manuelle préalable : niveaux de redoublement, niveaux supérieurs, et
+     * options du secondaire (héritées de la classe source ou choisies par
+     * l'élève via le portail). Idempotent.
+     */
+    public function ensureTargetClasses(SchoolYear $from, SchoolYear $to): void
+    {
+        $generator = app(SchoolClassGenerationService::class);
+        $optionChoices = $this->optionChoicesForYear($from);
+
+        $sources = Enrollment::query()
+            ->where('school_year_id', $from->id)
+            ->with(['classroom.level', 'classroom.schoolOption'])
+            ->get();
+
+        /** @var array<string, array{level: Level, option_id: ?int}> $needed */
+        $needed = [];
+        $push = function (Level $level, ?int $optionId) use (&$needed): void {
+            $needed[$level->id.'-'.($optionId ?? '0')] = ['level' => $level, 'option_id' => $optionId];
+        };
+
+        foreach ($sources as $source) {
+            $level = $source->classroom?->level;
+            if ($level === null) {
+                continue;
+            }
+
+            // Redoublement : même niveau (+ option d'origine le cas échéant).
+            $push($level, $level->has_options ? $source->classroom->school_option_id : null);
+
+            // Promotion : niveau suivant.
+            $next = $this->nextLevel($level);
+            if ($next === null) {
+                continue;
+            }
+
+            if (! $next->has_options) {
+                $push($next, null);
+
+                continue;
+            }
+
+            $optionId = $source->classroom->school_option_id
+                ?? $optionChoices->get($source->student_id);
+
+            if ($optionId !== null) {
+                $push($next, (int) $optionId);
+            }
+        }
+
+        if ($needed === []) {
+            return;
+        }
+
+        $existing = SchoolClass::query()
+            ->where('school_year_id', $to->id)
+            ->withCount('divisions')
+            ->get();
+
+        foreach ($needed as $target) {
+            $schoolClass = $existing->first(
+                fn (SchoolClass $sc) => $sc->level_id === $target['level']->id
+                    && (string) $sc->school_option_id === (string) ($target['option_id'] ?? ''),
+            );
+
+            if ($schoolClass === null) {
+                $option = $target['option_id'] !== null
+                    ? SchoolOption::query()->find($target['option_id'])
+                    : null;
+                $generator->createClass($to, $target['level'], $option);
+            } elseif ((int) $schoolClass->divisions_count === 0) {
+                $generator->addNextDivision($schoolClass, 40);
+            }
+        }
     }
 
     /** Niveau immédiatement supérieur par `order` (gère les sauts entre cycles). */

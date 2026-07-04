@@ -41,12 +41,6 @@ class PromotionController extends Controller
             return response()->json(['message' => 'Année cible archivée : impossible d’y inscrire des élèves.'], 423);
         }
 
-        if ($to->is_current) {
-            return response()->json([
-                'message' => "L'année cible est déjà l'année courante : effectuez le passage avant de la rendre courante.",
-            ], 422);
-        }
-
         $batch = $this->promotion->commit(
             $schoolYear,
             $to,

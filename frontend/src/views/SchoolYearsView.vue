@@ -6,6 +6,7 @@ import Modal from '../components/Modal.vue'
 import PromotionPanel from '../components/schoolyear/PromotionPanel.vue'
 import RowActionMenu from '../components/RowActionMenu.vue'
 import { useConfirmStore } from '../stores/confirm'
+import { useToastStore } from '../stores/toast'
 import { useSchoolYearStore } from '../stores/schoolYear'
 import { CalendarDays, Star, BookOpen, Archive, RefreshCw, Plus } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
@@ -14,6 +15,7 @@ const router = useRouter()
 
 const schoolYearStore = useSchoolYearStore()
 const confirmDialog = useConfirmStore()
+const toast = useToastStore()
 const items = ref<SchoolYear[]>([])
 const loading = ref(false)
 const error = ref('')
@@ -28,6 +30,7 @@ const submitting = ref(false)
 const step = ref<1 | 2>(1)
 const createdYear = ref<SchoolYear | null>(null)
 const passageSource = ref<SchoolYear | null>(null)
+const passageCommitted = ref(false)
 const canPromoteOnCreate = computed(() => !editing.value && items.value.length > 0)
 const modalTitle = computed(() => {
   if (step.value === 2) return 'Passage de classe'
@@ -166,6 +169,7 @@ function closeForm(): void {
   step.value = 1
   createdYear.value = null
   passageSource.value = null
+  passageCommitted.value = false
 }
 
 async function submit(): Promise<void> {
@@ -192,6 +196,7 @@ async function submit(): Promise<void> {
       body: promote ? { ...form, is_current: false } : { ...form },
     })
     const saved = res.data
+    toast.success(`Année ${saved.name} créée avec ses classes et son calendrier.`)
 
     if (promote) {
       passageSource.value =
@@ -222,15 +227,35 @@ async function submit(): Promise<void> {
  * l'année précédente est automatiquement archivée (clôture de l'année écoulée).
  */
 async function finishCreate(makeCurrent: boolean): Promise<void> {
+  if (!passageCommitted.value && passageSource.value) {
+    const ok = await confirmDialog.ask({
+      title: 'Passage de classe non appliqué',
+      message: `Aucun passage n'a été confirmé : les élèves de ${passageSource.value.name} ne seront PAS inscrits dans ${createdYear.value?.name ?? 'la nouvelle année'}.`,
+      note: 'Pour appliquer le passage : « Prévisualiser le passage » puis « Confirmer le passage ». Vous pourrez aussi le faire plus tard depuis le détail de l’année source.',
+      confirmLabel: 'Terminer sans passage',
+      variant: 'warning',
+    })
+    if (!ok) return
+  }
+
   if (makeCurrent && createdYear.value) {
-    await setCurrent(createdYear.value)
+    const activated = await setCurrent(createdYear.value)
+    if (!activated) return
+
     if (passageSource.value) {
       try {
         await api(`/api/v1/school-years/${passageSource.value.id}/archive`, { method: 'POST' })
+        toast.success(`Année ${createdYear.value.name} activée — ${passageSource.value.name} archivée.`, 6000)
       } catch {
         // Archivage non bloquant : l'activation a déjà réussi.
+        toast.success(`Année ${createdYear.value.name} activée.`)
+        toast.error(`Archivage de ${passageSource.value.name} impossible — à faire manuellement.`, 7000)
       }
+    } else {
+      toast.success(`Année ${createdYear.value.name} activée.`)
     }
+  } else if (createdYear.value) {
+    toast.info(`Année ${createdYear.value.name} créée. Activez-la quand vous serez prêt.`)
   }
   closeForm()
   await load()
@@ -254,7 +279,7 @@ async function remove(item: SchoolYear): Promise<void> {
   }
 }
 
-async function setCurrent(item: SchoolYear): Promise<void> {
+async function setCurrent(item: SchoolYear): Promise<boolean> {
   try {
     await api<ApiResource<SchoolYear>>(`/api/v1/school-years/${item.id}`, {
       method: 'PUT',
@@ -267,8 +292,10 @@ async function setCurrent(item: SchoolYear): Promise<void> {
     })
     schoolYearStore.markCurrent(item.id)
     await load()
+    return true
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'Impossible de définir l\'année courante.'
+    return false
   }
 }
 
@@ -508,7 +535,11 @@ onMounted(load)
             automatiquement <strong>archivée</strong> (clôturée).
           </span>
         </p>
-        <PromotionPanel :fromYear="passageSource" :lockTo="createdYear" @committed="load" />
+        <PromotionPanel
+          :fromYear="passageSource"
+          :lockTo="createdYear"
+          @committed="passageCommitted = true; load()"
+        />
       </div>
 
       <template #footer>

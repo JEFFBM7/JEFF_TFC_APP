@@ -9,10 +9,13 @@ const props = withDefaults(
     size?: 'default' | 'large' | 'xlarge'
     /** Fermeture au clic sur le fond (désactivé par défaut pour éviter les fermetures accidentelles). */
     closeOnBackdrop?: boolean
+    /** Classe additionnelle sur l'overlay (la racine étant un Teleport, `class` ne retombe pas dessus). */
+    overlayClass?: string
   }>(),
   {
     size: 'default',
     closeOnBackdrop: false,
+    overlayClass: undefined,
   },
 )
 
@@ -119,7 +122,7 @@ const dialogClass = computed(() => ({
 <template>
   <Teleport to="body">
     <Transition name="fade">
-      <div v-if="open" class="overlay" @click.self="onOverlayClick" @keydown="onKeydown">
+      <div v-if="open" class="overlay" :class="overlayClass" @click.self="onOverlayClick" @keydown="onKeydown">
         <div
           ref="dialogRef"
           class="dialog"

@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { api, ApiError } from '../api/client'
 import { useAuthStore } from '../stores/auth'
+import { useToastStore } from '../stores/toast'
 import { usePortalDashboard } from '../composables/usePortalDashboard'
 import {
   RefreshCw,
@@ -61,12 +62,81 @@ const summary = ref<StudentSummary | null>(null)
 const loading = ref(false)
 const error = ref('')
 
+// ── Choix d'option d'entrée au secondaire (fin de 8e CTEB) ──
+interface OptionChoiceState {
+  eligible: boolean
+  open: boolean
+  opens_on: string | null
+  year_ends_on: string | null
+  school_year: { id: number; name: string } | null
+  target_level: string | null
+  options: Array<{ id: number; name: string; abbreviation: string | null; filiere: string | null }>
+  choice: { school_option_id: number; option_name: string | null; submitted_at: string | null } | null
+}
+
+const optionChoice = ref<OptionChoiceState | null>(null)
+const selectedOptionId = ref<number | null>(null)
+const submittingChoice = ref(false)
+const choiceMessage = ref('')
+const choiceError = ref('')
+
+const FILIERE_LABELS: Record<string, string> = {
+  generale: 'Filière générale',
+  technique: 'Filière technique',
+  professionnelle: 'Filière professionnelle',
+}
+
+const optionsByFiliere = computed(() => {
+  const groups: Record<string, OptionChoiceState['options']> = {}
+  for (const option of optionChoice.value?.options ?? []) {
+    const key = option.filiere ?? 'generale'
+    ;(groups[key] ??= []).push(option)
+  }
+  return groups
+})
+
+const showOptionChoiceCard = computed(() => {
+  const state = optionChoice.value
+  return !!state && state.eligible && (state.open || state.choice !== null)
+})
+
+async function loadOptionChoice(): Promise<void> {
+  try {
+    const res = await api<{ data: OptionChoiceState }>('/api/v1/student/option-choice')
+    optionChoice.value = res.data
+    selectedOptionId.value = res.data.choice?.school_option_id ?? null
+  } catch {
+    optionChoice.value = null
+  }
+}
+
+async function submitOptionChoice(): Promise<void> {
+  if (selectedOptionId.value === null) return
+  submittingChoice.value = true
+  choiceMessage.value = ''
+  choiceError.value = ''
+  try {
+    await api('/api/v1/student/option-choice', {
+      method: 'PUT',
+      body: { school_option_id: selectedOptionId.value },
+    })
+    choiceMessage.value = 'Ton choix a bien été enregistré. Tu peux encore le modifier tant que le formulaire est ouvert.'
+    useToastStore().success('Choix d’option enregistré.')
+    await loadOptionChoice()
+  } catch (e) {
+    choiceError.value = e instanceof ApiError ? e.message : 'Enregistrement impossible.'
+  } finally {
+    submittingChoice.value = false
+  }
+}
+
 async function load(): Promise<void> {
   loading.value = true
   error.value = ''
   try {
     const res = await api<{ data: StudentSummary }>('/api/v1/student/dashboard')
     summary.value = res.data
+    void loadOptionChoice()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Erreur de chargement.'
   } finally {
@@ -219,6 +289,48 @@ onMounted(() => {
         </div>
         <ArrowRight class="portal-dash-alert__arrow" aria-hidden="true" />
       </RouterLink>
+
+      <!-- Choix d'option d'entrée au secondaire (fin de 8e CTEB) -->
+      <section
+        v-if="showOptionChoiceCard && optionChoice"
+        class="portal-option-choice portal-dash-animate portal-dash-animate--delay-1"
+        aria-labelledby="option-choice-title"
+      >
+        <header class="portal-option-choice__head">
+          <GraduationCap aria-hidden="true" />
+          <div>
+            <h2 id="option-choice-title">Choisis ton option pour le secondaire</h2>
+            <p>
+              Tu termines le cycle CTEB : indique l'option / la filière que tu souhaites suivre en
+              <strong>{{ optionChoice.target_level ?? '1ère secondaire' }}</strong>
+              ({{ optionChoice.school_year?.name ? 'rentrée après ' + optionChoice.school_year.name : 'année prochaine' }}).
+              Ce choix sera utilisé pour ton passage de classe.
+            </p>
+          </div>
+        </header>
+
+        <p v-if="optionChoice.choice" class="portal-option-choice__current">
+          Choix enregistré : <strong>{{ optionChoice.choice.option_name }}</strong>
+          <template v-if="optionChoice.open"> — tu peux encore le modifier ci-dessous.</template>
+        </p>
+
+        <form v-if="optionChoice.open" class="portal-option-choice__form" @submit.prevent="submitOptionChoice">
+          <fieldset v-for="(opts, fil) in optionsByFiliere" :key="fil" class="portal-option-choice__group">
+            <legend>{{ FILIERE_LABELS[fil] ?? fil }}</legend>
+            <label v-for="option in opts" :key="option.id" class="portal-option-choice__option">
+              <input v-model.number="selectedOptionId" type="radio" name="option-choice" :value="option.id" />
+              <span>{{ option.name }}</span>
+            </label>
+          </fieldset>
+
+          <p v-if="choiceError" class="alert alert-error" role="alert">{{ choiceError }}</p>
+          <p v-if="choiceMessage" class="portal-option-choice__saved" role="status">{{ choiceMessage }}</p>
+
+          <button type="submit" class="btn-primary" :disabled="submittingChoice || selectedOptionId === null">
+            {{ submittingChoice ? 'Enregistrement…' : optionChoice.choice ? 'Modifier mon choix' : 'Valider mon choix' }}
+          </button>
+        </form>
+      </section>
 
       <RouterLink
         :to="{ name: 'student-bulletin' }"
@@ -586,5 +698,81 @@ onMounted(() => {
   height: 100%;
   border-radius: 999px;
   background: var(--accent);
+}
+
+/* ── Choix d'option d'entrée au secondaire ── */
+.portal-option-choice {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--primary-tint);
+  border-radius: 14px;
+  background: var(--primary-soft);
+}
+.portal-option-choice__head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+.portal-option-choice__head svg {
+  width: 1.4rem;
+  height: 1.4rem;
+  flex-shrink: 0;
+  color: var(--primary);
+  margin-top: 0.15rem;
+}
+.portal-option-choice__head h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.02rem;
+}
+.portal-option-choice__head p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+.portal-option-choice__current {
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  background: var(--success-soft);
+  color: var(--success);
+  font-size: 0.88rem;
+}
+.portal-option-choice__form {
+  display: grid;
+  gap: 0.85rem;
+}
+.portal-option-choice__group {
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-card);
+}
+.portal-option-choice__group legend {
+  padding: 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.portal-option-choice__option {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.3rem 0;
+  margin: 0;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+.portal-option-choice__option input {
+  width: auto;
+}
+.portal-option-choice__saved {
+  margin: 0;
+  color: var(--success);
+  font-size: 0.86rem;
+  font-weight: 700;
 }
 </style>

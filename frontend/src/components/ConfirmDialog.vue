@@ -7,6 +7,7 @@ const confirmDialog = useConfirmStore()
 
 <template>
   <Modal
+    overlay-class="confirm-overlay"
     :open="confirmDialog.open"
     :title="confirmDialog.options.title"
     max-width="34rem"
@@ -160,5 +161,15 @@ const confirmDialog = useConfirmStore()
 .confirm-action.warning:hover {
   border-color: #c2410c;
   background: #c2410c;
+}
+</style>
+
+<style>
+/* Le Modal téléporte vers <body> : une modale métier ouverte APRÈS le montage
+   du ConfirmDialog serait peinte au-dessus (z-index égal, ordre DOM). La
+   confirmation doit toujours passer devant, sinon les boutons qui la
+   déclenchent paraissent morts. */
+.overlay.confirm-overlay {
+  z-index: 300;
 }
 </style>

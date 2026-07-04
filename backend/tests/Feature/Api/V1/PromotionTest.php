@@ -320,4 +320,120 @@ class PromotionTest extends TestCase
         ]);
         $this->assertSame(0, Enrollment::query()->where('school_year_id', $to->id)->count());
     }
+
+    public function test_commit_into_already_current_year_syncs_student_pointers(): void
+    {
+        $s = $this->scaffold();
+        $admin = $this->admin();
+
+        // L'année cible est activée AVANT le passage (cas « Rendre courante & terminer »).
+        $s['to']->update(['is_current' => true]);
+
+        $preview = $this->actingAs($admin, 'sanctum')
+            ->getJson("/api/v1/school-years/{$s['from']->id}/promotion/preview?to_year_id={$s['to']->id}")
+            ->json('data.students');
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/school-years/{$s['from']->id}/promotion/commit", [
+                'to_year_id' => $s['to']->id,
+                'decisions' => $this->decisionsFromPreview($preview),
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.promoted_count', 1);
+
+        // Le cache de l'élève admis pointe immédiatement sur la nouvelle année.
+        $admitted = $s['admitted']->fresh();
+        $this->assertSame($s['to']->id, (int) $admitted->enrollment_school_year_id);
+        $this->assertSame($s['divNext']->id, (int) $admitted->classroom_id);
+    }
+
+    public function test_preview_creates_missing_target_classes_automatically(): void
+    {
+        $levelFrom = Level::factory()->create(['order' => 10, 'has_options' => false]);
+        $levelNext = Level::factory()->create(['order' => 11, 'has_options' => false]);
+
+        $from = SchoolYear::factory()->create(['starts_on' => '2025-09-01', 'ends_on' => '2026-06-30']);
+        $to = SchoolYear::factory()->create(['starts_on' => '2026-09-01', 'ends_on' => '2027-06-30']);
+
+        $divFrom = $this->division($from, $levelFrom);
+        $term = Term::factory()->create(['school_year_id' => $from->id, 'position' => 1]);
+
+        $student = Student::factory()->create([
+            'classroom_id' => $divFrom->id,
+            'enrollment_school_year_id' => $from->id,
+        ]);
+        $this->gradeStudent($student, $divFrom, $term, 15);
+
+        // Année cible volontairement vide : aucune classe générée.
+        $this->assertSame(0, SchoolClass::query()->where('school_year_id', $to->id)->count());
+
+        $preview = $this->actingAs($this->admin(), 'sanctum')
+            ->getJson("/api/v1/school-years/{$from->id}/promotion/preview?to_year_id={$to->id}")
+            ->assertOk()
+            ->json('data.students');
+
+        // Les classes cibles (niveau suivant + redoublement) ont été créées
+        // avec une division, et l'élève admis est résolu automatiquement.
+        $this->assertSame('ok', $preview[0]['resolution_status']);
+        $this->assertNotNull($preview[0]['target_classroom_id']);
+        $this->assertSame(2, SchoolClass::query()->where('school_year_id', $to->id)->count());
+    }
+
+    public function test_cteb_student_option_choice_resolves_secondary_target(): void
+    {
+        $levelCteb = Level::factory()->create(['order' => 21, 'has_options' => false, 'cycle' => Level::CYCLE_CTEB]);
+        $levelSec = Level::factory()->create(['order' => 30, 'has_options' => true, 'cycle' => Level::CYCLE_SECONDAIRE]);
+        $option = \App\Models\SchoolOption::query()->create([
+            'name' => 'Scientifique',
+            'abbreviation' => 'SCI',
+            'cycle' => Level::CYCLE_SECONDAIRE,
+            'filiere' => 'generale',
+        ]);
+
+        $from = SchoolYear::factory()->create(['starts_on' => '2025-09-01', 'ends_on' => '2026-06-30']);
+        $to = SchoolYear::factory()->create(['starts_on' => '2026-09-01', 'ends_on' => '2027-06-30']);
+
+        $divCteb = $this->division($from, $levelCteb);
+        $term = Term::factory()->create(['school_year_id' => $from->id, 'position' => 1]);
+
+        $withChoice = Student::factory()->create([
+            'classroom_id' => $divCteb->id,
+            'enrollment_school_year_id' => $from->id,
+            'last_name' => 'AvecChoix',
+        ]);
+        $withoutChoice = Student::factory()->create([
+            'classroom_id' => $divCteb->id,
+            'enrollment_school_year_id' => $from->id,
+            'last_name' => 'SansChoix',
+        ]);
+        $this->gradeStudent($withChoice, $divCteb, $term, 14);
+        $this->gradeStudent($withoutChoice, $divCteb, $term, 13);
+
+        \App\Models\StudentOptionChoice::query()->create([
+            'student_id' => $withChoice->id,
+            'school_year_id' => $from->id,
+            'school_option_id' => $option->id,
+            'submitted_at' => now(),
+        ]);
+
+        $preview = collect($this->actingAs($this->admin(), 'sanctum')
+            ->getJson("/api/v1/school-years/{$from->id}/promotion/preview?to_year_id={$to->id}")
+            ->assertOk()
+            ->json('data.students'));
+
+        $rowWith = $preview->firstWhere('student.id', $withChoice->id);
+        $rowWithout = $preview->firstWhere('student.id', $withoutChoice->id);
+
+        // Le choix déposé résout la classe cible (créée à la volée avec l'option).
+        $this->assertSame('ok', $rowWith['resolution_status']);
+        $this->assertNotNull($rowWith['target_classroom_id']);
+        $this->assertTrue(SchoolClass::query()
+            ->where('school_year_id', $to->id)
+            ->where('level_id', $levelSec->id)
+            ->where('school_option_id', $option->id)
+            ->exists());
+
+        // Sans choix déposé : reste à arbitrer manuellement.
+        $this->assertSame('needs_option', $rowWithout['resolution_status']);
+    }
 }
