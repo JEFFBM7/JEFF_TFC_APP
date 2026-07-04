@@ -17,6 +17,7 @@ use App\Models\TeacherAssignment;
 use App\Models\Term;
 use App\Models\TimetableSlot;
 use App\Models\User;
+use App\Services\TeacherRegistrationNumberService;
 use App\Services\TermGenerationService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
@@ -61,18 +62,32 @@ class FullYearSeeder extends Seeder
             'coef' => $d[1],
         ]);
 
-        // Pool d'enseignants réutilisés sur toutes les classes.
-        $teachers = collect(range(1, 18))->map(function (int $n) use ($subjects): Teacher {
+        // Deux pools d'enseignants : titulaires (maternelle/primaire) et
+        // spécialistes (CTEB/secondaire, spécialité = nom du cours).
+        $regNumbers = app(TeacherRegistrationNumberService::class);
+        $makeTeacher = function (int $n, string $type, ?string $speciality) use ($regNumbers): Teacher {
             $user = User::updateOrCreate(
                 ['email' => "prof{$n}@malunga.test"],
                 ['name' => "Prof Démo {$n}", 'password' => Hash::make('password'),
                     'role' => UserRole::Enseignant, 'email_verified_at' => now()],
             );
 
-            return Teacher::updateOrCreate(['user_id' => $user->id], [
-                'speciality' => $subjects[($n - 1) % $subjects->count()]['model']->name,
+            $teacher = Teacher::updateOrCreate(['user_id' => $user->id], [
+                'teacher_type' => $type,
+                'speciality' => $speciality,
             ]);
-        });
+
+            return $regNumbers->assignIfMissing($teacher);
+        };
+
+        $primaryTeachers = collect(range(1, 9))
+            ->map(fn (int $n) => $makeTeacher($n, Teacher::TYPE_PRIMAIRE, null));
+        $secondaryTeachers = collect(range(10, 18))
+            ->map(fn (int $n) => $makeTeacher(
+                $n,
+                Teacher::TYPE_SECONDAIRE,
+                $subjects[($n - 10) % $subjects->count()]['model']->name,
+            ));
 
         $classrooms = ClassRoom::query()
             ->whereHas('schoolClass', fn ($q) => $q->where('school_year_id', $year->id))
@@ -83,12 +98,12 @@ class FullYearSeeder extends Seeder
         $studentTotal = 0;
 
         DB::transaction(function () use (
-            $classrooms, $subjects, $teachers, $termsByCycle, $year, $faker, $times, &$studentTotal
+            $classrooms, $subjects, $primaryTeachers, $secondaryTeachers, $termsByCycle, $year, $faker, $times, &$studentTotal
         ): void {
             foreach ($classrooms as $ci => $cls) {
                 $cycle = $cls->level?->cycle;
-                $termCycle = in_array($cycle, [Level::CYCLE_SECONDAIRE, Level::CYCLE_CTEB], true)
-                    ? Term::CYCLE_SECONDAIRE : Term::CYCLE_PRIMAIRE;
+                $isSecondaryCycle = in_array($cycle, [Level::CYCLE_SECONDAIRE, Level::CYCLE_CTEB], true);
+                $termCycle = $isSecondaryCycle ? Term::CYCLE_SECONDAIRE : Term::CYCLE_PRIMAIRE;
                 $terms = $termsByCycle[$termCycle] ?? collect();
                 $portalEligible = in_array($cycle, [Level::CYCLE_CTEB, Level::CYCLE_SECONDAIRE], true);
 
@@ -99,11 +114,24 @@ class FullYearSeeder extends Seeder
                     }
                 }
 
+                // Prof principal (référent) du bon cycle.
+                $pool = $isSecondaryCycle ? $secondaryTeachers : $primaryTeachers;
+                $mainTeacher = $pool[$ci % $pool->count()];
+                TeacherAssignment::firstOrCreate([
+                    'teacher_id' => $mainTeacher->id, 'classroom_id' => $cls->id,
+                    'subject_id' => null, 'school_year_id' => $year->id,
+                ], ['is_main' => true]);
+
                 // Affectation d'un enseignant par matière + emploi du temps.
+                // Maternelle/primaire : le titulaire assure tous les cours ;
+                // CTEB/secondaire : un spécialiste par matière.
                 $classTeacher = [];
                 foreach ($subjects as $si => $entry) {
                     $subject = $entry['model'];
-                    $teacher = $teachers[($ci + $si) % $teachers->count()];
+                    $teacher = $isSecondaryCycle
+                        ? ($secondaryTeachers->first(fn (Teacher $t) => $t->speciality === $subject->name)
+                            ?? $secondaryTeachers[($ci + $si) % $secondaryTeachers->count()])
+                        : $mainTeacher;
                     $classTeacher[$subject->id] = $teacher;
 
                     TeacherAssignment::firstOrCreate([
@@ -161,25 +189,43 @@ class FullYearSeeder extends Seeder
                     }
                 }
 
-                // Évaluations (1 par matière, 1er trimestre du cycle) + notes.
+                // Évaluations (interrogation + examen par matière, 1er terme du cycle)
+                // + notes stables par élève pour des moyennes réalistes.
                 $term = $terms->first();
                 if ($term !== null) {
                     $period = $term->periods->first();
                     $heldOn = $this->dateStr($period?->starts_on ?? $term->starts_on ?? $year->starts_on);
+                    $examOn = $this->dateStr($period?->ends_on ?? $term->ends_on ?? $year->ends_on);
+
                     foreach ($subjects as $entry) {
                         $subject = $entry['model'];
-                        $eval = Evaluation::updateOrCreate(
-                            ['classroom_id' => $cls->id, 'subject_id' => $subject->id,
-                                'term_id' => $term->id, 'name' => 'Interrogation '.$subject->name],
-                            ['period_id' => $period?->id, 'type' => Evaluation::TYPE_INTERROGATION,
-                                'held_on' => $heldOn, 'max_value' => 20,
-                                'teacher_id' => $classTeacher[$subject->id]->id, 'published_at' => now()],
-                        );
-                        foreach ($students as $student) {
-                            Grade::updateOrCreate(
-                                ['evaluation_id' => $eval->id, 'student_id' => $student->id],
-                                ['value' => rand(6, 19), 'absent' => false],
+
+                        $evalDefs = [
+                            ['Interrogation '.$subject->name, Evaluation::TYPE_INTERROGATION, $heldOn],
+                            ['Examen '.$subject->name, Evaluation::TYPE_EXAMEN, $examOn],
+                        ];
+
+                        foreach ($evalDefs as [$name, $type, $date]) {
+                            $eval = Evaluation::updateOrCreate(
+                                ['classroom_id' => $cls->id, 'subject_id' => $subject->id,
+                                    'term_id' => $term->id, 'name' => $name],
+                                ['period_id' => $period?->id, 'type' => $type,
+                                    'held_on' => $date, 'max_value' => 20,
+                                    'teacher_id' => $classTeacher[$subject->id]->id, 'published_at' => now()],
                             );
+
+                            foreach ($students as $sIdx => $student) {
+                                // Niveau propre à l'élève (8 à 17) ± dispersion par épreuve.
+                                // Le dernier élève de chaque classe est en difficulté
+                                // (moy. < 8) pour alimenter les alertes du tableau de bord.
+                                $base = $sIdx === count($students) - 1
+                                    ? 4 + ($student->id % 3)
+                                    : 8 + (($student->id * 7 + $subject->id * 3) % 10);
+                                Grade::updateOrCreate(
+                                    ['evaluation_id' => $eval->id, 'student_id' => $student->id],
+                                    ['value' => max(2, min(20, $base + rand(-2, 2))), 'absent' => false],
+                                );
+                            }
                         }
                     }
                 }
