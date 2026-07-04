@@ -135,6 +135,33 @@ class SchoolYearTest extends TestCase
         $this->assertDatabaseMissing('school_years', ['id' => $year->id]);
     }
 
+    public function test_deleting_school_year_removes_its_divisions(): void
+    {
+        $admin = $this->admin();
+
+        // Année complète : classes générées + 1 division « A » par classe.
+        $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/school-years', [
+                'name' => '2026-2027',
+                'starts_on' => '2026-09-01',
+                'ends_on' => '2027-06-30',
+            ])
+            ->assertCreated();
+
+        $year = SchoolYear::query()->where('name', '2026-2027')->firstOrFail();
+        $divisionIds = ClassRoom::query()
+            ->whereHas('schoolClass', fn ($query) => $query->where('school_year_id', $year->id))
+            ->pluck('id');
+        $this->assertNotEmpty($divisionIds);
+
+        $this->actingAs($admin, 'sanctum')
+            ->deleteJson("/api/v1/school-years/{$year->id}")
+            ->assertNoContent();
+
+        // Aucune division orpheline ne doit survivre à la suppression de l'année.
+        $this->assertSame(0, ClassRoom::query()->whereIn('id', $divisionIds)->count());
+    }
+
     public function test_show_school_year_includes_annual_stats(): void
     {
         $year = SchoolYear::factory()->create([

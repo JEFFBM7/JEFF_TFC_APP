@@ -14,7 +14,9 @@ class SchoolYearFactory extends Factory
 
     public function definition(): array
     {
-        $start = $this->faker->numberBetween(2018, 2030);
+        // unique() : deux années créées dans un même test ne doivent jamais
+        // entrer en collision sur le nom (contrainte UNIQUE en base).
+        $start = $this->faker->unique()->numberBetween(2018, 2030);
 
         return [
             'name' => sprintf('%d-%d', $start, $start + 1),

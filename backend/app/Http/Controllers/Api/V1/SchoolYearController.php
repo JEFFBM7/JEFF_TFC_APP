@@ -59,7 +59,9 @@ class SchoolYearController extends Controller
             // Générer automatiquement 3 Trimestres (primaire) + 2 Semestres (secondaire) + leurs périodes
             $termGeneration->generateForYear($year);
 
-            $classes = $schoolClassGeneration->generateBaseClasses($year);
+            // Seuls les cycles sans option (M1 → 8e CTEB) sont créés d'office ;
+            // les options du secondaire se génèrent ensuite via « Générer les classes de base ».
+            $classes = $schoolClassGeneration->generateBaseClasses($year, []);
 
             // Créer automatiquement une division A (capacité 40) par classe générée
             foreach ($classes as $schoolClass) {
@@ -138,6 +140,36 @@ class SchoolYearController extends Controller
             ->filter(fn (TeacherAssignment $assignment) => $assignment->subject_id !== null)
             ->values();
 
+        // Un cours doit rester visible même sans enseignant affecté : on part des
+        // affectations puis on complète avec les matières de la classe sans affectation.
+        $subjects = $classroom->subjects()->orderBy('name')->get();
+        $courses = $courseAssignments->map(fn (TeacherAssignment $assignment) => [
+            'id' => $assignment->id,
+            'subject' => $assignment->subject ? [
+                'id' => $assignment->subject->id,
+                'name' => $assignment->subject->name,
+            ] : null,
+            'teacher' => $assignment->teacher ? [
+                'id' => $assignment->teacher->id,
+                'name' => $assignment->teacher->user?->name,
+                'email' => $assignment->teacher->user?->email,
+                'speciality' => $assignment->teacher->speciality,
+            ] : null,
+        ]);
+        $assignedSubjectIds = $courseAssignments->pluck('subject_id');
+        foreach ($subjects as $subject) {
+            if ($assignedSubjectIds->contains($subject->id)) {
+                continue;
+            }
+
+            $courses->push([
+                'id' => -$subject->id,
+                'subject' => ['id' => $subject->id, 'name' => $subject->name],
+                'teacher' => null,
+            ]);
+        }
+        $courses = $courses->sortBy(fn (array $course) => $course['subject']['name'] ?? '')->values();
+
         $timetable = TimetableSlot::query()
             ->with(['subject', 'teacher.user'])
             ->where('school_year_id', $schoolYear->id)
@@ -181,7 +213,7 @@ class SchoolYearController extends Controller
                         ->unique()
                         ->count(),
                     'teachers' => $assignments->pluck('teacher_id')->unique()->count(),
-                    'subjects' => $courseAssignments->pluck('subject_id')->unique()->count(),
+                    'subjects' => $subjects->pluck('id')->merge($assignedSubjectIds)->unique()->count(),
                     'evaluations' => $evaluations->count(),
                     'grades_entered' => $grades->count(),
                     'grade_average' => $this->normalizedGradeAverage($evaluations->pluck('id')),
@@ -225,19 +257,7 @@ class SchoolYearController extends Controller
                     ];
                 })->values()->all(),
                 'parents' => $this->parentsForStudents($students),
-                'courses' => $courseAssignments->map(fn (TeacherAssignment $assignment) => [
-                    'id' => $assignment->id,
-                    'subject' => $assignment->subject ? [
-                        'id' => $assignment->subject->id,
-                        'name' => $assignment->subject->name,
-                    ] : null,
-                    'teacher' => $assignment->teacher ? [
-                        'id' => $assignment->teacher->id,
-                        'name' => $assignment->teacher->user?->name,
-                        'email' => $assignment->teacher->user?->email,
-                        'speciality' => $assignment->teacher->speciality,
-                    ] : null,
-                ])->values()->all(),
+                'courses' => $courses->all(),
                 'timetable' => $timetable->map(fn (TimetableSlot $slot) => [
                     'id' => $slot->id,
                     'day_of_week' => $slot->day_of_week,
@@ -315,7 +335,9 @@ class SchoolYearController extends Controller
             return $this->archivedReadOnlyResponse();
         }
 
-        $schoolYear->delete();
+        // La purge des divisions de l'année est assurée par SchoolYear::deleting
+        // (hook modèle), quel que soit le chemin de suppression.
+        DB::transaction(fn () => $schoolYear->delete());
 
         return response()->json(null, 204);
     }

@@ -36,6 +36,16 @@ class SchoolYear extends Model
                 app(EnrollmentService::class)->syncStudentPointersForYear($year);
             }
         });
+
+        // classrooms.school_class_id est en nullOnDelete : sans purge explicite,
+        // les divisions de l'année survivraient orphelines et réapparaîtraient
+        // dans toutes les listes de classes. Au niveau du modèle pour couvrir
+        // TOUS les chemins de suppression (API, seeders, tinker…).
+        static::deleting(function (SchoolYear $year): void {
+            ClassRoom::query()
+                ->whereHas('schoolClass', fn ($query) => $query->where('school_year_id', $year->id))
+                ->delete();
+        });
     }
 
     /**
