@@ -20,6 +20,7 @@ const SECONDARY_SCOPES: { value: AdminScope; label: string }[] = [
 ]
 
 const confirmDialog = useConfirmStore()
+const toast = useToastStore()
 
 const items = ref<SecondaryAdmin[]>([])
 const loading = ref(false)

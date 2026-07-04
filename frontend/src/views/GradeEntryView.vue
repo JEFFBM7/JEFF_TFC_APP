@@ -9,6 +9,7 @@ import { useAuthStore } from '../stores/auth'
 
 const props = defineProps<{ id: string | number }>()
 const auth = useAuthStore()
+const toast = useToastStore()
 
 const evaluation = ref<Evaluation | null>(null)
 const rows = ref<GradeRow[]>([])

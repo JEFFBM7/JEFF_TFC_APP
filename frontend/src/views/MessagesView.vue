@@ -22,7 +22,6 @@ import PortalMessagesApp from '../components/messages/PortalMessagesApp.vue'
 import AnnouncementDetailView from '../components/messages/AnnouncementDetailView.vue'
 import { usePortalDashboard } from '../composables/usePortalDashboard'
 import { usePortalTopbarOverride } from '../composables/usePortalTopbarOverride'
-import { useConfirmStore } from '../stores/confirm'
 import { useToastStore } from '../stores/toast'
 import { useAuthStore } from '../stores/auth'
 import {
@@ -66,7 +65,6 @@ const composeIntentStore = useMessageComposeIntentStore()
 let composeNavigationInFlight: Promise<void> | null = null
 /** Évite de retraiter la même query ; ne pas appeler router.replace sur la query (remonte MessagesView via AdminLayout). */
 const handledComposeRouteSignature = ref('')
-const confirmDialog = useConfirmStore()
 const toast = useToastStore()
 const portalTopbar = usePortalTopbarOverride()
 const { childColor } = usePortalDashboard()
