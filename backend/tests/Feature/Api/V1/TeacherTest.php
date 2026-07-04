@@ -217,4 +217,27 @@ class TeacherTest extends TestCase
         $this->assertContains($primaryTeacher->id, $ids);
         $this->assertNotContains($secondaryTeacher->id, $ids);
     }
+
+    public function test_filter_teachers_by_classroom_without_subject_matches_cycle_type(): void
+    {
+        $secondaryLevel = Level::factory()->create(['cycle' => Level::CYCLE_SECONDAIRE]);
+        $secondaryClassroom = ClassRoom::factory()->create(['level_id' => $secondaryLevel->id, 'section' => 'A']);
+
+        $primaryTeacher = Teacher::factory()->create(['teacher_type' => Teacher::TYPE_PRIMAIRE]);
+        $secondaryTeacher = Teacher::factory()->create(['teacher_type' => Teacher::TYPE_SECONDAIRE]);
+
+        // Aucune affectation existante pour ce prof secondaire : le filtre par
+        // affectation-cycle exacte (paramètre `cycle`) le raterait, mais le
+        // filtre par classe doit tout de même le retenir puisque son type correspond.
+        $this->assertSame(0, $secondaryTeacher->assignments()->count());
+
+        $res = $this->actingAs($this->admin(), 'sanctum')
+            ->getJson('/api/v1/teachers?for_classroom_id='.$secondaryClassroom->id)
+            ->assertOk();
+
+        $ids = collect($res->json('data'))->pluck('id')->all();
+
+        $this->assertContains($secondaryTeacher->id, $ids);
+        $this->assertNotContains($primaryTeacher->id, $ids);
+    }
 }

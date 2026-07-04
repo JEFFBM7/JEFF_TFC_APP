@@ -5,11 +5,13 @@ import { api, ApiError } from '../api/client'
 import Modal from '../components/Modal.vue'
 import type { ApiResource, Assignment, Paginated, SchoolYearClassDetails, Teacher } from '../types'
 import { useConfirmStore } from '../stores/confirm'
+import { useToastStore } from '../stores/toast'
 import { formatAveragePercent } from '../utils/grades'
 
 const props = defineProps<{ id: string | number; classroomId: string | number }>()
 const route = useRoute()
 const confirmDialog = useConfirmStore()
+const toast = useToastStore()
 
 type ClassDetailStudent = SchoolYearClassDetails['students'][number]
 type ClassDetailParent = SchoolYearClassDetails['parents'][number]
@@ -284,7 +286,9 @@ async function loadAssignmentOptions(): Promise<void> {
   assignmentLoading.value = true
   assignmentError.value = ''
   try {
-    const teachersRes = await api<Paginated<Teacher>>('/api/v1/teachers')
+    const teachersRes = await api<Paginated<Teacher>>('/api/v1/teachers', {
+      query: { for_classroom_id: details.value?.classroom.id },
+    })
     teachers.value = teachersRes.data
   } catch (err) {
     assignmentError.value = err instanceof ApiError ? err.message : 'Options d’affectation indisponibles.'
@@ -403,6 +407,7 @@ async function disassignPrincipal(): Promise<void> {
       })
     } else {
       await api(`/api/v1/assignments/${mainTeacher.assignment_id}`, { method: 'DELETE' })
+      toast.info('Référent retiré de la classe.')
     }
     await load()
   } catch (err) {

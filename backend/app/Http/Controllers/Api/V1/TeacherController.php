@@ -56,6 +56,18 @@ class TeacherController extends Controller
             },
         ]);
 
+        if (! $request->filled('for_subject_id') && $request->filled('for_classroom_id')) {
+            // Affectation sans matière (ex. référent de classe) : seul le type
+            // d'enseignant doit correspondre au cycle de la classe.
+            $classroom = ClassRoom::query()->with('level')->findOrFail($request->integer('for_classroom_id'));
+            $query->where(
+                'teacher_type',
+                TeacherSpecialityMatcher::isPrimaryOrMaternelClassroom($classroom)
+                    ? Teacher::TYPE_PRIMAIRE
+                    : Teacher::TYPE_SECONDAIRE,
+            );
+        }
+
         if ($request->filled('for_subject_id')) {
             $subject = \App\Models\Subject::query()->findOrFail($request->integer('for_subject_id'));
 
