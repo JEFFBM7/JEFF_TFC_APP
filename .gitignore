@@ -10,3 +10,12 @@
 
 .DS_Store
 .idea/
+
+# Dépendances/outils installés à la racine par erreur
+/node_modules/
+
+# Réglages Claude Code personnels
+.claude/settings.local.json
+
+# Sauvegardes automatiques draw.io
+Diagramme/.$*

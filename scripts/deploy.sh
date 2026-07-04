@@ -66,6 +66,13 @@ echo "→ Backend : dépendances + migrations + caches"
 cd "$BACKEND"
 composer install --no-dev --optimize-autoloader --no-interaction
 ensure_vapid_keys                                   # clés Web Push (avant config:cache)
+
+# Mode maintenance le temps des migrations/caches ; remise en ligne garantie
+# même si une étape échoue (trap EXIT).
+echo "→ Mode maintenance"
+php artisan down --retry=15 || true
+trap 'cd "$BACKEND" && php artisan up >/dev/null 2>&1 || true' EXIT
+
 php artisan migrate --force
 php artisan storage:link >/dev/null 2>&1 || true   # déjà présent = sans gravité
 php artisan config:cache
@@ -86,5 +93,8 @@ else
   echo "⚠ Service PHP-FPM '$PHP_FPM' introuvable : recharge-le manuellement."
 fi
 sudo systemctl reload nginx
+
+echo "→ Sortie du mode maintenance"
+cd "$BACKEND" && php artisan up
 
 echo "✅ Déploiement terminé."
