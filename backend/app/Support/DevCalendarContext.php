@@ -88,13 +88,32 @@ class DevCalendarContext
 
         $today = self::today();
 
-        return Term::query()
+        $active = Term::query()
             ->where('school_year_id', $year->id)
             ->where('applicable_cycle', $cycle)
             ->whereDate('starts_on', '<=', $today)
             ->whereDate('ends_on', '>=', $today)
             ->orderBy('position')
             ->first();
+
+        if ($active !== null) {
+            return $active;
+        }
+
+        // Hors période de cours (vacances, avant la rentrée…) : repli sur le
+        // dernier terme déjà entamé, sinon le premier à venir — le tableau de
+        // bord et les classements restent exploitables toute l'année civile.
+        return Term::query()
+            ->where('school_year_id', $year->id)
+            ->where('applicable_cycle', $cycle)
+            ->whereDate('starts_on', '<=', $today)
+            ->orderByDesc('position')
+            ->first()
+            ?? Term::query()
+                ->where('school_year_id', $year->id)
+                ->where('applicable_cycle', $cycle)
+                ->orderBy('position')
+                ->first();
     }
 
     public static function resolvePeriod(?Term $term): ?Period
@@ -116,12 +135,27 @@ class DevCalendarContext
 
         $today = self::today();
 
-        return Period::query()
+        $active = Period::query()
             ->where('term_id', $term->id)
             ->whereDate('starts_on', '<=', $today)
             ->whereDate('ends_on', '>=', $today)
             ->orderBy('position')
             ->first();
+
+        if ($active !== null) {
+            return $active;
+        }
+
+        // Même repli que resolveTerm : dernière période entamée, sinon la première.
+        return Period::query()
+            ->where('term_id', $term->id)
+            ->whereDate('starts_on', '<=', $today)
+            ->orderByDesc('position')
+            ->first()
+            ?? Period::query()
+                ->where('term_id', $term->id)
+                ->orderBy('position')
+                ->first();
     }
 
     /**

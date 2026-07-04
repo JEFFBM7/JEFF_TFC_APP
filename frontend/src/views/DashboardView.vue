@@ -2,7 +2,6 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { api } from '../api/client'
 import BarChart from '../components/charts/BarChart.vue'
-import LineChart from '../components/charts/LineChart.vue'
 import { useAuthStore } from '../stores/auth'
 import { chartPercentFromAverage20, formatAveragePercentValue } from '../utils/grades'
 import { useSchoolYearStore } from '../stores/schoolYear'
@@ -29,6 +28,7 @@ interface AdminDashboard {
   period?: PeriodInfo
   available_months?: AvailableMonth[]
   available_terms?: AvailableTerm[]
+  available_periods?: AvailableTermPeriod[]
   monthly_attendance?: MonthlyAttendancePoint[]
   monthly_averages?: MonthlyAveragePoint[]
   classrooms: { classroom_id: number; full_name: string; student_count: number; class_average: number | null; absences: number }[]
@@ -91,6 +91,11 @@ interface AvailableTerm {
   label: string
 }
 
+interface AvailableTermPeriod {
+  value: string
+  label: string
+}
+
 interface ChartBar {
   id: number | string
   label: string
@@ -107,6 +112,7 @@ const error = ref('')
 const selectedPeriod = ref<PeriodKey>('month')
 const selectedMonth = ref(currentMonthValue())
 const selectedTerm = ref('')
+const selectedTermPeriod = ref('')
 const showAllClassrooms = ref(false)
 
 const MAIN_PERIOD_OPTIONS: { value: PeriodKey; label: string }[] = [
@@ -136,6 +142,8 @@ const availableMonths = computed<AvailableMonth[]>(() =>
 const availableTerms = computed<AvailableTerm[]>(() =>
   adminData.value?.available_terms ?? teacherData.value?.available_terms ?? [],
 )
+
+const availableTermPeriods = computed<AvailableTermPeriod[]>(() => adminData.value?.available_periods ?? [])
 
 const periodDateRange = computed(() => {
   const period = adminData.value?.period ?? teacherData.value?.period
@@ -346,12 +354,15 @@ async function load(): Promise<void> {
   loading.value = true
   error.value = ''
   showAllClassrooms.value = false
-  const query: { period: PeriodKey; month?: string; term_id?: string } = { period: selectedPeriod.value }
+  const query: { period: PeriodKey; month?: string; term_id?: string; period_id?: string } = { period: selectedPeriod.value }
   if (selectedPeriod.value === 'month') {
     query.month = selectedMonth.value
   }
   if (selectedPeriod.value === 'term' && selectedTerm.value !== '') {
     query.term_id = selectedTerm.value
+    if (selectedTermPeriod.value !== '') {
+      query.period_id = selectedTermPeriod.value
+    }
   }
 
   try {
@@ -376,6 +387,7 @@ async function load(): Promise<void> {
 onMounted(load)
 useDevCalendarReload(() => void load())
 watch(selectedPeriod, () => {
+  if (selectedPeriod.value !== 'term') selectedTermPeriod.value = ''
   if (selectedPeriod.value === 'month' && ensureSelectedMonth()) return
   if (selectedPeriod.value === 'term' && ensureSelectedTerm()) return
   void load()
@@ -384,6 +396,11 @@ watch(selectedMonth, () => {
   if (selectedPeriod.value === 'month') void load()
 })
 watch(selectedTerm, () => {
+  // Une "Période" appartient à un trimestre précis : on repart sur le trimestre entier.
+  selectedTermPeriod.value = ''
+  if (selectedPeriod.value === 'term') void load()
+})
+watch(selectedTermPeriod, () => {
   if (selectedPeriod.value === 'term') void load()
 })
 watch(availableMonths, () => {
@@ -449,6 +466,19 @@ watch(
               <div class="select-wrapper">
                 <select v-model="selectedTerm" :disabled="availableTerms.length === 0">
                   <option v-for="term in availableTerms" :key="term.value" :value="term.value">{{ term.label }}</option>
+                </select>
+                <ChevronDown class="select-icon" />
+              </div>
+            </label>
+            <label
+              v-if="selectedPeriod === 'term' && availableTermPeriods.length > 0"
+              class="admin-period-select custom-dropdown"
+            >
+              <span>PÉRIODE</span>
+              <div class="select-wrapper">
+                <select v-model="selectedTermPeriod">
+                  <option value="">Trimestre entier</option>
+                  <option v-for="p in availableTermPeriods" :key="p.value" :value="p.value">{{ p.label }}</option>
                 </select>
                 <ChevronDown class="select-icon" />
               </div>
@@ -606,12 +636,12 @@ watch(
             </div>
           </div>
           <div class="admin-panel__body">
-            <LineChart
+            <BarChart
               v-if="adminMonthlyAverageCategories.length"
               :series="adminMonthlyAverageSeries"
               :categories="adminMonthlyAverageCategories"
               :height="280"
-              :y-max="20"
+              :y-max="100"
               tooltip-suffix="%"
               :colors="['#3b82f6']"
             />

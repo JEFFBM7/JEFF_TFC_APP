@@ -9,6 +9,7 @@ use App\Models\Evaluation;
 use App\Models\Grade;
 use App\Models\Level;
 use App\Models\ParentProfile;
+use App\Models\Period;
 use App\Models\SchoolYear;
 use App\Models\Student;
 use App\Models\Subject;
@@ -25,6 +26,7 @@ use App\Support\SchoolYearContext;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class DashboardController extends Controller
 {
@@ -41,7 +43,22 @@ class DashboardController extends Controller
         $currentTerm = $this->currentTerm($schoolYear, $request);
         $availableMonths = $this->availableMonths($schoolYear);
         $availableTerms = $this->availableTerms($schoolYear);
-        $period = $this->periodFromRequest($request, $currentTerm, $schoolYear);
+
+        // Terme réellement actif pour les moyennes/alertes : en mode "Trimestre",
+        // c'est le trimestre choisi par le filtre (pas systématiquement le trimestre
+        // « en cours ») ; dans les autres modes, on garde le trimestre courant.
+        $periodKey = (string) $request->query('period', 'year');
+        $effectiveTerm = $periodKey === 'term'
+            ? $this->termFromRequest($request, $currentTerm, $schoolYear)
+            : $currentTerm;
+        $scopePeriod = $periodKey === 'term' && $effectiveTerm !== null
+            ? $this->periodModelFromRequest($request, $effectiveTerm)
+            : null;
+        $availablePeriods = $periodKey === 'term' && $effectiveTerm !== null
+            ? $this->availablePeriods($effectiveTerm)
+            : [];
+
+        $period = $this->periodFromRequest($request, $currentTerm, $schoolYear, $scopePeriod);
 
         $studentsCountQuery = Student::query();
         SchoolYearContext::applyStudentEnrollmentYearId($studentsCountQuery, $schoolYearId);
@@ -168,17 +185,26 @@ class DashboardController extends Controller
             : null;
 
         $lowGradeThreshold = $this->lowGradeAlerts->threshold();
-        $studentsAtRiskCount = $this->countStudentsAtRisk($request, $currentTerm, $lowGradeThreshold);
+
+        // Moyenne par élève calculée UNE seule fois (coûteux : plusieurs requêtes
+        // par élève dans ReportCardService) puis réutilisée pour le classement,
+        // le comptage à risque et la liste de vigilance — au lieu de la refaire
+        // trois fois de suite sur tout l'effectif.
+        $studentAverages = $effectiveTerm !== null
+            ? $this->studentAveragesForTerm($request, $effectiveTerm, $scopePeriod)
+            : collect();
+
+        $studentsAtRiskCount = $this->countStudentsAtRisk($studentAverages, $lowGradeThreshold);
         $classesWithUnjustified = collect($classroomStats)
             ->filter(fn (array $row) => $row['absences'] > 0)
             ->count();
 
         $attendanceBreakdown = $this->attendanceBreakdown($request, $period);
         $monthlyAverages = $schoolYear !== null
-            ? $this->monthlyAverages($schoolYear, $request)
+            ? $this->monthlyAverages($schoolYear, $request, $period)
             : [];
-        $topStudents = $this->topStudents($request, $currentTerm);
-        $watchlist = $this->buildWatchlist($classroomStats, $request, $currentTerm, $period, $lowGradeThreshold);
+        $topStudents = $this->topStudents($studentAverages);
+        $watchlist = $this->buildWatchlist($classroomStats, $studentAverages, $period, $lowGradeThreshold, $request);
         $averageDelta = $this->institutionAverageDelta($schoolYear, $request, $period);
 
         return response()->json([
@@ -205,6 +231,7 @@ class DashboardController extends Controller
                 'period' => $this->periodPayload($period),
                 'available_months' => $availableMonths,
                 'available_terms' => $availableTerms,
+                'available_periods' => $availablePeriods,
                 'monthly_attendance' => $schoolYear !== null
                     ? $attendanceStats->monthlyAttendance($schoolYear)
                     : [],
@@ -352,8 +379,12 @@ class DashboardController extends Controller
     }
 
     /** @return array{key:string,label:string,starts_on:?string,ends_on:?string,empty:bool} */
-    private function periodFromRequest(Request $request, ?Term $currentTerm, ?SchoolYear $schoolYear): array
-    {
+    private function periodFromRequest(
+        Request $request,
+        ?Term $currentTerm,
+        ?SchoolYear $schoolYear,
+        ?Period $scopePeriod = null,
+    ): array {
         $key = (string) $request->query('period', 'year');
         if (! in_array($key, ['week', 'month', 'term', 'year', 'all'], true)) {
             $key = 'year';
@@ -393,6 +424,16 @@ class DashboardController extends Controller
                     'starts_on' => null,
                     'ends_on' => null,
                     'empty' => true,
+                ];
+            }
+
+            if ($scopePeriod !== null && $scopePeriod->term_id === $term->id) {
+                return [
+                    'key' => $key,
+                    'label' => $scopePeriod->name.' — '.$term->name,
+                    'starts_on' => $scopePeriod->starts_on->toDateString(),
+                    'ends_on' => $scopePeriod->ends_on->toDateString(),
+                    'empty' => false,
                 ];
             }
 
@@ -509,6 +550,30 @@ class DashboardController extends Controller
             ->first();
     }
 
+    /** Période choisie (`period_id`) au sein du trimestre effectif, si elle lui appartient bien. */
+    private function periodModelFromRequest(Request $request, Term $term): ?Period
+    {
+        $periodId = (string) $request->query('period_id', '');
+        if (! ctype_digit($periodId)) {
+            return null;
+        }
+
+        return Period::query()->whereKey((int) $periodId)->where('term_id', $term->id)->first();
+    }
+
+    /** @return list<array{value:string,label:string}> */
+    private function availablePeriods(Term $term): array
+    {
+        return $term->periods()
+            ->orderBy('position')
+            ->get()
+            ->map(fn (Period $period) => [
+                'value' => (string) $period->id,
+                'label' => $period->name,
+            ])
+            ->all();
+    }
+
     /** @return array<int, array{value:string,label:string}> */
     private function availableMonths(?SchoolYear $schoolYear = null): array
     {
@@ -620,10 +685,24 @@ class DashboardController extends Controller
     }
 
     /** @return array<int, array{value:string,label:string,short_label:string,average:?float}> */
-    private function monthlyAverages(SchoolYear $schoolYear, Request $request): array
+    private function monthlyAverages(SchoolYear $schoolYear, Request $request, array $period): array
     {
-        $start = Carbon::parse($schoolYear->starts_on)->startOfMonth();
-        $end = Carbon::parse($schoolYear->ends_on)->startOfMonth();
+        $yearStart = Carbon::parse($schoolYear->starts_on)->startOfMonth();
+        $yearEnd = Carbon::parse($schoolYear->ends_on)->startOfMonth();
+
+        // La tendance mensuelle suit le filtre actif (semaine/mois/trimestre…) :
+        // on ne montre que les mois recoupant la période sélectionnée, bornés à
+        // l'année scolaire. Mode "Tout" (bornes nulles) : on garde l'année entière.
+        // Uniquement en mode "Trimestre/Semestre" : semaine/mois resteraient un
+        // graphique à un seul point (aucune évolution à montrer) si on bornait
+        // pareil, donc ils gardent l'année scolaire complète.
+        $start = $yearStart;
+        $end = $yearEnd;
+        if ($period['key'] === 'term' && $period['starts_on'] !== null && $period['ends_on'] !== null) {
+            $start = Carbon::parse($period['starts_on'])->startOfMonth()->max($yearStart);
+            $end = Carbon::parse($period['ends_on'])->startOfMonth()->min($yearEnd);
+        }
+
         $months = [];
 
         for ($cursor = $start->copy(); $cursor->lte($end); $cursor->addMonth()) {
@@ -688,92 +767,75 @@ class DashboardController extends Controller
     }
 
     /** @return array<int, array{id:int,full_name:string,classroom:?string,average:float}> */
-    private function topStudents(Request $request, ?Term $term, int $limit = 5): array
+    /**
+     * Moyenne de chaque élève pour le trimestre (± période) effectif, calculée
+     * UNE fois. `ReportCardService::compute()` fait plusieurs requêtes par
+     * élève : la partager entre topStudents/countStudentsAtRisk/buildWatchlist
+     * évite de la refaire 3× sur tout l'effectif (coût significatif dès
+     * quelques dizaines d'élèves).
+     *
+     * @return Collection<int, array{student:Student, average:?float}>
+     */
+    private function studentAveragesForTerm(Request $request, Term $term, ?Period $scopePeriod = null): Collection
     {
-        if ($term === null) {
-            return [];
-        }
-
         $studentQuery = Student::query()->with('classroom');
         AdminScopeContext::applyStudentScope($studentQuery, $request);
         SchoolYearContext::applyStudentEnrollmentYearId($studentQuery, $term->school_year_id);
 
-        $rows = [];
-        foreach ($studentQuery->get() as $student) {
-            $average = $this->reportCards->compute($student, $term)['overall_average'];
-            if ($average === null) {
-                continue;
-            }
-
-            $rows[] = [
-                'id' => $student->id,
-                'full_name' => $student->full_name,
-                'classroom' => $student->classroom?->full_name,
-                'average' => $average,
-            ];
-        }
-
-        usort($rows, fn (array $a, array $b) => $b['average'] <=> $a['average']);
-
-        return array_slice($rows, 0, $limit);
+        return $studentQuery->get()->map(fn (Student $student) => [
+            'student' => $student,
+            'average' => $this->reportCards->compute($student, $term, false, $scopePeriod)['overall_average'],
+        ]);
     }
 
-    private function countStudentsAtRisk(Request $request, ?Term $term, float $threshold): int
+    /** @param Collection<int, array{student:Student, average:?float}> $studentAverages */
+    private function topStudents(Collection $studentAverages, int $limit = 5): array
     {
-        if ($term === null) {
-            return 0;
-        }
-
-        $studentQuery = Student::query();
-        AdminScopeContext::applyStudentScope($studentQuery, $request);
-        SchoolYearContext::applyStudentEnrollmentYearId($studentQuery, $term->school_year_id);
-
-        $count = 0;
-        foreach ($studentQuery->get() as $student) {
-            $average = $this->reportCards->compute($student, $term)['overall_average'];
-            if ($average !== null && $average < $threshold) {
-                $count++;
-            }
-        }
-
-        return $count;
+        return $studentAverages
+            ->filter(fn (array $row) => $row['average'] !== null)
+            ->sortByDesc('average')
+            ->take($limit)
+            ->values()
+            ->map(fn (array $row) => [
+                'id' => $row['student']->id,
+                'full_name' => $row['student']->full_name,
+                'classroom' => $row['student']->classroom?->full_name,
+                'average' => $row['average'],
+            ])
+            ->all();
     }
 
-    /** @return array<int, array{type:string,severity:string,title:string,detail:string}> */
+    /** @param Collection<int, array{student:Student, average:?float}> $studentAverages */
+    private function countStudentsAtRisk(Collection $studentAverages, float $threshold): int
+    {
+        return $studentAverages
+            ->filter(fn (array $row) => $row['average'] !== null && $row['average'] < $threshold)
+            ->count();
+    }
+
+    /**
+     * @param  Collection<int, array{student:Student, average:?float}>  $studentAverages
+     * @return array<int, array{type:string,severity:string,title:string,detail:string}>
+     */
     private function buildWatchlist(
         array $classroomStats,
-        Request $request,
-        ?Term $term,
+        Collection $studentAverages,
         array $period,
         float $threshold,
+        Request $request,
     ): array {
-        $alerts = [];
-
-        if ($term !== null) {
-            $studentQuery = Student::query()->with('classroom');
-            AdminScopeContext::applyStudentScope($studentQuery, $request);
-            SchoolYearContext::applyStudentEnrollmentYearId($studentQuery, $term->school_year_id);
-
-            $lowGradeAlerts = [];
-            foreach ($studentQuery->get() as $student) {
-                $average = $this->reportCards->compute($student, $term)['overall_average'];
-                if ($average !== null && $average < $threshold) {
-                    $lowGradeAlerts[] = [
-                        'type' => 'low_grade',
-                        'severity' => $average < ($threshold - 2) ? 'danger' : 'warn',
-                        'title' => $student->full_name,
-                        'detail' => sprintf('Moy. %.1f — sous le seuil de %.0f', $average, $threshold),
-                        'sort' => $average,
-                    ];
-                }
-            }
-
-            usort($lowGradeAlerts, fn (array $a, array $b) => $a['sort'] <=> $b['sort']);
-            foreach (array_slice($lowGradeAlerts, 0, 3) as $alert) {
-                unset($alert['sort']);
-                $alerts[] = $alert;
-            }
-        }
+        $alerts = $studentAverages
+            ->filter(fn (array $row) => $row['average'] !== null && $row['average'] < $threshold)
+            ->sortBy('average')
+            ->take(5)
+            ->map(fn (array $row) => [
+                'type' => 'low_grade',
+                'severity' => $row['average'] < ($threshold - 2) ? 'danger' : 'warn',
+                'title' => $row['student']->full_name,
+                'detail' => sprintf('Moy. %.1f — sous le seuil de %.0f', $row['average'], $threshold),
+            ])
+            ->values()
+            ->all();
 
         foreach ($classroomStats as $classroom) {
             if ($classroom['class_average'] !== null && $classroom['class_average'] < $threshold) {
