@@ -5,8 +5,6 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Term;
 use App\Models\Student;
-use App\Services\CtebBulletinFormatter;
-use App\Services\PrimaireBulletinFormatter;
 use App\Services\ReportCardService;
 use App\Support\AdminScopeContext;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -19,8 +17,6 @@ class ReportCardController extends Controller
 {
     public function __construct(
         private readonly ReportCardService $service,
-        private readonly CtebBulletinFormatter $ctebBulletins,
-        private readonly PrimaireBulletinFormatter $primaireBulletins,
     ) {}
 
     public function show(Request $request, Student $student, Term $term): JsonResponse
@@ -68,50 +64,6 @@ class ReportCardController extends Controller
 
         $student->loadMissing('classroom.level');
         $term->loadMissing('schoolYear');
-
-        if ($this->ctebBulletins->isCtebStudent($student)) {
-            $presentation = $this->ctebBulletins->buildAnnualPresentation($student, $term);
-
-            $pdf = Pdf::loadView('report_cards.cteb_pdf', [
-                'student' => $student,
-                'bulletinTitle' => $presentation['bulletin_title'],
-                'schoolYearName' => $presentation['school_year_name'],
-                'rows' => $presentation['rows'],
-                'percentage' => $presentation['percentage'],
-                'appreciation' => $presentation['appreciation'],
-            ])->setPaper('a4', 'landscape');
-
-            $filename = sprintf(
-                'bulletin-cteb-%s-%s.pdf',
-                Str::slug($student->full_name),
-                Str::slug($presentation['school_year_name']),
-            );
-
-            return $pdf->download($filename);
-        }
-
-        if ($this->primaireBulletins->isOfficialPrimaireStudent($student)) {
-            $presentation = $this->primaireBulletins->buildAnnualPresentation($student, $term);
-
-            $pdf = Pdf::loadView('report_cards.primaire_debut_pdf', [
-                'student' => $student,
-                'bulletinTitle' => $presentation['bulletin_title'],
-                'schoolYearName' => $presentation['school_year_name'],
-                'rows' => $presentation['rows'],
-                'percentage' => $presentation['percentage'],
-                'appreciation' => $presentation['appreciation'],
-                'formCode' => $presentation['form_code'],
-                'gradeYear' => $presentation['grade_year'],
-            ])->setPaper('a4', 'landscape');
-
-            $filename = sprintf(
-                'bulletin-primaire-%s-%s.pdf',
-                Str::slug($student->full_name),
-                Str::slug($presentation['school_year_name']),
-            );
-
-            return $pdf->download($filename);
-        }
 
         $report = $this->service->compute($student, $term);
 

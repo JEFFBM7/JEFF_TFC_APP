@@ -2,9 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { api, apiUrl, ApiError, getToken } from '../api/client'
-import CtebBulletinSheet from '../components/bulletin/CtebBulletinSheet.vue'
-import PrimaireDebutBulletinSheet from '../components/bulletin/PrimaireDebutBulletinSheet.vue'
-import { isOfficialPrimaireBulletinLevel } from '../data/primaryBulletinStructure'
+import { useToastStore } from '../stores/toast'
 import MiniChart from '../components/charts/MiniChart.vue'
 import type { ApiResource, ChartSeries, ReportCardData, SchoolYear, Student, StudentTimeline, Term } from '../types'
 import { useSchoolYearStore } from '../stores/schoolYear'
@@ -18,12 +16,6 @@ const schoolYearStore = useSchoolYearStore()
 const student = ref<Student | null>(null)
 const selectedTerm = ref<number | null>(null)
 const report = ref<ReportCardData | null>(null)
-const ctebSemesterReports = ref<[ReportCardData | null, ReportCardData | null]>([null, null])
-const primaryTrimesterReports = ref<[ReportCardData | null, ReportCardData | null, ReportCardData | null]>([null, null, null])
-const ctebRank = ref<number | null>(null)
-const ctebClassSize = ref<number | null>(null)
-const primaryRank = ref<number | null>(null)
-const primaryClassSize = ref<number | null>(null)
 const timeline = ref<StudentTimeline | null>(null)
 const loading = ref(false)
 const error = ref('')
@@ -48,50 +40,18 @@ const selectedTermOption = computed(() =>
   allTerms.value.find(({ term }) => term.id === selectedTerm.value) ?? null,
 )
 
-const isCtebStudent = computed(() => student.value?.classroom?.level?.cycle === 'cteb')
-
-const isOfficialPrimaireStudent = computed(() =>
-  isOfficialPrimaireBulletinLevel(student.value?.classroom?.level ?? null),
-)
-
-const isOfficialAnnualBulletin = computed(() =>
-  isCtebStudent.value || isOfficialPrimaireStudent.value,
-)
-
-const ctebSchoolYear = computed(() =>
-  selectedTermOption.value?.year
-  ?? schoolYears.value.find((year) => year.id === schoolYearStore.effectiveId)
-  ?? schoolYearStore.current
-  ?? null,
-)
-
-const ctebSemesterTerms = computed(() => {
-  const yearId = ctebSchoolYear.value?.id
-  if (!yearId) return [] as Array<{ term: Term; year: SchoolYear }>
-
-  return allTerms.value
-    .filter(({ year }) => year.id === yearId)
-    .filter(({ term }) => term.applicable_cycle === 'secondaire' || term.term_type === 'semestre')
-    .sort((a, b) => a.term.position - b.term.position)
-    .slice(0, 2)
+// Calendrier applicable à l'élève : trimestres (maternelle/primaire)
+// ou semestres (CTEB/secondaire).
+const studentTermCycle = computed(() => {
+  const cycle = student.value?.classroom?.level?.cycle
+  return cycle === 'cteb' || cycle === 'secondaire' ? 'secondaire' : 'primaire'
 })
 
-const primarySchoolYear = computed(() =>
-  selectedTermOption.value?.year
-  ?? schoolYears.value.find((year) => year.id === schoolYearStore.effectiveId)
-  ?? schoolYearStore.current
-  ?? null,
-)
-
-const primaryTrimesterTerms = computed(() => {
-  const yearId = primarySchoolYear.value?.id
-  if (!yearId) return [] as Array<{ term: Term; year: SchoolYear }>
-
-  return allTerms.value
-    .filter(({ year }) => year.id === yearId)
-    .filter(({ term }) => term.applicable_cycle === 'primaire' || term.term_type === 'trimestre')
-    .sort((a, b) => a.term.position - b.term.position)
-    .slice(0, 3)
+const studentTerms = computed(() => {
+  const scoped = allTerms.value.filter(
+    ({ term }) => (term.applicable_cycle ?? 'primaire') === studentTermCycle.value,
+  )
+  return scoped.length > 0 ? scoped : allTerms.value
 })
 
 const weightedPoints = computed(() => {
@@ -160,154 +120,15 @@ async function loadStudentAndYears(): Promise<void> {
   ])
   student.value = s.data
   timeline.value = timelineRes?.data ?? null
-  if (s.data.classroom?.level?.cycle === 'cteb') {
-    const yearId = schoolYearStore.effectiveId ?? schoolYears.value[0]?.id ?? null
-    const yearTerms = yearId
-      ? allTerms.value.filter(({ year }) => year.id === yearId)
-      : allTerms.value
-    selectedTerm.value = yearTerms[0]?.term.id ?? allTerms.value[0]?.term.id ?? null
-    await loadCtebBulletin()
-    return
-  }
 
-  if (isOfficialPrimaireBulletinLevel(s.data.classroom?.level ?? null)) {
-    const yearId = schoolYearStore.effectiveId ?? schoolYears.value[0]?.id ?? null
-    const yearTerms = yearId
-      ? allTerms.value.filter(({ year }) => year.id === yearId)
-      : allTerms.value
-    selectedTerm.value = yearTerms[0]?.term.id ?? allTerms.value[0]?.term.id ?? null
-    await loadPrimaireBulletin()
-    return
-  }
-
-  if (!selectedTerm.value && allTerms.value.length > 0) {
-    selectedTerm.value = allTerms.value[0].term.id
+  if (!selectedTerm.value && studentTerms.value.length > 0) {
+    selectedTerm.value = studentTerms.value[0].term.id
     await loadReport()
-  }
-}
-
-async function loadPrimaryRanking(termId: number): Promise<void> {
-  primaryRank.value = null
-  primaryClassSize.value = null
-  if (!student.value?.classroom_id) return
-
-  try {
-    const res = await api<{ data: Array<{ rank: number; student_id: number }> }>(
-      `/api/v1/classrooms/${student.value.classroom_id}/ranking/${termId}`,
-    )
-    primaryClassSize.value = res.data.length
-    const row = res.data.find((item) => item.student_id === student.value?.id)
-    primaryRank.value = row?.rank ?? null
-  } catch {
-    primaryRank.value = null
-    primaryClassSize.value = null
-  }
-}
-
-async function loadPrimaireBulletin(): Promise<void> {
-  if (!student.value || primaryTrimesterTerms.value.length === 0) return
-  loading.value = true
-  error.value = ''
-  report.value = null
-  primaryTrimesterReports.value = [null, null, null]
-  appreciation.value = ''
-  appreciationMsg.value = ''
-
-  try {
-    const reports = await Promise.all(
-      primaryTrimesterTerms.value.map(async ({ term }) => {
-        const res = await api<{ data: ReportCardData & { appreciation?: string | null } }>(
-          `/api/v1/students/${student.value!.id}/report-cards/${term.id}`,
-        )
-        return res.data
-      }),
-    )
-
-    primaryTrimesterReports.value = [
-      reports[0] ?? null,
-      reports[1] ?? null,
-      reports[2] ?? null,
-    ]
-
-    const lastTerm = primaryTrimesterTerms.value[primaryTrimesterTerms.value.length - 1]?.term
-    if (lastTerm) {
-      await loadPrimaryRanking(lastTerm.id)
-    }
-
-    appreciation.value = reports.find((item) => item?.appreciation)?.appreciation ?? ''
-  } catch (e) {
-    error.value = e instanceof ApiError ? e.message : 'Erreur de chargement du bulletin primaire.'
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loadCtebRanking(termId: number): Promise<void> {
-  ctebRank.value = null
-  ctebClassSize.value = null
-  if (!student.value?.classroom_id) return
-
-  try {
-    const res = await api<{ data: Array<{ rank: number; student_id: number }> }>(
-      `/api/v1/classrooms/${student.value.classroom_id}/ranking/${termId}`,
-    )
-    ctebClassSize.value = res.data.length
-    const row = res.data.find((item) => item.student_id === student.value?.id)
-    ctebRank.value = row?.rank ?? null
-  } catch {
-    ctebRank.value = null
-    ctebClassSize.value = null
-  }
-}
-
-async function loadCtebBulletin(): Promise<void> {
-  if (!student.value || ctebSemesterTerms.value.length === 0) return
-  loading.value = true
-  error.value = ''
-  report.value = null
-  ctebSemesterReports.value = [null, null]
-  appreciation.value = ''
-  appreciationMsg.value = ''
-
-  try {
-    const reports = await Promise.all(
-      ctebSemesterTerms.value.map(async ({ term }) => {
-        const res = await api<{ data: ReportCardData & { appreciation?: string | null } }>(
-          `/api/v1/students/${student.value!.id}/report-cards/${term.id}`,
-        )
-        return res.data
-      }),
-    )
-
-    ctebSemesterReports.value = [
-      reports[0] ?? null,
-      reports[1] ?? null,
-    ]
-
-    const lastTerm = ctebSemesterTerms.value[ctebSemesterTerms.value.length - 1]?.term
-    if (lastTerm) {
-      await loadCtebRanking(lastTerm.id)
-    }
-
-    appreciation.value = reports.find((item) => item?.appreciation)?.appreciation ?? ''
-  } catch (e) {
-    error.value = e instanceof ApiError ? e.message : 'Erreur de chargement du bulletin CTEB.'
-  } finally {
-    loading.value = false
   }
 }
 
 async function loadReport(): Promise<void> {
   if (!student.value) return
-  if (isCtebStudent.value) {
-    await loadCtebBulletin()
-    return
-  }
-  if (isOfficialPrimaireStudent.value) {
-    await loadPrimaireBulletin()
-    return
-  }
-
   if (!selectedTerm.value) return
   loading.value = true
   error.value = ''
@@ -327,15 +148,7 @@ async function loadReport(): Promise<void> {
   }
 }
 
-const appreciationTermId = computed(() => {
-  if (isCtebStudent.value) {
-    return ctebSemesterTerms.value[ctebSemesterTerms.value.length - 1]?.term.id ?? null
-  }
-  if (isOfficialPrimaireStudent.value) {
-    return primaryTrimesterTerms.value[primaryTrimesterTerms.value.length - 1]?.term.id ?? null
-  }
-  return selectedTerm.value
-})
+const appreciationTermId = computed(() => selectedTerm.value)
 
 async function saveAppreciation(): Promise<void> {
   if (!appreciationTermId.value || !student.value || !appreciation.value.trim()) return
@@ -347,6 +160,7 @@ async function saveAppreciation(): Promise<void> {
       body: { content: appreciation.value },
     })
     appreciationMsg.value = 'Appréciation enregistrée.'
+    useToastStore().success('Appréciation enregistrée sur le bulletin.')
     setTimeout(() => (appreciationMsg.value = ''), 3000)
   } catch (e) {
     appreciationMsg.value = e instanceof ApiError ? e.message : 'Enregistrement impossible.'
@@ -356,11 +170,7 @@ async function saveAppreciation(): Promise<void> {
 }
 
 function downloadPdf(): void {
-  const termId = isCtebStudent.value
-    ? ctebSemesterTerms.value[ctebSemesterTerms.value.length - 1]?.term.id
-    : isOfficialPrimaireStudent.value
-      ? primaryTrimesterTerms.value[primaryTrimesterTerms.value.length - 1]?.term.id
-      : selectedTerm.value
+  const termId = selectedTerm.value
   if (!termId || !student.value) return
   const token = getToken()
   if (!token) return
@@ -387,8 +197,6 @@ watch(
   async () => {
     selectedTerm.value = null
     report.value = null
-    ctebSemesterReports.value = [null, null]
-    primaryTrimesterReports.value = [null, null, null]
     appreciation.value = ''
     appreciationMsg.value = ''
     await loadStudentAndYears()
@@ -406,38 +214,16 @@ onMounted(loadStudentAndYears)
       </RouterLink>
 
       <div class="toolbar-actions">
-        <label v-if="isOfficialAnnualBulletin" class="term-picker">
-          <span>Année scolaire</span>
-          <select
-            :value="(isCtebStudent ? ctebSchoolYear : primarySchoolYear)?.id ?? ''"
-            @change="(e) => {
-              const yearId = Number((e.target as HTMLSelectElement).value)
-              const firstTerm = allTerms.find(({ year }) => year.id === yearId)?.term.id ?? null
-              selectedTerm = firstTerm
-              if (isCtebStudent) loadCtebBulletin()
-              else loadPrimaireBulletin()
-            }"
-          >
-            <option v-for="year in schoolYears" :key="year.id" :value="year.id">
-              {{ year.name }}
-            </option>
-          </select>
-        </label>
-        <label v-else class="term-picker">
-          <span>Trimestre</span>
+        <label class="term-picker">
+          <span>Trimestre / Semestre</span>
           <select v-model.number="selectedTerm" @change="loadReport">
-            <option :value="null" disabled>Choisir un trimestre</option>
-            <option v-for="t in allTerms" :key="t.term.id" :value="t.term.id">
+            <option :value="null" disabled>Choisir un terme</option>
+            <option v-for="t in studentTerms" :key="t.term.id" :value="t.term.id">
               {{ t.term.name }} - {{ t.year.name }}
             </option>
           </select>
         </label>
-        <button
-          v-if="report || (isCtebStudent && ctebSemesterReports.some(Boolean)) || (isOfficialPrimaireStudent && primaryTrimesterReports.some(Boolean))"
-          type="button"
-          class="btn-primary"
-          @click="downloadPdf"
-        >
+        <button v-if="report" type="button" class="btn-primary" @click="downloadPdf">
           Télécharger PDF
         </button>
       </div>
@@ -445,31 +231,11 @@ onMounted(loadStudentAndYears)
 
     <p v-if="error" class="alert alert-error">{{ error }}</p>
     <div v-if="loading" class="empty-state">Calcul du bulletin...</div>
-    <div v-else-if="student && !report && !(isCtebStudent && ctebSemesterReports.some(Boolean)) && !(isOfficialPrimaireStudent && primaryTrimesterReports.some(Boolean))" class="empty-state">
-      {{ isOfficialAnnualBulletin ? 'Sélectionnez une année scolaire pour afficher le bulletin officiel.' : 'Sélectionnez un trimestre pour afficher le bulletin.' }}
+    <div v-else-if="student && !report" class="empty-state">
+      Sélectionnez un trimestre ou un semestre pour afficher le bulletin.
     </div>
 
-    <CtebBulletinSheet
-      v-if="student && isCtebStudent && ctebSemesterReports.some(Boolean)"
-      :student="student"
-      :school-year-name="ctebSchoolYear?.name ?? '—'"
-      :semester-reports="ctebSemesterReports"
-      :rank="ctebRank"
-      :class-size="ctebClassSize"
-      :appreciation="appreciation"
-    />
-
-    <PrimaireDebutBulletinSheet
-      v-if="student && isOfficialPrimaireStudent && primaryTrimesterReports.some(Boolean)"
-      :student="student"
-      :school-year-name="primarySchoolYear?.name ?? '—'"
-      :trimester-reports="primaryTrimesterReports"
-      :rank="primaryRank"
-      :class-size="primaryClassSize"
-      :appreciation="appreciation"
-    />
-
-    <template v-if="student && report && !isOfficialAnnualBulletin">
+    <template v-if="student && report">
       <article class="report-view">
         <section class="student-band">
           <div>
@@ -616,10 +382,7 @@ onMounted(loadStudentAndYears)
 
     </template>
 
-    <section
-      v-if="student && (report || (isCtebStudent && ctebSemesterReports.some(Boolean)) || (isOfficialPrimaireStudent && primaryTrimesterReports.some(Boolean)))"
-      class="appreciation-editor"
-    >
+    <section v-if="student && report" class="appreciation-editor">
       <div class="editor-heading">
         <div>
           <h2>Appréciation</h2>
@@ -656,19 +419,10 @@ onMounted(loadStudentAndYears)
   gap: 1rem;
 }
 
-.bulletin-page :deep(.cteb-sheet) {
-  box-shadow: 0 12px 40px rgb(15 23 42 / 0.08);
-}
-
 @media print {
   .bulletin-toolbar,
   .appreciation-editor {
     display: none !important;
-  }
-
-  .bulletin-page :deep(.cteb-sheet) {
-    box-shadow: none;
-    border-width: 1px;
   }
 }
 
