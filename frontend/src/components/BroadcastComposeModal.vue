@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { api, ApiError } from '../api/client'
+import { useToastStore } from '../stores/toast'
 import type { BroadcastAudienceType, ClassRoom, MessageContact, Paginated } from '../types'
 import Modal from './Modal.vue'
 
@@ -133,6 +134,7 @@ async function submit(): Promise<void> {
         body: form.body,
       },
     })
+    useToastStore().success('Annonce envoyée aux destinataires ciblés.')
     emit('sent')
     reset()
   } catch (e) {

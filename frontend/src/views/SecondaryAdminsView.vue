@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { api, ApiError } from '../api/client'
+import { useToastStore } from '../stores/toast'
 import type { AdminScope, AuthUser } from '../types'
 import Modal from '../components/Modal.vue'
 import { useConfirmStore } from '../stores/confirm'
@@ -181,6 +182,7 @@ async function remove(user: SecondaryAdmin): Promise<void> {
   if (!ok) return
   try {
     await api(`/api/v1/admin/users/${user.id}`, { method: 'DELETE' })
+    toast.success('Administrateur secondaire supprimé.')
     await load()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Erreur réseau.'

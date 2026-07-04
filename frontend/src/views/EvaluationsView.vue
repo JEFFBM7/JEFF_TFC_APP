@@ -7,12 +7,14 @@ import type { ApiResource, ClassRoom, Evaluation, Level, LevelCycle, Paginated, 
 import Modal from '../components/Modal.vue'
 import RowActionMenu from '../components/RowActionMenu.vue'
 import { useConfirmStore } from '../stores/confirm'
+import { useToastStore } from '../stores/toast'
 import { useSchoolYearStore } from '../stores/schoolYear'
 import { useAuthStore } from '../stores/auth'
 import { useTermCycleScope } from '../composables/useTermCycleScope'
 
 const schoolYearStore = useSchoolYearStore()
 const confirmDialog = useConfirmStore()
+const toast = useToastStore()
 const auth = useAuthStore()
 const { isGlobalAdmin, filterTerms } = useTermCycleScope()
 const router = useRouter()
@@ -40,8 +42,6 @@ const allClassrooms = computed<ClassRoom[]>(() =>
 )
 
 const subjectsForSelectedClassroom = computed(() => {
-  if (!isTeacher.value) return subjects.value
-  if (form.classroom_id === 0 && filterClassroom.value === '') return subjects.value
   const classroomId = showForm.value && form.classroom_id > 0
     ? form.classroom_id
     : (filterClassroom.value !== '' ? Number(filterClassroom.value) : 0)
@@ -92,6 +92,28 @@ function termsForClassroomId(classroomId: number | ''): Term[] {
   if (!classroom) return allTerms.value
   const expectedCycle = termApplicableCycleForLevel(classroom.level?.cycle)
   return allTerms.value.filter((term) => (term.applicable_cycle ?? 'primaire') === expectedCycle)
+}
+
+/** Élément « en cours » aujourd'hui (starts_on ≤ auj. ≤ ends_on) dans une liste triée par date. */
+function pickCurrent<T extends { starts_on: string; ends_on: string }>(list: T[]): T | undefined {
+  if (list.length === 0) return undefined
+  const today = new Date().toISOString().slice(0, 10)
+  const active = list.find((item) => item.starts_on <= today && today <= item.ends_on)
+  if (active) return active
+  // Entre deux périodes (vacances, avant la rentrée…) : la dernière déjà
+  // entamée, sinon la toute première à venir.
+  const started = [...list]
+    .filter((item) => item.starts_on <= today)
+    .sort((a, b) => b.starts_on.localeCompare(a.starts_on))[0]
+  return started ?? [...list].sort((a, b) => a.starts_on.localeCompare(b.starts_on))[0]
+}
+
+function currentTermFor(classroomId: number | ''): Term | undefined {
+  return pickCurrent(termsForClassroomId(classroomId))
+}
+
+function currentPeriodFor(termId: number): Period | undefined {
+  return pickCurrent(allPeriods.value.filter((period) => period.term_id === termId))
 }
 
 function classroomLabel(c: ClassRoom): string {
@@ -224,10 +246,10 @@ function componentLabel(item: Evaluation): string {
 function syncFormTermForClassroom(): void {
   const terms = termsForForm.value
   if (!terms.some((term) => term.id === form.term_id)) {
-    form.term_id = terms[0]?.id ?? 0
+    form.term_id = currentTermFor(form.classroom_id)?.id ?? terms[0]?.id ?? 0
   }
   if (!periodsForForm.value.some((period) => period.id === form.period_id)) {
-    form.period_id = periodsForForm.value[0]?.id ?? 0
+    form.period_id = currentPeriodFor(form.term_id)?.id ?? periodsForForm.value[0]?.id ?? 0
   }
 }
 
@@ -248,11 +270,10 @@ function resetForm(): void {
   if (form.subject_id === 0) {
     form.subject_id = subjects.value[0]?.id ?? 0
   }
-  syncFormTermForClassroom()
-  if (form.term_id === 0) {
-    form.term_id = termsForForm.value[0]?.id ?? 0
-    form.period_id = periodsForForm.value[0]?.id ?? 0
-  }
+  // Toujours la période/le terme « en cours » à la création — jamais un reliquat
+  // d'une précédente ouverture du formulaire (édition ou classe différente).
+  form.term_id = currentTermFor(form.classroom_id)?.id ?? termsForForm.value[0]?.id ?? 0
+  form.period_id = currentPeriodFor(form.term_id)?.id ?? periodsForForm.value[0]?.id ?? 0
   form.name = ''
   form.type = defaultFormType()
   form.held_on = new Date().toISOString().slice(0, 10)
@@ -338,6 +359,7 @@ async function submit(): Promise<void> {
     } else {
       await api<ApiResource<Evaluation>>('/api/v1/evaluations', { method: 'POST', body: { ...form } })
     }
+    toast.success(editing.value ? 'Évaluation mise à jour.' : 'Évaluation créée.')
     showForm.value = false
     await load()
   } catch (e) {
@@ -365,6 +387,7 @@ async function remove(item: Evaluation): Promise<void> {
   if (!ok) return
   try {
     await api(`/api/v1/evaluations/${item.id}`, { method: 'DELETE' })
+    toast.success(`Évaluation « ${item.name} » supprimée.`)
     await load()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Suppression impossible.'
@@ -378,6 +401,7 @@ function openGrades(item: Evaluation): void {
 async function publishEvaluation(item: Evaluation): Promise<void> {
   try {
     await api(`/api/v1/evaluations/${item.id}/publish`, { method: 'POST' })
+    toast.success(`« ${item.name} » publiée : notes visibles des élèves et parents.`)
     await load()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Erreur de publication.'
@@ -387,6 +411,7 @@ async function publishEvaluation(item: Evaluation): Promise<void> {
 async function unpublishEvaluation(item: Evaluation): Promise<void> {
   try {
     await api(`/api/v1/evaluations/${item.id}/unpublish`, { method: 'POST' })
+    toast.info(`« ${item.name} » repassée en brouillon.`)
     await load()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Erreur de dépublication.'
@@ -715,18 +740,20 @@ onMounted(async () => {
         <div class="form-grid two">
           <div class="field">
             <label for="e-term">Trimestre / Semestre</label>
-            <select id="e-term" v-model.number="form.term_id" required>
+            <select id="e-term" v-model.number="form.term_id" required :disabled="!editing">
               <option :value="0" disabled>Choisir un terme</option>
               <option v-for="s in termsForForm" :key="s.id" :value="s.id">{{ termLabel(s) }}</option>
             </select>
+            <small v-if="!editing" class="field-hint">Période en cours — non modifiable.</small>
             <small v-if="formErrors.term_id" class="err">{{ formErrors.term_id[0] }}</small>
           </div>
           <div class="field">
             <label for="e-period">Période</label>
-            <select id="e-period" v-model.number="form.period_id" required :disabled="periodsForForm.length === 0">
+            <select id="e-period" v-model.number="form.period_id" required :disabled="!editing || periodsForForm.length === 0">
               <option :value="0" disabled>Choisir une période</option>
               <option v-for="period in periodsForForm" :key="period.id" :value="period.id">{{ period.name }}</option>
             </select>
+            <small v-if="!editing" class="field-hint">Période en cours — non modifiable.</small>
             <small v-if="formErrors.period_id" class="err">{{ formErrors.period_id[0] }}</small>
           </div>
         </div>
@@ -1129,6 +1156,13 @@ onMounted(async () => {
 .err {
   display: block;
   color: var(--danger);
+  font-size: 0.78rem;
+  margin-top: 0.25rem;
+}
+
+.field-hint {
+  display: block;
+  color: var(--text-muted);
   font-size: 0.78rem;
   margin-top: 0.25rem;
 }

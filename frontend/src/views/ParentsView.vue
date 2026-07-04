@@ -6,6 +6,7 @@ import type { ApiResource, AuthUser, Paginated, ParentProfile } from '../types'
 import Modal from '../components/Modal.vue'
 import RowActionMenu from '../components/RowActionMenu.vue'
 import { useConfirmStore } from '../stores/confirm'
+import { useToastStore } from '../stores/toast'
 import { useAuthStore } from '../stores/auth'
 import { useCycleTabs, type CycleFilter } from '../composables/useCycleTabs'
 
@@ -13,6 +14,7 @@ const auth = useAuthStore()
 const { cycleTabs } = useCycleTabs()
 const items = ref<ParentProfile[]>([])
 const confirmDialog = useConfirmStore()
+const toast = useToastStore()
 const router = useRouter()
 const availableUsers = ref<AuthUser[]>([])
 const loading = ref(false)
@@ -170,6 +172,7 @@ async function remove(item: ParentProfile): Promise<void> {
   if (!ok) return
   try {
     await api(`/api/v1/parents/${item.id}`, { method: 'DELETE' })
+    toast.success('Parent supprimé.')
     await load()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Suppression impossible.'

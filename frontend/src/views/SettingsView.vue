@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { api, ApiError } from '../api/client'
+import { useToastStore } from '../stores/toast'
 import type { AppSettingRow } from '../types'
 
 interface SettingsResponse { data: AppSettingRow[] }
 
+const toast = useToastStore()
 const rows = ref<AppSettingRow[]>([])
 const loading = ref(false)
 const error = ref('')
@@ -79,6 +81,7 @@ async function save(): Promise<void> {
     })
     rows.value = res.data.map((r) => ({ ...r }))
     successMessage.value = 'Paramètres enregistrés.'
+    toast.success('Paramètres enregistrés.')
     window.setTimeout(() => (successMessage.value = ''), 3000)
   } catch (e) {
     if (e instanceof ApiError) {

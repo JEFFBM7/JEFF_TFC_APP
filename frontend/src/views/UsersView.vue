@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { api, ApiError } from '../api/client'
+import { useToastStore } from '../stores/toast'
 import type { AdminScope, AuthUser, UserRole } from '../types'
 import Modal from '../components/Modal.vue'
 
@@ -27,6 +28,7 @@ const loading = ref(false)
 const error = ref('')
 const filterRole = ref<'' | UserRole>('')
 
+const toast = useToastStore()
 const showForm = ref(false)
 const formError = ref('')
 const formErrors = reactive<Record<string, string[]>>({})
@@ -92,6 +94,7 @@ async function submit(): Promise<void> {
         admin_scope: form.role === 'admin' ? form.admin_scope : null,
       },
     })
+    toast.success('Utilisateur créé.')
     showForm.value = false
     await load()
   } catch (e) {

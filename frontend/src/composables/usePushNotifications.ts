@@ -39,7 +39,11 @@ export async function enablePushNotifications(): Promise<EnablePushResult> {
     const permission = await Notification.requestPermission()
     if (permission !== 'granted') return { ok: false, reason: 'denied' }
 
-    const registration = await navigator.serviceWorker.ready
+    // `serviceWorker.ready` ne se résout jamais si aucun SW n'a pris le contrôle
+    // de la page (ex. mode dev, VitePWA devOptions.enabled=false) : on utilise
+    // getRegistration(), qui se résout toujours (avec undefined si absent).
+    const registration = await navigator.serviceWorker.getRegistration()
+    if (!registration) return { ok: false, reason: 'error' }
     const { public_key } = await api<{ public_key: string | null }>('/api/v1/push/public-key', {
       skipSchoolYear: true,
     })
@@ -70,7 +74,10 @@ export async function enablePushNotifications(): Promise<EnablePushResult> {
 export async function disablePushNotifications(): Promise<void> {
   if (!isPushSupported()) return
   try {
-    const registration = await navigator.serviceWorker.ready
+    // Cf. enablePushNotifications : getRegistration() plutôt que `.ready`, qui
+    // peut rester en attente indéfiniment et bloquerait la déconnexion.
+    const registration = await navigator.serviceWorker.getRegistration()
+    if (!registration) return
     const subscription = await registration.pushManager.getSubscription()
     if (!subscription) return
     try {

@@ -6,6 +6,7 @@ import type { ApiResource, ClassRoom, LevelCycle, Paginated, Subject, Teacher } 
 import Modal from '../components/Modal.vue'
 import RowActionMenu from '../components/RowActionMenu.vue'
 import { useConfirmStore } from '../stores/confirm'
+import { useToastStore } from '../stores/toast'
 import { useSchoolYearStore } from '../stores/schoolYear'
 import { useAuthStore } from '../stores/auth'
 import { useCycleTabs, type CycleFilter } from '../composables/useCycleTabs'
@@ -15,6 +16,7 @@ const PRIMARY_CYCLES = new Set(['maternel', 'primaire'])
 const auth = useAuthStore()
 const schoolYearStore = useSchoolYearStore()
 const confirmDialog = useConfirmStore()
+const toast = useToastStore()
 const router = useRouter()
 const { cycleTabs, authorizedCycleValues } = useCycleTabs()
 const items = ref<Teacher[]>([])
@@ -470,6 +472,7 @@ async function submit(): Promise<void> {
       })
     } else {
       await api<ApiResource<Teacher>>('/api/v1/teachers', { method: 'POST', body })
+      toast.success('Enseignant créé. Mot de passe par défaut communiqué au secrétariat.')
     }
     showForm.value = false
     await load()
@@ -497,6 +500,7 @@ async function remove(item: Teacher): Promise<void> {
   if (!ok) return
   try {
     await api(`/api/v1/teachers/${item.id}`, { method: 'DELETE' })
+    toast.success('Enseignant supprimé.')
     await load()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Suppression impossible.'

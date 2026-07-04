@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { api, ApiError } from '../api/client'
+import { useToastStore } from '../stores/toast'
 import Modal from '../components/Modal.vue'
 import type { AttendanceRecord, Paginated } from '../types'
 
@@ -58,6 +59,7 @@ async function submitJustification(): Promise<void> {
       method: 'PATCH',
       body: { justification: justifyForm.justification },
     })
+    useToastStore().success('Justificatif transmis au secrétariat.')
     showJustify.value = false
     await load()
   } catch (err) {

@@ -23,6 +23,7 @@ import AnnouncementDetailView from '../components/messages/AnnouncementDetailVie
 import { usePortalDashboard } from '../composables/usePortalDashboard'
 import { usePortalTopbarOverride } from '../composables/usePortalTopbarOverride'
 import { useConfirmStore } from '../stores/confirm'
+import { useToastStore } from '../stores/toast'
 import { useAuthStore } from '../stores/auth'
 import {
   useMessageComposeIntentStore,
@@ -66,6 +67,7 @@ let composeNavigationInFlight: Promise<void> | null = null
 /** Évite de retraiter la même query ; ne pas appeler router.replace sur la query (remonte MessagesView via AdminLayout). */
 const handledComposeRouteSignature = ref('')
 const confirmDialog = useConfirmStore()
+const toast = useToastStore()
 const portalTopbar = usePortalTopbarOverride()
 const { childColor } = usePortalDashboard()
 const staffReplyRef = ref<HTMLTextAreaElement | null>(null)
@@ -804,31 +806,6 @@ async function switchCommunicationSection(next: CommunicationSection): Promise<v
   await loadMessages()
 }
 
-async function deleteMessage(msg: Message): Promise<void> {
-  const rootId = threadRootId(msg)
-  const ok = await confirmDialog.ask({
-    title: 'Supprimer la conversation',
-    message: 'Cette conversation sera retirée de votre messagerie.',
-    details: [msg.subject],
-    confirmLabel: 'Supprimer',
-    variant: 'danger',
-  })
-  if (!ok) return
-  try {
-    await api(`/api/v1/messages/${msg.id}`, { method: 'DELETE' })
-    messages.value = messages.value.filter((m) => threadRootId(m) !== rootId)
-    if (selected.value && threadRootId(selected.value) === rootId) {
-      selected.value = null
-      draftRecipient.value = null
-      draftSubject.value = ''
-      mobileShowThread.value = false
-    }
-    await Promise.all([loadMessages(), loadUnread()])
-  } catch (e) {
-    error.value = e instanceof ApiError ? e.message : 'Suppression impossible.'
-  }
-}
-
 async function loadContacts(force = false): Promise<void> {
   if (!force && contacts.value.length > 0) return
   contactsLoading.value = true
@@ -1144,6 +1121,7 @@ async function sendMessage(): Promise<void> {
         parent_message_id: composeForm.parent_message_id,
       },
     })
+    toast.success('Message envoyé.')
     composeOpen.value = false
     if (section.value !== 'messages') section.value = 'messages'
     await loadMessages()
@@ -1587,10 +1565,6 @@ watch([selected, draftRecipient], () => {
                   <span> · {{ selected.subject }}</span>
                 </p>
               </div>
-            </div>
-            <div class="reader-actions">
-              <button type="button" class="btn-sm" @click="openCompose(selected)">Répondre en modal</button>
-              <button type="button" class="btn-sm btn-danger-sm" @click="deleteMessage(selected)">Supprimer</button>
             </div>
           </header>
 
@@ -2234,13 +2208,6 @@ watch([selected, draftRecipient], () => {
   font-size: 0.83rem;
 }
 
-.reader-actions {
-  display: flex;
-  gap: 0.45rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
 .reply-card {
   border-left: 4px solid var(--primary-tint);
 }
@@ -2763,8 +2730,7 @@ watch([selected, draftRecipient], () => {
     flex-direction: column;
   }
 
-  .hero-actions,
-  .reader-actions {
+  .hero-actions {
     width: 100%;
     justify-content: flex-start;
   }
@@ -3055,12 +3021,6 @@ watch([selected, draftRecipient], () => {
   color: var(--text-muted);
 }
 
-.chat-header .reader-actions {
-  flex: 0 0 auto;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
 .chat-thread {
   min-height: 0;
   padding: 1.2rem 1.4rem;
@@ -3286,8 +3246,7 @@ watch([selected, draftRecipient], () => {
     flex-direction: column;
   }
 
-  .sidebar-actions,
-  .chat-header .reader-actions {
+  .sidebar-actions {
     justify-content: flex-start;
   }
 

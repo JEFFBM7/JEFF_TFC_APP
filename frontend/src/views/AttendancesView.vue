@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, ApiError } from '../api/client'
+import { useToastStore } from '../stores/toast'
 import Modal from '../components/Modal.vue'
 import { useAuthStore } from '../stores/auth'
 import { useSchoolYearStore } from '../stores/schoolYear'
@@ -142,6 +143,10 @@ async function saveRoll(): Promise<void> {
       alerts?: { student_id: number; full_name: string; reasons: string[]; consecutive?: number; last_30d?: number }[]
     }>('/api/v1/attendances/batch', { method: 'POST', body })
     success.value = res.message
+    useToastStore().success(res.message)
+    if ((res.alerts ?? []).length > 0) {
+      useToastStore().warning(`${res.alerts!.length} élève(s) ont atteint un seuil d'alerte d'absentéisme.`)
+    }
     batchAlerts.value = res.alerts ?? []
     await loadRollCall()
     await loadRecentAbsences()
@@ -183,6 +188,7 @@ async function submitJustify(): Promise<void> {
         justification: justifyForm.value.justification || null,
       },
     })
+    useToastStore().success('Justification mise à jour.')
     closeJustify()
     await loadRecentAbsences()
     await loadRollCall()

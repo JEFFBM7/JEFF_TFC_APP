@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { api, ApiError } from '../api/client'
+import { useToastStore } from '../stores/toast'
 import type { ApiResource, Period, Term } from '../types'
 import Modal from './Modal.vue'
 
@@ -86,8 +87,10 @@ async function submit(): Promise<void> {
   try {
     if (props.period) {
       await api<ApiResource<Period>>(`/api/v1/periods/${props.period.id}`, { method: 'PUT', body })
+      useToastStore().success('Période mise à jour.')
     } else {
       await api<ApiResource<Period>>('/api/v1/periods', { method: 'POST', body })
+      useToastStore().success('Période créée.')
     }
     emit('saved')
   } catch (err) {

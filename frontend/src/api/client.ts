@@ -168,13 +168,25 @@ export async function api<T = unknown>(path: string, options: ApiRequestOptions 
       onUnauthenticated()
     }
     const obj = (payload ?? {}) as { message?: string; errors?: Record<string, string[]> }
-    throw new ApiError(
-      res.status,
-      obj.message ?? `Erreur HTTP ${res.status}`,
-      obj.errors,
-      payload,
-    )
+    const message = obj.message ?? `Erreur HTTP ${res.status}`
+
+    // Notification globale d'échec pour les actions (mutations) : chaque vue
+    // n'a plus à gérer son popup d'erreur. Les 422 restent silencieux ici —
+    // ce sont des erreurs de validation affichées champ par champ dans les
+    // formulaires — de même que les 401 (déconnexion gérée à part).
+    if (method !== 'GET' && res.status !== 422 && res.status !== 401) {
+      notifyMutationError(message)
+    }
+
+    throw new ApiError(res.status, message, obj.errors, payload)
   }
 
   return payload as T
+}
+
+/** Publie un toast d'erreur sans créer de dépendance circulaire au chargement. */
+function notifyMutationError(message: string): void {
+  void import('../stores/toast')
+    .then(({ useToastStore }) => useToastStore().error(message))
+    .catch(() => {})
 }

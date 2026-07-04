@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ArrowLeft, CheckCircle2, Users, BarChart3, Save } from 'lucide-vue-next'
 import { api, ApiError } from '../api/client'
+import { useToastStore } from '../stores/toast'
 import type { ApiResource, Evaluation, GradeRow } from '../types'
 import { useAuthStore } from '../stores/auth'
 
@@ -118,6 +119,7 @@ async function save(): Promise<void> {
     success.value = evaluation.value.is_published
       ? 'Notes enregistrées avec succès.'
       : 'Notes enregistrées. Publiez l’évaluation pour que les parents et l’élève voient les résultats.'
+    toast.success(success.value)
     await load()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Enregistrement impossible.'
@@ -133,6 +135,7 @@ async function publish(): Promise<void> {
   error.value = ''
   try {
     await api(`/api/v1/evaluations/${evaluation.value.id}/publish`, { method: 'POST' })
+    toast.success('Évaluation publiée : notes visibles des élèves et parents.')
     success.value = 'Évaluation publiée.'
     await load()
   } catch (e) {
@@ -149,6 +152,7 @@ async function unpublish(): Promise<void> {
   error.value = ''
   try {
     await api(`/api/v1/evaluations/${evaluation.value.id}/unpublish`, { method: 'POST' })
+    toast.info('Évaluation repassée en brouillon.')
     success.value = 'Évaluation dépubliée.'
     await load()
   } catch (e) {

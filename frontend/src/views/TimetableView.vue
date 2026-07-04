@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Plus } from 'lucide-vue-next'
 import { api, ApiError } from '../api/client'
+import { useToastStore } from '../stores/toast'
 import Modal from '../components/Modal.vue'
 import type { Assignment, ClassRoom, LevelCycle, Paginated, SchoolYear, Subject, Teacher } from '../types'
 import { useConfirmStore } from '../stores/confirm'
@@ -54,6 +55,7 @@ const filterClassroom = ref<number | ''>('')
 const loading = ref(false)
 const error = ref('')
 
+const toast = useToastStore()
 const showForm = ref(false)
 const showQuickAdd = ref(false)
 const quickAddDay = ref(1)
@@ -559,8 +561,10 @@ async function submit(): Promise<void> {
   try {
     if (editing.value) {
       await api(`/api/v1/timetable-slots/${editing.value.id}`, { method: 'PUT', body: { ...form, room: form.room || null } })
+      toast.success('Créneau mis à jour.')
     } else {
       await api('/api/v1/timetable-slots', { method: 'POST', body: { ...form, room: form.room || null } })
+      toast.success('Créneau ajouté à l’emploi du temps.')
     }
     showForm.value = false
     await loadSlots()
@@ -589,6 +593,7 @@ async function remove(slot: TimetableSlot): Promise<void> {
   if (!ok) return
   try {
     await api(`/api/v1/timetable-slots/${slot.id}`, { method: 'DELETE' })
+    toast.success('Créneau supprimé.')
     await loadSlots()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Suppression impossible.'

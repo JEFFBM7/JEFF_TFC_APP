@@ -17,8 +17,17 @@
   box-shadow: var(--shadow-card);
 }
 
+.messages-page.is-staff .communication-hero .eyebrow {
+  color: #4976dd;
+}
+
+.messages-page.is-staff .communication-hero h1 {
+  color: #f8fbff;
+}
+
 .messages-page.is-staff .messages-hero-copy p:not(.eyebrow) {
   max-width: 36rem;
+  color: #c7d7f5;
   font-size: 0.9rem;
   line-height: 1.5;
 }
@@ -29,12 +38,17 @@
   letter-spacing: -0.02em;
 }
 
+.messages-page.is-staff .messages-hero .badge-count {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
 .messages-page.is-staff .hero-panel {
   min-width: min(100%, 22rem);
   padding: 0.75rem;
-  border-color: var(--border);
+  border-color: rgba(255, 255, 255, 0.28);
   border-radius: var(--radius);
-  background: var(--bg-card);
+  background: rgba(255, 255, 255, 0.96);
   backdrop-filter: none;
 }
 
@@ -42,12 +56,15 @@
   min-height: 3.5rem;
   padding: 0.55rem 0.65rem;
   border-radius: var(--radius);
-  background: var(--bg-subtle);
+  border-color: #e4dccf;
+  background: #fbfaf7;
+  color: #34415f;
   font-size: 0.72rem;
   font-weight: 750;
 }
 
 .messages-page.is-staff .hero-stats strong {
+  color: #10203d;
   font-size: 1.15rem;
   font-variant-numeric: tabular-nums;
 }

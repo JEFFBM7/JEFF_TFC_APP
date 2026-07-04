@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CheckCircle2, Info, X, XCircle } from 'lucide-vue-next'
+import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-vue-next'
 import { useToastStore } from '../stores/toast'
 
 const toast = useToastStore()
@@ -8,6 +8,7 @@ const icons = {
   success: CheckCircle2,
   error: XCircle,
   info: Info,
+  warning: AlertTriangle,
 }
 </script>
 
@@ -23,7 +24,9 @@ const icons = {
           role="status"
           aria-live="polite"
         >
-          <component :is="icons[item.variant]" class="toast-icon" aria-hidden="true" />
+          <span class="toast-badge" aria-hidden="true">
+            <component :is="icons[item.variant]" class="toast-icon" />
+          </span>
           <span class="toast-message">{{ item.message }}</span>
           <button
             type="button"
@@ -45,7 +48,8 @@ const icons = {
   top: max(1rem, env(safe-area-inset-top));
   right: max(1rem, env(safe-area-inset-right));
   left: auto;
-  z-index: 200;
+  /* Au-dessus des modales (100) et du ConfirmDialog (300). */
+  z-index: 400;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
@@ -54,11 +58,14 @@ const icons = {
 }
 
 .toast {
+  --toast-accent: var(--accent);
+  --toast-soft: var(--primary-soft);
   pointer-events: auto;
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  padding: 0.75rem 0.85rem;
+  gap: 0.7rem;
+  padding: 0.8rem 0.85rem 0.95rem;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--bg-card);
@@ -66,30 +73,52 @@ const icons = {
   box-shadow: var(--shadow-card);
   font-size: 0.88rem;
   font-weight: 600;
+  overflow: hidden;
+}
+
+/* Barre de statut colorée en bas de la carte. */
+.toast::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 4px;
+  background: var(--toast-accent);
+}
+
+.toast-badge {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: var(--toast-soft);
+  color: var(--toast-accent);
 }
 
 .toast-icon {
   width: 1.15rem;
   height: 1.15rem;
-  flex: 0 0 auto;
 }
 
 .toast--success {
-  border-color: rgba(74, 222, 128, 0.35);
-}
-.toast--success .toast-icon {
-  color: var(--success);
+  --toast-accent: var(--success, #16a34a);
+  --toast-soft: var(--success-soft, rgba(74, 222, 128, 0.15));
 }
 
 .toast--error {
-  border-color: rgba(248, 113, 113, 0.35);
-}
-.toast--error .toast-icon {
-  color: var(--danger);
+  --toast-accent: var(--danger, #dc2626);
+  --toast-soft: var(--danger-soft, rgba(248, 113, 113, 0.15));
 }
 
-.toast--info .toast-icon {
-  color: var(--accent);
+.toast--warning {
+  --toast-accent: var(--warn, #d97706);
+  --toast-soft: var(--warn-soft, rgba(251, 191, 36, 0.15));
+}
+
+.toast--info {
+  --toast-accent: var(--accent, #2563eb);
+  --toast-soft: var(--primary-soft, rgba(59, 130, 246, 0.15));
 }
 
 .toast-message {
