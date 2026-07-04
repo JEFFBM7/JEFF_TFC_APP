@@ -6,7 +6,9 @@ use App\Enums\UserRole;
 use App\Models\ClassRoom;
 use App\Models\Level;
 use App\Models\SchoolClass;
+use App\Models\SchoolOption;
 use App\Models\SchoolYear;
+use App\Models\Student;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -20,7 +22,7 @@ class SchoolClassGenerationTest extends TestCase
         return User::factory()->create(['role' => UserRole::Admin]);
     }
 
-    public function test_creating_school_year_generates_base_classes(): void
+    public function test_creating_school_year_generates_only_optionless_classes(): void
     {
         $this->actingAs($this->admin(), 'sanctum')
             ->postJson('/api/v1/school-years', [
@@ -30,14 +32,54 @@ class SchoolClassGenerationTest extends TestCase
                 'is_current' => true,
             ])
             ->assertCreated()
-            ->assertJsonPath('data.school_classes_count', 75);
+            ->assertJsonPath('data.school_classes_count', 11);
 
         $year = SchoolYear::query()->where('name', '2026-2027')->firstOrFail();
 
-        $this->assertSame(75, SchoolClass::query()->where('school_year_id', $year->id)->count());
         $this->assertSame(11, SchoolClass::query()->where('school_year_id', $year->id)->whereNull('school_option_id')->count());
-        $this->assertSame(64, SchoolClass::query()->where('school_year_id', $year->id)->whereNotNull('school_option_id')->count());
-        $this->assertDatabaseHas('school_classes', ['school_year_id' => $year->id, 'name' => '9S - SMATH']);
+        $this->assertSame(0, SchoolClass::query()->where('school_year_id', $year->id)->whereNotNull('school_option_id')->count());
+        $this->assertDatabaseHas('school_classes', ['school_year_id' => $year->id, 'name' => '8EB']);
+    }
+
+    public function test_selective_generation_prunes_unselected_empty_options(): void
+    {
+        $year = SchoolYear::factory()->create(['name' => '2026-2027']);
+        $admin = $this->admin();
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/school-years/{$year->id}/generate-classes")
+            ->assertCreated();
+
+        $latin = SchoolOption::query()->where('abbreviation', 'LATPH')->firstOrFail();
+        $litteraire = SchoolOption::query()->where('abbreviation', 'LIT')->firstOrFail();
+
+        // Un élève inscrit dans une classe Littéraire la protège de l'élagage.
+        $protected = SchoolClass::query()
+            ->where('school_year_id', $year->id)
+            ->where('school_option_id', $litteraire->id)
+            ->firstOrFail();
+        Student::factory()->create([
+            'classroom_id' => ClassRoom::query()->where('school_class_id', $protected->id)->value('id'),
+        ]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/school-years/{$year->id}/generate-classes", [
+                'option_ids' => [$latin->id],
+            ])
+            ->assertCreated();
+
+        $remaining = SchoolClass::query()->where('school_year_id', $year->id)->get();
+
+        // 11 cycles fixes + 4 Latin-Philo + la classe Littéraire protégée.
+        $this->assertSame(16, $remaining->count());
+        $this->assertSame(4, $remaining->where('school_option_id', $latin->id)->count());
+        $this->assertTrue($remaining->contains('id', $protected->id));
+        $this->assertSame(
+            0,
+            $remaining->whereNotNull('school_option_id')
+                ->whereNotIn('school_option_id', [$latin->id, $litteraire->id])
+                ->count(),
+        );
     }
 
     public function test_generation_is_idempotent_and_creates_default_divisions(): void
@@ -47,16 +89,16 @@ class SchoolClassGenerationTest extends TestCase
         $this->actingAs($this->admin(), 'sanctum')
             ->postJson("/api/v1/school-years/{$year->id}/generate-classes")
             ->assertCreated()
-            ->assertJsonPath('meta.count', 75);
+            ->assertJsonPath('meta.count', 71);
 
         $this->actingAs($this->admin(), 'sanctum')
             ->postJson("/api/v1/school-years/{$year->id}/generate-classes")
             ->assertCreated()
-            ->assertJsonPath('meta.count', 75);
+            ->assertJsonPath('meta.count', 71);
 
-        $this->assertSame(75, SchoolClass::query()->where('school_year_id', $year->id)->count());
+        $this->assertSame(71, SchoolClass::query()->where('school_year_id', $year->id)->count());
         $this->assertSame(
-            75,
+            71,
             ClassRoom::query()
                 ->whereIn('school_class_id', SchoolClass::query()->where('school_year_id', $year->id)->pluck('id'))
                 ->count(),

@@ -10,7 +10,6 @@ use App\Models\ClassRoom;
 use App\Models\SchoolClass;
 use App\Models\SchoolYear;
 use App\Services\SchoolClassGenerationService;
-use App\Services\SubjectCurriculumService;
 use App\Support\AdminScopeContext;
 use App\Support\SchoolYearContext;
 use Illuminate\Http\JsonResponse;
@@ -186,40 +185,5 @@ class SchoolClassController extends Controller
         return ClassRoomResource::make($division)
             ->response()
             ->setStatusCode(201);
-    }
-
-    public function generateCurriculum(
-        SchoolYear $schoolYear,
-        SubjectCurriculumService $service,
-    ): JsonResponse {
-        SchoolYearContext::assertNotArchivedById($schoolYear->id);
-
-        $hasDivisions = ClassRoom::query()
-            ->whereHas('schoolClass', fn ($query) => $query->where('school_year_id', $schoolYear->id))
-            ->exists();
-
-        if (! $hasDivisions) {
-            return response()->json([
-                'message' => 'Aucune division trouvée pour cette année. Générez d’abord les classes de base.',
-            ], 422);
-        }
-
-        $stats = $service->generateForSchoolYear($schoolYear, request()->user());
-
-        if ($stats['classrooms_processed'] === 0) {
-            return response()->json([
-                'message' => 'Aucune division dans votre périmètre administratif pour cette année.',
-            ], 422);
-        }
-
-        return response()->json([
-            'data' => $stats,
-            'message' => sprintf(
-                'Programme scolaire appliqué à %d division(s) : %d lien(s) créé(s), %d mis à jour.',
-                $stats['classrooms_processed'],
-                $stats['links_created'],
-                $stats['links_updated'],
-            ),
-        ], 201);
     }
 }

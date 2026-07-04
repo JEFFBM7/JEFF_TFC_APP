@@ -6,12 +6,14 @@ import Modal from '../components/Modal.vue'
 import RowActionMenu from '../components/RowActionMenu.vue'
 import DataTable, { type Column } from '../components/DataTable.vue'
 import { useConfirmStore } from '../stores/confirm'
+import { useToastStore } from '../stores/toast'
 import { useSchoolYearStore } from '../stores/schoolYear'
 import { useAuthStore } from '../stores/auth'
 import { useCycleTabs, type CycleFilter } from '../composables/useCycleTabs'
 
 const schoolYearStore = useSchoolYearStore()
 const confirmDialog = useConfirmStore()
+const toast = useToastStore()
 const auth = useAuthStore()
 const { cycleTabs } = useCycleTabs()
 
@@ -41,8 +43,7 @@ const activeCycle = ref<CycleFilter>('all')
 const filterClassroom = ref<number | ''>('')
 const selectedSubjectIds = ref<Array<number | string>>([])
 const bulkDeleting = ref(false)
-const generatingCurriculum = ref(false)
-const curriculumSuccess = ref('')
+const structureSuccess = ref('')
 
 const columns: Column<Subject>[] = [
   { key: 'name', label: 'Nom' },
@@ -114,23 +115,13 @@ const selectedSchoolYear = computed(() =>
     ?? null,
 )
 
-const canGenerateCurriculum = computed(
+const canManageStructure = computed(
   () => auth.hasRole('admin') && !!selectedSchoolYear.value && !schoolYearStore.isViewingArchived,
 )
 
 const hasBaseClasses = computed(() => schoolClasses.value.length > 0)
 
-const hasDivisions = computed(() => classrooms.value.length > 0)
-
-const needsDefaultDivisions = computed(() => hasBaseClasses.value && !hasDivisions.value)
-
-const curriculumScopeNote = computed(() => {
-  const label = auth.user?.admin_scope_label
-  if (!label || (auth.user?.admin_scope ?? 'global') === 'global') {
-    return 'Le programme officiel RDC sera appliqué à toutes les divisions de l’année sélectionnée.'
-  }
-  return `Le programme officiel RDC sera appliqué aux divisions de votre périmètre (${label}).`
-})
+const needsDefaultDivisions = computed(() => hasBaseClasses.value && classrooms.value.length === 0)
 
 const termsForSelectedYear = computed(() =>
   terms.value.filter((term) => term.school_year_id === form.school_year_id),
@@ -213,14 +204,15 @@ async function loadRefs(): Promise<void> {
 
 async function ensureDefaultDivisions(): Promise<void> {
   const yearId = selectedSchoolYear.value?.id
-  if (!yearId || !canGenerateCurriculum.value || !needsDefaultDivisions.value) return
+  if (!yearId || !canManageStructure.value || !needsDefaultDivisions.value) return
 
   ensuringDivisions.value = true
   error.value = ''
   try {
     await api(`/api/v1/school-years/${yearId}/generate-classes`, { method: 'POST' })
+    toast.success('Divisions par défaut créées (une section A par classe).')
     await loadRefs()
-    curriculumSuccess.value = 'Divisions par défaut créées (une section A par classe). Vous pouvez maintenant générer le programme scolaire.'
+    structureSuccess.value = 'Divisions par défaut créées (une section A par classe). Vous pouvez maintenant créer vos cours.'
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Création des divisions impossible.'
   } finally {
@@ -329,6 +321,7 @@ async function submitAssignTeacher(): Promise<void> {
         weekly_hours: assignCourse.value.weekly_hours,
       },
     })
+    toast.success('Enseignant affecté au cours.')
     showAssignTeacher.value = false
     await load()
   } catch (e) {
@@ -369,6 +362,7 @@ async function unassignTeacherFromCourse(): Promise<void> {
         school_year_id: String(schoolYearId),
       },
     })
+    toast.info('Enseignant retiré du cours.')
     showAssignTeacher.value = false
     await load()
   } catch (e) {
@@ -403,6 +397,7 @@ async function submit(): Promise<void> {
     } else {
       await api<ApiResource<Subject>>('/api/v1/subjects', { method: 'POST', body: payload })
     }
+    toast.success(editing.value ? 'Cours mis à jour.' : 'Cours créé.')
     showForm.value = false
     await load()
   } catch (e) {
@@ -414,35 +409,6 @@ async function submit(): Promise<void> {
     }
   } finally {
     submitting.value = false
-  }
-}
-
-async function generateCurriculum(): Promise<void> {
-  const yearId = selectedSchoolYear.value?.id
-  if (!yearId || !canGenerateCurriculum.value) return
-
-  const ok = await confirmDialog.ask({
-    title: 'Générer le programme scolaire',
-    message: 'Appliquer le programme RDC aux divisions existantes ?',
-    note: `${curriculumScopeNote.value} Les matières déjà rattachées manuellement seront conservées ; seuls les coefficients manquants ou différents seront complétés.`,
-    confirmLabel: 'Générer',
-  })
-  if (!ok) return
-
-  generatingCurriculum.value = true
-  curriculumSuccess.value = ''
-  error.value = ''
-  try {
-    const res = await api<{ data: { classrooms_processed: number; links_created: number; links_updated: number }; message: string }>(
-      `/api/v1/school-years/${yearId}/generate-curriculum`,
-      { method: 'POST' },
-    )
-    curriculumSuccess.value = res.message
-    await load()
-  } catch (e) {
-    error.value = e instanceof ApiError ? e.message : 'Génération du programme impossible.'
-  } finally {
-    generatingCurriculum.value = false
   }
 }
 
@@ -458,6 +424,7 @@ async function remove(item: Subject): Promise<void> {
   if (!ok) return
   try {
     await api(`/api/v1/subjects/${item.id}`, { method: 'DELETE' })
+    toast.success(`Cours « ${item.name} » supprimé.`)
     await load()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Suppression impossible.'
@@ -489,6 +456,7 @@ async function removeSelected(): Promise<void> {
   bulkDeleting.value = true
   try {
     await Promise.all(subjectIds.map(id => api(`/api/v1/subjects/${id}`, { method: 'DELETE' })))
+    toast.success(`${subjectIds.length} cours supprimé(s).`)
     selectedSubjectIds.value = []
     await load()
   } catch (e) {
@@ -538,24 +506,15 @@ onMounted(async () => {
       <div class="card-header">
         <h1 style="margin: 0">Cours</h1>
         <div class="header-actions">
-          <button
-            v-if="canGenerateCurriculum"
-            type="button"
-            class="btn-secondary"
-            :disabled="generatingCurriculum || !hasDivisions"
-            @click="generateCurriculum"
-          >
-            {{ generatingCurriculum ? 'Génération…' : 'Générer le programme scolaire' }}
-          </button>
           <button type="button" class="btn-primary" @click="openCreate">+ Nouveau cours</button>
         </div>
       </div>
 
-      <p v-if="canGenerateCurriculum && !hasBaseClasses" class="alert alert-info curriculum-banner">
+      <p v-if="canManageStructure && !hasBaseClasses" class="alert alert-info curriculum-banner">
         Aucune classe de base pour cette année. Générez d’abord la structure depuis l’onglet
         <router-link to="/classes">Classes</router-link>.
       </p>
-      <div v-else-if="canGenerateCurriculum && needsDefaultDivisions" class="alert alert-info curriculum-banner curriculum-banner--action">
+      <div v-else-if="canManageStructure && needsDefaultDivisions" class="alert alert-info curriculum-banner curriculum-banner--action">
         <p>
           Les classes de base sont prêtes pour {{ selectedSchoolYear?.name ?? 'cette année' }}, mais aucune
           division (A, B…) n’est disponible dans votre périmètre. Ajoutez des divisions depuis l’onglet
@@ -570,7 +529,7 @@ onMounted(async () => {
           {{ ensuringDivisions ? 'Création…' : 'Créer les divisions par défaut' }}
         </button>
       </div>
-      <p v-if="curriculumSuccess" class="alert alert-success curriculum-banner">{{ curriculumSuccess }}</p>
+      <p v-if="structureSuccess" class="alert alert-success curriculum-banner">{{ structureSuccess }}</p>
 
       <div class="subject-toolbar">
         <div class="cycle-tabs" role="tablist" aria-label="Filtrer les cours par cycle">

@@ -13,8 +13,7 @@ class SchoolOptionCatalog
     public static function rows(): array
     {
         return [
-            ['name' => 'Scientifique Math-Physique', 'abbreviation' => 'SMATH', 'filiere' => SchoolOption::FILIERE_GENERALE],
-            ['name' => 'Scientifique Biologie-Chimie', 'abbreviation' => 'SBIO', 'filiere' => SchoolOption::FILIERE_GENERALE],
+            ['name' => 'Scientifique', 'abbreviation' => 'SCI', 'filiere' => SchoolOption::FILIERE_GENERALE],
             ['name' => 'Littéraire', 'abbreviation' => 'LIT', 'filiere' => SchoolOption::FILIERE_GENERALE],
             ['name' => 'Pédagogique générale', 'abbreviation' => 'PEDA', 'filiere' => SchoolOption::FILIERE_GENERALE],
             ['name' => 'Latin-Philosophie', 'abbreviation' => 'LATPH', 'filiere' => SchoolOption::FILIERE_GENERALE],
@@ -30,12 +29,6 @@ class SchoolOptionCatalog
             ['name' => 'Hôtellerie', 'abbreviation' => 'HOTEL', 'filiere' => SchoolOption::FILIERE_PROFESSIONNELLE],
             ['name' => 'Agriculture', 'abbreviation' => 'AGRI', 'filiere' => SchoolOption::FILIERE_PROFESSIONNELLE],
         ];
-    }
-
-    /** @return list<string> */
-    public static function scientificOptionNames(): array
-    {
-        return ['Scientifique Math-Physique', 'Scientifique Biologie-Chimie'];
     }
 
     /** @return list<string> */

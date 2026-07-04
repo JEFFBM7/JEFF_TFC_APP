@@ -123,8 +123,44 @@ class SchoolClassGenerationService
                 }
             }
 
+            if ($optionIds !== null) {
+                $this->pruneUnselectedSecondaryClasses(
+                    $schoolYear,
+                    $secondaryOptions->pluck('id')->all(),
+                );
+            }
+
             return $created->values();
         });
+    }
+
+    /**
+     * Supprime les classes secondaires de l'année dont l'option n'est plus
+     * sélectionnée, à condition qu'elles soient vides (aucun élève ni
+     * inscription dans leurs divisions).
+     */
+    private function pruneUnselectedSecondaryClasses(SchoolYear $schoolYear, array $keptOptionIds): void
+    {
+        $classes = SchoolClass::query()
+            ->where('school_year_id', $schoolYear->id)
+            ->whereNotNull('school_option_id')
+            ->whereNotIn('school_option_id', $keptOptionIds)
+            ->with(['divisions' => fn ($query) => $query->withCount(['students', 'enrollments'])])
+            ->get();
+
+        foreach ($classes as $class) {
+            $hasData = $class->divisions->contains(
+                fn (ClassRoom $division) => ($division->students_count ?? 0) > 0
+                    || ($division->enrollments_count ?? 0) > 0,
+            );
+
+            if ($hasData) {
+                continue;
+            }
+
+            $class->divisions->each(fn (ClassRoom $division) => $division->delete());
+            $class->delete();
+        }
     }
 
     /**

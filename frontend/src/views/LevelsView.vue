@@ -6,12 +6,14 @@ import type { ApiResource, ClassRoom, Level, LevelCycle, Paginated, SchoolClass,
 import Modal from '../components/Modal.vue'
 import DataTable, { type Column } from '../components/DataTable.vue'
 import { useConfirmStore } from '../stores/confirm'
+import { useToastStore } from '../stores/toast'
 import { useSchoolYearStore } from '../stores/schoolYear'
 import { useAuthStore } from '../stores/auth'
 import { formatAveragePercent } from '../utils/grades'
 
 const schoolYearStore = useSchoolYearStore()
 const confirmDialog = useConfirmStore()
+const toast = useToastStore()
 const auth = useAuthStore()
 
 const CYCLE_OPTIONS: Array<{ value: LevelCycle; label: string }> = [
@@ -467,9 +469,8 @@ const structureCatalogRows = computed(() => {
 
 const searchedDivisionRows = computed(() => {
   const term = normalizeClassSearch(classSearchQuery.value)
-  const withStudents = divisionRows.value.filter((row) => (row.student_count ?? 0) > 0)
-  if (!term) return withStudents
-  return withStudents.filter((row) => rowMatchesSearch(row, term))
+  if (!term) return divisionRows.value
+  return divisionRows.value.filter((row) => rowMatchesSearch(row, term))
 })
 
 const searchedStructureRows = computed(() => {
@@ -501,18 +502,6 @@ const activeGroup = computed(
 const totalDivisions = computed(() => divisionRows.value.length)
 
 const structureSlotsCount = computed(() => structureCatalogRows.value.length)
-
-/** Divisions existantes pour le cycle actif, AVANT le filtre "élèves > 0". */
-const activeCycleRawDivisions = computed(() => {
-  const cycle = activeCycle.value
-  if (cycle === 'all' || cycle === 'structure') return divisionRows.value
-  return divisionRows.value.filter((r) => r.level?.cycle === cycle)
-})
-
-/** Vrai si des divisions existent pour ce cycle mais aucune n'a d'élève inscrit. */
-const activeCycleExistsButEmpty = computed(
-  () => activeGroup.value?.classrooms.length === 0 && activeCycleRawDivisions.value.length > 0,
-)
 
 const hasPlannedStructureOnly = computed(() =>
   structureCatalogRows.value.length > 0 && structureCatalogRows.value.every((row) => row.isPlanned),
@@ -612,6 +601,7 @@ async function confirmGenerate(): Promise<void> {
       method: 'POST',
       body: { option_ids: selectedGenerateOptionIds.value },
     })
+    toast.success('Classes de base générées avec leurs divisions.')
     showGenerateModal.value = false
     await load()
   } catch (e) {
@@ -655,6 +645,7 @@ async function submitCreateClass(): Promise<void> {
         capacity: DEFAULT_DIVISION_CAPACITY,
       },
     })
+    toast.success('Classe créée avec ses divisions.')
     showCreateClass.value = false
     await load()
   } catch (e) {
@@ -682,6 +673,7 @@ async function addDivisionForRow(item: ClassTableRow): Promise<void> {
         body: { capacity: DEFAULT_DIVISION_CAPACITY },
       })
     }
+    toast.success('Division ajoutée.')
     await load()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Ajout de la division impossible.'
@@ -713,6 +705,7 @@ async function submit(): Promise<void> {
     } else {
       await api<ApiResource<Level>>('/api/v1/levels', { method: 'POST', body: { ...form } })
     }
+    toast.success(editing.value ? 'Niveau mis à jour.' : 'Niveau créé.')
     showForm.value = false
     await load()
   } catch (e) {
@@ -780,6 +773,7 @@ async function removeClassroom(item: ClassTableRow): Promise<void> {
   if (!ok) return
   try {
     await api(`/api/v1/classrooms/${item.classroomId}`, { method: 'DELETE' })
+    toast.success(`Classe « ${item.full_name} » supprimée.`)
     await load()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Suppression impossible.'
@@ -811,6 +805,11 @@ async function removeSelectedClassrooms(): Promise<void> {
   bulkDeleting.value = true
   try {
     await Promise.all(ids.map((id) => api(`/api/v1/classrooms/${id}`, { method: 'DELETE' })))
+    if (skipped > 0) {
+      toast.warning(`${ids.length} division(s) supprimée(s) — ${skipped} entrée(s) ignorée(s).`)
+    } else {
+      toast.success(`${ids.length} division(s) supprimée(s).`)
+    }
     selectedClassroomIds.value = []
     await load()
   } catch (e) {
@@ -1000,12 +999,6 @@ onUnmounted(() => {
 
           <div v-if="activeGroup.classrooms.length === 0" class="empty-state compact">
             <template v-if="isStructureView">Aucun emplacement dans ce cycle.</template>
-            <template v-else-if="activeCycleExistsButEmpty">
-              <p>Aucun élève inscrit dans ce cycle.</p>
-              <p class="empty-hint">
-                Les divisions s’afficheront dès la première inscription d’un élève.
-              </p>
-            </template>
             <template v-else>
               <p>Aucune division dans ce cycle.</p>
               <p v-if="isGlobalAdmin" class="empty-hint">
@@ -1217,6 +1210,8 @@ onUnmounted(() => {
       <p class="cc-hint">
         Les classes de <strong>1ère maternelle à 8e CTEB</strong> sont générées automatiquement.
         Sélectionnez les <strong>options / filières du secondaire</strong> à générer.
+        Les classes des options décochées seront supprimées si elles sont vides
+        (aucun élève inscrit).
       </p>
       <div class="gen-options">
         <div v-for="(opts, fil) in optionsByFiliere" :key="fil" class="gen-filiere">
