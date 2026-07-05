@@ -12,14 +12,28 @@ import { useSchoolYearStore } from '../stores/schoolYear'
 import { useAuthStore } from '../stores/auth'
 import { useTermCycleScope } from '../composables/useTermCycleScope'
 
+interface EvaluationsSummary {
+  total: number
+  exams: number
+  continuous: number
+  drafts: number
+}
+
+interface EvaluationsResponse extends Paginated<Evaluation> {
+  summary: EvaluationsSummary
+}
+
 const schoolYearStore = useSchoolYearStore()
 const confirmDialog = useConfirmStore()
 const toast = useToastStore()
 const auth = useAuthStore()
-const { isGlobalAdmin, filterTerms } = useTermCycleScope()
+const { filterTerms } = useTermCycleScope()
 const router = useRouter()
 
 const items = ref<Evaluation[]>([])
+const currentPage = ref(1)
+const lastPage = ref(1)
+const totalItems = ref(0)
 const levels = ref<Level[]>([])
 const teacherClassrooms = ref<ClassRoom[]>([])
 const subjects = ref<Subject[]>([])
@@ -30,7 +44,7 @@ const filterClassroom = ref<number | ''>('')
 const filterSubject = ref<number | ''>('')
 const filterTerm = ref<number | ''>('')
 const filterPeriod = ref<number | ''>('')
-const filterComponent = ref<'' | 'exam' | 'continuous'>('')
+const filterComponent = ref<'' | 'exam' | 'continuous' | 'draft'>('')
 
 const isAdmin = computed(() => auth.user?.role === 'admin')
 const isTeacher = computed(() => auth.user?.role === 'enseignant')
@@ -120,16 +134,6 @@ function classroomLabel(c: ClassRoom): string {
   return c.full_name ?? `${c.level?.name ?? ''} ${c.section}`.trim()
 }
 
-function termGroupLabel(cycle?: TermCycle | null): string {
-  return cycle === 'secondaire' ? 'Secondaire / CTEB (semestres)' : 'Maternelle / Primaire (trimestres)'
-}
-
-function termLabel(s: Term): string {
-  const y = schoolYears.value.find((sy) => sy.id === s.school_year_id)
-  const cycleLabel = isGlobalAdmin.value ? ` (${termGroupLabel(s.applicable_cycle ?? 'primaire')})` : ''
-  return `${s.name}${cycleLabel}${y && isGlobalAdmin.value ? ' — ' + y.name : ''}`
-}
-
 function periodLabel(period: Period): string {
   const term = allTerms.value.find((item) => item.id === period.term_id)
   return `${period.name}${term ? ' — ' + term.name : ''}`
@@ -198,18 +202,7 @@ const periodsForForm = computed<Period[]>(() =>
   allPeriods.value.filter((period) => period.term_id === form.term_id),
 )
 
-const filteredItems = computed(() => {
-  if (filterComponent.value === 'exam') return items.value.filter((item) => item.type === 'examen')
-  if (filterComponent.value === 'continuous') return items.value.filter((item) => item.type !== 'examen')
-  return items.value
-})
-
-const summary = computed(() => ({
-  total: items.value.length,
-  exams: items.value.filter((item) => item.type === 'examen').length,
-  continuous: items.value.filter((item) => item.type !== 'examen').length,
-  drafts: items.value.filter((item) => !item.is_published).length,
-}))
+const summary = ref<EvaluationsSummary>({ total: 0, exams: 0, continuous: 0, drafts: 0 })
 
 function isExamType(type: Evaluation['type']): boolean {
   return type === 'examen'
@@ -309,18 +302,29 @@ async function load(): Promise<void> {
   loading.value = true
   error.value = ''
   try {
-    const query: Record<string, string | number> = {}
+    const query: Record<string, string | number> = { page: currentPage.value }
     if (filterClassroom.value !== '') query.classroom_id = filterClassroom.value
     if (filterSubject.value !== '') query.subject_id = filterSubject.value
     if (filterTerm.value !== '') query.term_id = filterTerm.value
     if (filterPeriod.value !== '') query.period_id = filterPeriod.value
-    const res = await api<Paginated<Evaluation>>('/api/v1/evaluations', { query })
+    if (filterComponent.value !== '') query.component = filterComponent.value
+    const res = await api<EvaluationsResponse>('/api/v1/evaluations', { query })
     items.value = res.data
+    currentPage.value = res.meta?.current_page ?? 1
+    lastPage.value = res.meta?.last_page ?? 1
+    totalItems.value = res.meta?.total ?? res.data.length
+    summary.value = res.summary
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Erreur de chargement.'
   } finally {
     loading.value = false
   }
+}
+
+function goToPage(page: number): void {
+  if (page < 1 || page > lastPage.value || page === currentPage.value) return
+  currentPage.value = page
+  void load()
 }
 
 function openCreate(): void {
@@ -433,7 +437,10 @@ watch(
   },
 )
 
-watch([filterClassroom, filterSubject, filterTerm, filterPeriod], () => load())
+watch([filterClassroom, filterSubject, filterTerm, filterPeriod, filterComponent], () => {
+  currentPage.value = 1
+  void load()
+})
 watch(filterTerm, () => {
   if (filterPeriod.value !== '' && !periodsForFilter.value.some((period) => period.id === filterPeriod.value)) {
     filterPeriod.value = ''
@@ -510,7 +517,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div v-if="items.length || loading" class="summary-bar">
+    <div v-if="summary.total > 0 || loading" class="summary-bar">
       <article class="summary-card">
         <span class="summary-label">Total</span>
         <strong>{{ summary.total }}</strong>
@@ -549,7 +556,7 @@ onMounted(async () => {
           <label for="f-term">Trimestre / Semestre</label>
           <select id="f-term" v-model="filterTerm">
             <option value="">Tous les termes</option>
-            <option v-for="s in termsForFilterSelect" :key="s.id" :value="s.id">{{ termLabel(s) }}</option>
+            <option v-for="s in termsForFilterSelect" :key="s.id" :value="s.id">{{ s.name }}</option>
           </select>
         </div>
         <div class="filter-field">
@@ -589,11 +596,20 @@ onMounted(async () => {
         >
           Contrôle continu (40 %)
         </button>
+        <button
+          type="button"
+          role="tab"
+          :aria-selected="filterComponent === 'draft'"
+          :class="{ active: filterComponent === 'draft' }"
+          @click="filterComponent = 'draft'"
+        >
+          Brouillons ({{ summary.drafts }})
+        </button>
       </div>
 
       <p v-if="error" class="alert alert-error list-alert">{{ error }}</p>
       <div v-if="loading" class="empty-state">Chargement…</div>
-      <div v-else-if="filteredItems.length === 0" class="empty-state">
+      <div v-else-if="items.length === 0" class="empty-state">
         <FileEdit aria-hidden="true" class="empty-icon" />
         <p>Aucune évaluation ne correspond à vos filtres.</p>
         <button type="button" class="btn-primary" @click="openCreate">{{ createButtonLabel }}</button>
@@ -614,7 +630,7 @@ onMounted(async () => {
           </thead>
           <tbody>
             <tr
-              v-for="(item, index) in filteredItems"
+              v-for="(item, index) in items"
               :key="item.id"
               :class="{ 'row-exam': isExamType(item.type) }"
             >
@@ -654,7 +670,7 @@ onMounted(async () => {
                   </button>
                   <RowActionMenu
                     v-if="hasSecondaryActions(item)"
-                    :open-up="index >= filteredItems.length - 2"
+                    :open-up="index >= items.length - 2"
                     :aria-label="`Actions pour ${item.name}`"
                   >
                     <button
@@ -692,6 +708,20 @@ onMounted(async () => {
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div v-if="lastPage > 1" class="eval-pagination">
+        <span class="eval-pagination-info">
+          Page {{ currentPage }} / {{ lastPage }} · {{ totalItems }} évaluation(s) au total
+        </span>
+        <div class="eval-pagination-nav">
+          <button type="button" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">
+            ← Précédent
+          </button>
+          <button type="button" :disabled="currentPage >= lastPage" @click="goToPage(currentPage + 1)">
+            Suivant →
+          </button>
+        </div>
       </div>
     </div>
 
@@ -742,7 +772,7 @@ onMounted(async () => {
             <label for="e-term">Trimestre / Semestre</label>
             <select id="e-term" v-model.number="form.term_id" required :disabled="!editing">
               <option :value="0" disabled>Choisir un terme</option>
-              <option v-for="s in termsForForm" :key="s.id" :value="s.id">{{ termLabel(s) }}</option>
+              <option v-for="s in termsForForm" :key="s.id" :value="s.id">{{ s.name }}</option>
             </select>
             <small v-if="!editing" class="field-hint">Période en cours — non modifiable.</small>
             <small v-if="formErrors.term_id" class="err">{{ formErrors.term_id[0] }}</small>
@@ -964,6 +994,32 @@ onMounted(async () => {
   margin: 0.75rem 1rem 0;
 }
 
+.eval-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.eval-pagination-info {
+  color: var(--text-soft);
+  font-size: 0.84rem;
+}
+
+.eval-pagination-nav {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.eval-pagination-nav button {
+  min-height: 2.1rem;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+}
+
 .table-wrap {
   overflow-x: auto;
   overflow-y: visible;
@@ -984,7 +1040,9 @@ onMounted(async () => {
 }
 
 .row-exam {
-  background: rgba(239, 246, 255, 0.35);
+  /* Teinte discrète adaptée au thème (au lieu d'un blanc translucide codé en
+     dur, invisible en clair et délavé en sombre — cf. .badge-exam voisin). */
+  background: var(--primary-soft);
 }
 
 .eval-name-cell {

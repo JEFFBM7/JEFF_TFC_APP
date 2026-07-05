@@ -44,9 +44,33 @@ class EvaluationController extends Controller
         SchoolYearContext::applyEvaluationSchoolYear($query, $request);
         $this->applyEvaluationAccessScope($query, $request);
 
-        return EvaluationResource::collection(
-            $query->orderByDesc('held_on')->paginate(50),
-        );
+        // Compteurs globaux (toutes pages confondues) pour les cartes de
+        // résumé et les onglets — sur le même périmètre classe/cours/terme/
+        // période que la liste, mais AVANT le filtre d'onglet lui-même
+        // (sinon les autres onglets retomberaient toujours à 0).
+        // Un brouillon (non publié) reste un brouillon quel que soit son type :
+        // les trois compteurs se partagent le total sans se chevaucher.
+        $summary = [
+            'total' => (clone $query)->count(),
+            'exams' => (clone $query)->whereNotNull('published_at')->where('type', Evaluation::TYPE_EXAMEN)->count(),
+            'continuous' => (clone $query)->whereNotNull('published_at')->where('type', '!=', Evaluation::TYPE_EXAMEN)->count(),
+            'drafts' => (clone $query)->whereNull('published_at')->count(),
+        ];
+
+        // Onglets Toutes/Examens/Contrôle continu/Brouillons : filtrés côté
+        // serveur (comme classroom_id, subject_id...) pour rester corrects
+        // avec la pagination — un filtre appliqué seulement sur la page
+        // chargée ignorerait les correspondances des autres pages.
+        match ($request->string('component')->value()) {
+            'exam' => $query->whereNotNull('published_at')->where('type', Evaluation::TYPE_EXAMEN),
+            'continuous' => $query->whereNotNull('published_at')->where('type', '!=', Evaluation::TYPE_EXAMEN),
+            'draft' => $query->whereNull('published_at'),
+            default => null,
+        };
+
+        $paginator = $query->orderByDesc('created_at')->orderByDesc('id')->paginate(50);
+
+        return EvaluationResource::collection($paginator)->additional(['summary' => $summary]);
     }
 
     public function store(EvaluationRequest $request): JsonResponse

@@ -320,6 +320,79 @@ class EvaluationGradeTest extends TestCase
         $this->assertSame('Ancienne évaluation', $historical->json('data.0.name'));
     }
 
+    public function test_evaluations_component_filter_and_summary_are_scoped_not_page_bound(): void
+    {
+        [$classroom, $subject, $term, $period] = $this->context();
+
+        $exam = Evaluation::factory()->create([
+            'classroom_id' => $classroom->id, 'subject_id' => $subject->id,
+            'term_id' => $term->id, 'period_id' => $period->id,
+            'type' => Evaluation::TYPE_EXAMEN, 'name' => 'Examen', 'published_at' => now(),
+        ]);
+        $continuous = Evaluation::factory()->create([
+            'classroom_id' => $classroom->id, 'subject_id' => $subject->id,
+            'term_id' => $term->id, 'period_id' => $period->id,
+            'type' => Evaluation::TYPE_DEVOIR, 'name' => 'Devoir', 'published_at' => now(),
+        ]);
+        $draft = Evaluation::factory()->create([
+            'classroom_id' => $classroom->id, 'subject_id' => $subject->id,
+            'term_id' => $term->id, 'period_id' => $period->id,
+            'type' => Evaluation::TYPE_INTERROGATION, 'name' => 'Brouillon', 'published_at' => null,
+        ]);
+
+        $admin = $this->admin();
+
+        $all = $this->actingAs($admin, 'sanctum')->getJson('/api/v1/evaluations')->assertOk();
+        $this->assertSame(
+            ['total' => 3, 'exams' => 1, 'continuous' => 1, 'drafts' => 1],
+            $all->json('summary'),
+        );
+
+        // Le résumé reste identique quel que soit l'onglet actif : il décrit
+        // TOUT le périmètre filtré (classe/cours/...), pas la page affichée.
+        $examTab = $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/evaluations?component=exam')
+            ->assertOk();
+        $this->assertCount(1, $examTab->json('data'));
+        $this->assertSame($exam->id, $examTab->json('data.0.id'));
+        $this->assertSame(3, $examTab->json('summary.total'));
+
+        $draftTab = $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/evaluations?component=draft')
+            ->assertOk();
+        $this->assertCount(1, $draftTab->json('data'));
+        $this->assertSame($draft->id, $draftTab->json('data.0.id'));
+
+        $continuousTab = $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/evaluations?component=continuous')
+            ->assertOk();
+        $this->assertCount(1, $continuousTab->json('data'));
+        $this->assertSame($continuous->id, $continuousTab->json('data.0.id'));
+    }
+
+    public function test_evaluations_list_orders_most_recently_created_first(): void
+    {
+        [$classroom, $subject, $term, $period] = $this->context();
+
+        $older = Evaluation::factory()->create([
+            'classroom_id' => $classroom->id, 'subject_id' => $subject->id,
+            'term_id' => $term->id, 'period_id' => $period->id,
+            'name' => 'Créée en premier', 'held_on' => '2026-12-01',
+        ]);
+        $newer = Evaluation::factory()->create([
+            'classroom_id' => $classroom->id, 'subject_id' => $subject->id,
+            'term_id' => $term->id, 'period_id' => $period->id,
+            // Date d'examen ANTÉRIEURE à la précédente, mais créée après :
+            // doit tout de même apparaître en premier (ordre = création, pas held_on).
+            'name' => 'Créée en second', 'held_on' => '2026-09-01',
+        ]);
+
+        $res = $this->actingAs($this->admin(), 'sanctum')->getJson('/api/v1/evaluations')->assertOk();
+
+        $this->assertSame($newer->id, $res->json('data.0.id'));
+        $this->assertSame($older->id, $res->json('data.1.id'));
+    }
+
     // ─── Saisie de notes ─────────────────────────────────────────────────────
 
     public function test_grades_endpoint_lists_classroom_students(): void
