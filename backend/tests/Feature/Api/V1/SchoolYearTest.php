@@ -9,6 +9,7 @@ use App\Models\Evaluation;
 use App\Models\Grade;
 use App\Models\Level;
 use App\Models\ParentProfile;
+use App\Models\SchoolClass;
 use App\Models\SchoolYear;
 use App\Models\Student;
 use App\Models\Subject;
@@ -18,6 +19,7 @@ use App\Models\Term;
 use App\Models\TimetableSlot;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class SchoolYearTest extends TestCase
@@ -160,6 +162,48 @@ class SchoolYearTest extends TestCase
 
         // Aucune division orpheline ne doit survivre à la suppression de l'année.
         $this->assertSame(0, ClassRoom::query()->whereIn('id', $divisionIds)->count());
+    }
+
+    public function test_deleting_school_class_cascades_to_classrooms_even_bypassing_eloquent(): void
+    {
+        // Une suppression via query builder (ou SQL brut) ne déclenche pas les
+        // événements Eloquent : seule la FK en cascade au niveau base garantit
+        // qu'aucune division orpheline ne subsiste. C'est le chemin qui laissait
+        // auparavant des doublons de classes dans les listes déroulantes.
+        $year = SchoolYear::factory()->create();
+        $level = Level::factory()->create();
+        $schoolClass = SchoolClass::factory()->create([
+            'school_year_id' => $year->id,
+            'level_id' => $level->id,
+        ]);
+        $classroom = ClassRoom::factory()->create([
+            'school_class_id' => $schoolClass->id,
+            'level_id' => $level->id,
+        ]);
+
+        DB::table('school_classes')->where('id', $schoolClass->id)->delete();
+
+        $this->assertNull(ClassRoom::query()->find($classroom->id));
+    }
+
+    public function test_deleting_school_year_bypassing_eloquent_leaves_no_orphan_division(): void
+    {
+        $year = SchoolYear::factory()->create();
+        $level = Level::factory()->create();
+        $schoolClass = SchoolClass::factory()->create([
+            'school_year_id' => $year->id,
+            'level_id' => $level->id,
+        ]);
+        $classroom = ClassRoom::factory()->create([
+            'school_class_id' => $schoolClass->id,
+            'level_id' => $level->id,
+        ]);
+
+        // Chemin non-Eloquent : la cascade base doit propager année → classe → division.
+        DB::table('school_years')->where('id', $year->id)->delete();
+
+        $this->assertNull(ClassRoom::query()->find($classroom->id));
+        $this->assertSame(0, ClassRoom::query()->whereNull('school_class_id')->count());
     }
 
     public function test_show_school_year_includes_annual_stats(): void
