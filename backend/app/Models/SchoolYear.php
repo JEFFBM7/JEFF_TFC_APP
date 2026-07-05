@@ -37,10 +37,12 @@ class SchoolYear extends Model
             }
         });
 
-        // classrooms.school_class_id est en nullOnDelete : sans purge explicite,
-        // les divisions de l'année survivraient orphelines et réapparaîtraient
-        // dans toutes les listes de classes. Au niveau du modèle pour couvrir
-        // TOUS les chemins de suppression (API, seeders, tinker…).
+        // Garde-fou complémentaire sur le chemin Eloquent : la garantie « tous
+        // chemins » repose désormais sur la FK classrooms.school_class_id en
+        // cascade (cf. migration cascade_delete_classrooms_with_school_class) —
+        // supprimer une année cascade vers ses SchoolClasses puis leurs divisions
+        // au niveau base. Ce hook reste utile si l'enforcement des FK est un jour
+        // désactivé et déclenche proprement les événements Eloquent des modèles.
         static::deleting(function (SchoolYear $year): void {
             ClassRoom::query()
                 ->whereHas('schoolClass', fn ($query) => $query->where('school_year_id', $year->id))
