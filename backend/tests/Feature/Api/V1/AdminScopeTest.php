@@ -380,4 +380,40 @@ class AdminScopeTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.main_classroom.id', $classroom->id);
     }
+
+    public function test_global_admin_can_deactivate_any_user(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $target = User::factory()->create(['role' => UserRole::Enseignant, 'is_active' => true]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->patchJson("/api/v1/admin/users/{$target->id}", ['is_active' => false])
+            ->assertOk()
+            ->assertJsonPath('is_active', false);
+
+        $this->assertFalse($target->fresh()->is_active);
+    }
+
+    public function test_global_admin_cannot_deactivate_own_account(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin, 'is_active' => true]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->patchJson("/api/v1/admin/users/{$admin->id}", ['is_active' => false])
+            ->assertStatus(422);
+
+        $this->assertTrue($admin->fresh()->is_active);
+    }
+
+    public function test_editing_name_of_non_secondary_admin_is_forbidden(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $target = User::factory()->create(['role' => UserRole::Eleve, 'name' => 'Origine']);
+
+        $this->actingAs($admin, 'sanctum')
+            ->patchJson("/api/v1/admin/users/{$target->id}", ['name' => 'Piraté'])
+            ->assertForbidden();
+
+        $this->assertSame('Origine', $target->fresh()->name);
+    }
 }

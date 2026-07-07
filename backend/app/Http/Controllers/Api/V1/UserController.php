@@ -84,7 +84,6 @@ class UserController extends Controller
     public function update(Request $request, User $user): JsonResponse
     {
         AdminScopeContext::assertGlobalAdmin($request->user());
-        self::assertSecondaryAdmin($user);
 
         $data = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:255'],
@@ -95,6 +94,20 @@ class UserController extends Controller
             ])],
             'is_active' => ['sometimes', 'boolean'],
         ]);
+
+        // Nom / email / périmètre : édition réservée aux admins secondaires
+        // (leur écran dédié). L'activation/désactivation, elle, s'applique à
+        // n'importe quel utilisateur depuis la liste des utilisateurs.
+        if (array_intersect(array_keys($data), ['name', 'email', 'admin_scope'])) {
+            self::assertSecondaryAdmin($user);
+        }
+
+        // Anti-verrouillage : un admin ne peut pas se désactiver lui-même.
+        if (array_key_exists('is_active', $data)
+            && ! $data['is_active']
+            && $request->user()?->id === $user->id) {
+            abort(422, 'Vous ne pouvez pas désactiver votre propre compte.');
+        }
 
         $user->fill($data)->save();
 

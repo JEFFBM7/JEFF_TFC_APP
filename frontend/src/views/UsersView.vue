@@ -2,11 +2,16 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { api, ApiError } from '../api/client'
 import { useToastStore } from '../stores/toast'
+import { useAuthStore } from '../stores/auth'
 import type { AdminScope, AuthUser, UserRole } from '../types'
 import Modal from '../components/Modal.vue'
 
+interface ManagedUser extends AuthUser {
+  is_active?: boolean
+}
+
 interface UsersResponse {
-  data: AuthUser[]
+  data: ManagedUser[]
 }
 
 const ROLES: { value: UserRole; label: string }[] = [
@@ -23,12 +28,13 @@ const ADMIN_SCOPES: { value: AdminScope; label: string }[] = [
   { value: 'secondary_technical', label: 'Admin cycle Secondaire & Technique' },
 ]
 
-const items = ref<AuthUser[]>([])
+const items = ref<ManagedUser[]>([])
 const loading = ref(false)
 const error = ref('')
 const filterRole = ref<'' | UserRole>('')
 
 const toast = useToastStore()
+const auth = useAuthStore()
 const showForm = ref(false)
 const formError = ref('')
 const formErrors = reactive<Record<string, string[]>>({})
@@ -73,6 +79,24 @@ async function load(): Promise<void> {
     error.value = e instanceof ApiError ? e.message : 'Erreur de chargement.'
   } finally {
     loading.value = false
+  }
+}
+
+function isSelf(user: ManagedUser): boolean {
+  return auth.user?.id === user.id
+}
+
+async function toggleActive(user: ManagedUser): Promise<void> {
+  const activate = user.is_active === false
+  try {
+    await api(`/api/v1/admin/users/${user.id}`, {
+      method: 'PATCH',
+      body: { is_active: activate },
+    })
+    toast.success(activate ? `« ${user.name} » réactivé.` : `« ${user.name} » désactivé.`)
+    await load()
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Erreur réseau.'
   }
 }
 
@@ -155,6 +179,8 @@ onMounted(load)
             <th>Nom</th>
             <th>Email</th>
             <th>Rôle</th>
+            <th>Statut</th>
+            <th style="text-align: right">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -163,6 +189,21 @@ onMounted(load)
             <td>{{ u.email }}</td>
             <td>
               <span class="badge" :class="badgeClass(u.role)">{{ displayRole(u) }}</span>
+            </td>
+            <td>
+              <span class="badge" :class="u.is_active === false ? 'badge-eleve' : 'badge-enseignant'">
+                {{ u.is_active === false ? 'Désactivé' : 'Actif' }}
+              </span>
+            </td>
+            <td style="text-align: right; white-space: nowrap">
+              <button
+                type="button"
+                :disabled="isSelf(u)"
+                :title="isSelf(u) ? 'Vous ne pouvez pas désactiver votre propre compte.' : ''"
+                @click="toggleActive(u)"
+              >
+                {{ u.is_active === false ? 'Activer' : 'Désactiver' }}
+              </button>
             </td>
           </tr>
         </tbody>
