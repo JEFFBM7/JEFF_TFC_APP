@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import { api, apiUrl, ApiError } from '../api/client'
+import { api, apiUrl, ApiError, getToken } from '../api/client'
 import type {
   ApiResource,
   ClassRoom,
@@ -757,9 +757,9 @@ function onFileChange(e: Event): void {
 
 async function downloadTemplate(): Promise<void> {
   try {
-    const token = sessionStorage.getItem('educonnect_token')
+    const token = getToken()
     const res = await fetch(apiUrl('/api/v1/students/import/template'), {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token ?? ''}`, Accept: 'application/json' },
     })
     if (!res.ok) throw new Error()
     const blob = await res.blob()
@@ -782,12 +782,12 @@ async function submitImport(): Promise<void> {
   importError.value = ''
   importResult.value = null
   try {
-    const token = sessionStorage.getItem('educonnect_token')
+    const token = getToken()
     const fd = new FormData()
     fd.append('file', importFile.value)
     const res = await fetch(apiUrl('/api/v1/students/import'), {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      headers: { Authorization: `Bearer ${token ?? ''}`, Accept: 'application/json' },
       body: fd,
     })
     const json = await res.json()

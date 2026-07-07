@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { api, apiUrl, ApiError } from '../api/client'
+import { api, apiUrl, ApiError, getToken } from '../api/client'
 import type { ClassRoom, Paginated, SchoolYear, Student, Term } from '../types'
 import { useSchoolYearStore } from '../stores/schoolYear'
 import { Trophy, CalendarX2, TrendingUp, Download, Info, ShieldCheck, Clock } from 'lucide-vue-next'
@@ -49,9 +49,15 @@ async function loadRefs(): Promise<void> {
 
 async function downloadCsv(url: string, filename: string): Promise<void> {
   try {
-    const token = sessionStorage.getItem('educonnect_token')
+    // Même source de jeton que le client API (localStorage en priorité) : lire
+    // sessionStorage seul renvoyait null après un login normal → requête non
+    // authentifiée → 500. Accept JSON pour obtenir un 401 propre en cas d'échec.
+    const token = getToken()
     const res = await fetch(apiUrl(url), {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token ?? ''}`,
+        Accept: 'application/json',
+      },
     })
     if (!res.ok) throw new Error('Téléchargement impossible.')
     const blob = await res.blob()
