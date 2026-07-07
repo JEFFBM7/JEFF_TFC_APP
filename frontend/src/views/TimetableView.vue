@@ -728,6 +728,12 @@ onMounted(async () => {
           <ul v-if="slotsByDay[day.id].length > 0" class="day-slot-list">
             <li v-for="s in slotsByDay[day.id]" :key="s.id" class="slot">
               <div class="slot-time">{{ s.starts_at }} – {{ s.ends_at }}</div>
+              <!-- Vue enseignant : les créneaux de toutes ses classes sont
+                   fusionnés, on affiche donc la classe pour distinguer un même
+                   cours donné dans plusieurs classes. -->
+              <div v-if="isTeacherView && s.classroom?.full_name" class="slot-classroom">
+                {{ s.classroom.full_name }}
+              </div>
               <div class="slot-subject">{{ s.subject?.name }}</div>
               <div class="slot-teacher">
                 <span v-if="!isTeacherView && s.teacher?.name">{{ s.teacher.name }}</span>
@@ -1088,6 +1094,16 @@ onMounted(async () => {
   font-size: 0.78rem;
 }
 .slot-time { color: var(--text-soft); font-size: 0.72rem; }
+.slot-classroom {
+  display: inline-block;
+  margin: 0.15rem 0 0.1rem;
+  padding: 0.08rem 0.45rem;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
 .slot-subject { font-weight: 600; }
 .slot-teacher {
   display: flex;
