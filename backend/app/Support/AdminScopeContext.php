@@ -90,6 +90,9 @@ class AdminScopeContext
             'admin_cycles' => $user->role === UserRole::Admin ? self::allowedCycles($user) : [],
             'term_applicable_cycles' => self::allowedTermApplicableCycles($user),
             'teacher_cycles' => $user->role === UserRole::Enseignant ? self::teacherLevelCycles($user) : [],
+            'teacher_id' => $user->role === UserRole::Enseignant
+                ? Teacher::query()->where('user_id', $user->id)->value('id')
+                : null,
         ];
     }
 

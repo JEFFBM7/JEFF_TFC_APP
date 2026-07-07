@@ -55,13 +55,33 @@ const allClassrooms = computed<ClassRoom[]>(() =>
     : levels.value.flatMap((l) => (l.classrooms ?? []).map((cr) => ({ ...cr, level: l }))),
 )
 
-const subjectsForSelectedClassroom = computed(() => {
-  const classroomId = showForm.value && form.classroom_id > 0
-    ? form.classroom_id
-    : (filterClassroom.value !== '' ? Number(filterClassroom.value) : 0)
+// Cours proposés dans le filtre du haut : toutes les matières de la classe
+// filtrée (l'admin comme l'enseignant peuvent filtrer la liste sur n'importe
+// quel cours de la classe, y compris ceux qu'ils ne créent pas eux-mêmes).
+const subjectsForFilter = computed(() => {
+  const classroomId = filterClassroom.value !== '' ? Number(filterClassroom.value) : 0
   if (classroomId === 0) return subjects.value
 
   return subjects.value.filter((subject) => subject.classroom_id === classroomId)
+})
+
+// Cours proposés à la CRÉATION : ceux de la classe choisie, et pour un
+// enseignant, restreints aux matières qu'il enseigne réellement dans cette
+// classe (chaque ligne cours/classe porte le teacher_id de son affectation).
+// Le titulaire maternelle/primaire enseigne toutes les matières : le repli
+// titulaire côté API lui attribue le teacher_id sur chaque ligne, donc rien
+// ne lui est masqué à tort.
+const subjectsForForm = computed(() => {
+  const classroomId = form.classroom_id > 0 ? form.classroom_id : 0
+  const list = classroomId === 0
+    ? subjects.value
+    : subjects.value.filter((subject) => subject.classroom_id === classroomId)
+
+  if (isTeacher.value && auth.user?.teacher_id != null) {
+    return list.filter((subject) => subject.teacher_id === auth.user!.teacher_id)
+  }
+
+  return list
 })
 
 const schoolYears = computed<SchoolYear[]>(() =>
@@ -251,7 +271,7 @@ function defaultFormType(): Evaluation['type'] {
 }
 
 function syncFormSubjectForClassroom(): void {
-  const available = subjectsForSelectedClassroom.value
+  const available = subjectsForForm.value
   if (!available.some((subject) => subject.id === form.subject_id)) {
     form.subject_id = available[0]?.id ?? 0
   }
@@ -261,7 +281,7 @@ function resetForm(): void {
   form.classroom_id = allClassrooms.value[0]?.id ?? 0
   syncFormSubjectForClassroom()
   if (form.subject_id === 0) {
-    form.subject_id = subjects.value[0]?.id ?? 0
+    form.subject_id = subjectsForForm.value[0]?.id ?? subjects.value[0]?.id ?? 0
   }
   // Toujours la période/le terme « en cours » à la création — jamais un reliquat
   // d'une précédente ouverture du formulaire (édition ou classe différente).
@@ -549,7 +569,7 @@ onMounted(async () => {
           <label for="f-subj">Cours</label>
           <select id="f-subj" v-model="filterSubject">
             <option value="">Tous les cours</option>
-            <option v-for="s in subjectsForSelectedClassroom" :key="s.id" :value="s.id">{{ s.name }}</option>
+            <option v-for="s in subjectsForFilter" :key="s.id" :value="s.id">{{ s.name }}</option>
           </select>
         </div>
         <div class="filter-field">
@@ -761,7 +781,7 @@ onMounted(async () => {
             <label for="e-subj">Cours</label>
             <select id="e-subj" v-model.number="form.subject_id" required>
               <option :value="0" disabled>Choisir un cours</option>
-              <option v-for="s in subjectsForSelectedClassroom" :key="s.id" :value="s.id">{{ s.name }}</option>
+              <option v-for="s in subjectsForForm" :key="s.id" :value="s.id">{{ s.name }}</option>
             </select>
             <small v-if="formErrors.subject_id" class="err">{{ formErrors.subject_id[0] }}</small>
           </div>

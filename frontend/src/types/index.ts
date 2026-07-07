@@ -12,6 +12,8 @@ export interface AuthUser {
   /** null = trimestres + semestres (admin général). */
   term_applicable_cycles?: TermCycle[] | null
   teacher_cycles?: LevelCycle[]
+  /** id de la fiche Teacher (rôle enseignant uniquement) ; null sinon. */
+  teacher_id?: number | null
 }
 
 export interface LoginResponse {

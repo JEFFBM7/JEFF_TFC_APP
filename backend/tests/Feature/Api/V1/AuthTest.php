@@ -133,7 +133,18 @@ class AuthTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('email', $user->email)
-            ->assertJsonPath('role', 'parent');
+            ->assertJsonPath('role', 'parent')
+            ->assertJsonPath('teacher_id', null);
+    }
+
+    public function test_me_exposes_teacher_id_for_teacher(): void
+    {
+        $user = User::factory()->create(['role' => UserRole::Enseignant]);
+        $teacher = \App\Models\Teacher::factory()->create(['user_id' => $user->id]);
+
+        $this->actingAs($user, 'sanctum')->getJson('/api/v1/auth/me')
+            ->assertOk()
+            ->assertJsonPath('teacher_id', $teacher->id);
     }
 
     public function test_logout_revokes_current_token(): void
